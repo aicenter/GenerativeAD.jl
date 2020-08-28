@@ -2,6 +2,9 @@ name = "GMAD.jl"
 
 [deps]
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+UCI = "a83054f2-ddd1-11e8-0102-5779cc6302e5"
 
 [compat]
 julia = "1.4.2"
