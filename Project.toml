@@ -1,4 +1,6 @@
-name = "GMAD.jl"
+name = "GMAD"
+uuid = "a83054f2-ddd1-11e8-0102-5779cc6302e6"
+authors = ["vitskvara"]
 
 [deps]
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"

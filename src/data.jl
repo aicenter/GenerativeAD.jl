@@ -15,14 +15,14 @@ ratios for normal data, seed and training data contamination.
 function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamination::Real=0.0)
 	# extract data and labels
 	if dataset in uci_datasets # UCI Loda data, standardized
-		data_normal, data_anomalous = load_uci_data(dataset, args...; kwargs...)
+		data_normal, data_anomalous = load_uci_data(dataset)
 	else
 		error("Dataset not known, either not implemented or misspeled.")
 		# TODO add the rest
 	end
 
 	# now do the train/validation/test split
-
+	return train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
 end
 
 """
@@ -83,8 +83,8 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 
 	# select anomalous indices
 	indices_anomalous = 1:size(data_anomalous, nd)
-	vt_ratio = (1 - contamination)/2
-	split_inds_anomalous = train_val_test_inds(indices, (contamination, vt_ratio, vt_ration); seed=seed)
+	vtr = (1 - contamination)/2 # validation/test ratio
+	split_inds_anomalous = train_val_test_inds(indices_anomalous, (contamination, vtr, vtr); seed=seed)
 
 	# this can be done universally - how?
 	if nd == 2
@@ -95,6 +95,11 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 		tr_a, val_a, tst_a = map(is -> data_anomalous[:,:,:,is], split_inds_anomalous)
 	end
 
+	# cat it together
+	tr_x = cat(tr_n, tr_a, dims = nd)
+	val_x = cat(val_n, val_a, dims = nd)
+	tst_x = cat(tst_n, tst_a, dims = nd)
+	
 	# now create labels
 	tr_y = vcat(zeros(size(tr_n, nd)), ones(size(tr_a,nd)))
 	val_y = vcat(zeros(size(val_n, nd)), ones(size(val_a,nd)))
