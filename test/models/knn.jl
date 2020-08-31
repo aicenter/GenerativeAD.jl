@@ -16,4 +16,6 @@
 	@test length(predict(model, Y, 5)) == N2
 	@test all(predict(model, Y, 3, :kappa) .!= predict(model, Y))
 	@test length(predict(model, Y, 3, :kappa)) == N2
+	@test all(predict(model, Y, 9, :delta) .!= predict(model, Y))
+	@test length(predict(model, Y, 11, :delta)) == N2
 end
