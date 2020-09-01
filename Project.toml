@@ -3,6 +3,7 @@ uuid = "a83054f2-ddd1-11e8-0102-5779cc6302e6"
 authors = ["vitskvara"]
 
 [deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"

@@ -1,4 +1,11 @@
 using ArgParse
+using GMAD
+import GMAD.Models.KNNAnomaly
+import StatsBase: fit!, predict
+using StatsBase
+using DrWatson
+@quickactivate
+using BSON
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -14,16 +21,8 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, seed = parsed_args
 
-using GMAD
-import GMAD.Models.KNNAnomaly
-import StatsBase: fit!, predict
-using StatsBase
-using DrWatson
-@quickactivate
-using BSON
-
 # paths
-savepath = datadir("experiments/knn/$(dataset)/seed=$(seed)") 
+savepath = datadir("experiments/tabular/knn/$(dataset)/seed=$(seed)") 
 
 # get params, initialize the model, train it, predict scores and save everything
 data = GMAD.load_data(dataset, seed=seed)
@@ -48,8 +47,8 @@ function _predict(args...; kwargs...)
 	end
 end
 
-function experiment(data, args...; kwargs...)
-	#TODO handle exceptions here or on the level of predict/fit functions ? 
+function experiment(data, args, argnames, kwargs)
+	# TODO handle exceptions here or on the level of predict/fit functions ? 
 	tr_data, val_data, tst_data = data
 	model = KNNAnomaly(args...; kwargs...)
 
@@ -82,21 +81,17 @@ function experiment(data, args...; kwargs...)
 		)
 end
 
-
-maxiter = 100
-iter = 0
-while iter < maxiter
+run_experiment = true
+while run_experiment
 	# TODO could this potentially run forever?
 	args, kwargs, argnames = sample_params()
 	savef = joinpath(savepath, savename(merge(Dict(zip(argnames, args)), kwargs))*".bson")
 
 	if !isfile(savef)
-		global iter += 1
-		println("computing $iter/$maxiter")
-		result = experiment(data, args...; kwargs...)
+		result = experiment(data, args, argnames, kwargs)
 		tagsave(savef, result, safe = true)
-		
+		global run_experiment = false		
 	else
-		println("model already present, not computing anything")
+		println("model already present, trying another set of parameters")
 	end
 end
