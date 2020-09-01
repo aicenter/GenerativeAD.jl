@@ -1,6 +1,6 @@
 @testset "KNN" begin
 	using Test
-	import GMAD.Models.KNNAnomaly
+	import GenerativeAD.Models.KNNAnomaly
 	import StatsBase: fit!, predict
 
 	M = 4

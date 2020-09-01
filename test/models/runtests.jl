@@ -1,5 +1,5 @@
 using Test
-using GMAD
+using GenerativeAD
 
 @testset "Models" begin
     include("knn.jl")

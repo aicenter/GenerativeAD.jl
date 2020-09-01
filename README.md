@@ -1,4 +1,4 @@
-# GMAD.jl
+# GenerativeAD.jl
 Generative models for anomaly detection.
 
 Experimental setup:

@@ -1,4 +1,4 @@
-module GMAD
+module GenerativeAD
 
 using DrWatson
 using UCI

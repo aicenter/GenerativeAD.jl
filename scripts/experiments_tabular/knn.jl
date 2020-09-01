@@ -1,6 +1,6 @@
 using ArgParse
-using GMAD
-import GMAD.Models.KNNAnomaly
+using GenerativeAD
+import GenerativeAD.Models.KNNAnomaly
 import StatsBase: fit!, predict
 using StatsBase
 using DrWatson
@@ -25,7 +25,7 @@ parsed_args = parse_args(ARGS, s)
 savepath = datadir("experiments/tabular/knn/$(dataset)/seed=$(seed)") 
 
 # get params, initialize the model, train it, predict scores and save everything
-data = GMAD.load_data(dataset, seed=seed)
+data = GenerativeAD.load_data(dataset, seed=seed)
 
 # sample params
 function sample_params()

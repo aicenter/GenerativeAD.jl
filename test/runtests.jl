@@ -1,5 +1,5 @@
 using Test
-using GMAD
+using GenerativeAD
 using UCI
 using ArgParse
 using DrWatson
