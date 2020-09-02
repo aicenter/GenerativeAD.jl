@@ -26,6 +26,9 @@ KNNAnomaly(k::Int, v::Symbol, tree_type::Symbol = :BruteTree) =
         tree_type)
 
 
+"""
+    fit!(model::KNNAnomaly, X::Array{T, 2})
+"""
 function StatsBase.fit!(model::KNNAnomaly, X::Array{T, 2}) where T<:Real
     model.X = X
     model.t = eval(model.tt)(X)
@@ -64,3 +67,5 @@ StatsBase.predict(model::KNNAnomaly, x, k, v::Symbol) = StatsBase.predict(model,
 StatsBase.predict(model::KNNAnomaly, x, k) = StatsBase.predict(model, x, k, model.v)
 StatsBase.predict(model::KNNAnomaly, x, v::Symbol) = StatsBase.predict(model, x, model.k, v)
 StatsBase.predict(model::KNNAnomaly, x) = StatsBase.predict(model, x, model.k, model.v)
+
+knn_constructor(;k::Int=1,v::Symbol=:kappa) = KNNAnomaly(k, v)

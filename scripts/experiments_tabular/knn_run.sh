@@ -1,4 +1,5 @@
 #!/bin/bash
+# example: `./knn_run.sh iris 1`
 DATASET=$1
 SEED=$2
 # do a parallel loop here

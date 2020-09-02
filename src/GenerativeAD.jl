@@ -8,6 +8,7 @@ using DataDeps
 using MLDatasets
 
 include("data.jl")
+include("experiments.jl")
 include("models/Models.jl")
 
 end #module

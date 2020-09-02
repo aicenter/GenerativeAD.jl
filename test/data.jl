@@ -27,8 +27,8 @@
 	if !complete
 		@info "Skipping tests on CIFAR10 and SVHN2..."
 	else
-		@info "Testing CIFA10 and SVHN2 datasets, consider running with the flag --fast"
-		test_img_data("CIFAR10", (32, 32, 3, 70000))
+		@info "Testing CIFA10 and SVHN2 datasets"
+		test_img_data("CIFAR10", (32, 32, 3, 60000))
 		test_img_data("SVHN2", (32, 32, 3, 99289))
 	end
 end
