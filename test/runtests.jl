@@ -6,12 +6,12 @@ using DrWatson
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-    "--fast"
+    "--complete"
     	action = :store_true
-        help = "run it fast, i.e. without downloading large datasets"
+        help = "run a more thorough set of tests, may be slow"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack fast = parsed_args
+@unpack complete = parsed_args
 
 include("data.jl")
 include("models/runtests.jl")

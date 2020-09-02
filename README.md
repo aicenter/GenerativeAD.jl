@@ -1,7 +1,19 @@
 # GenerativeAD.jl
 Generative models for anomaly detection.
 
-Experimental setup:
+## Installation
+
+Install prerequisites:
+```julia
+(@julia) pkg> add https://github.com/vitskvara/UCI.jl.git
+```
+
+Then install the package itself:
+```julia
+(@julia) pkg> add https://github.com/aicenter/GenerativeAD.jl.git
+```
+
+## Experimental setup:
 
 1) Each model has methods `constructor(args**, kwargs**)`, `train!(model, data)`, `fit(model, data)` and `sample_params()`.
 2) On a single dataset, run each model on a limited budget, e.g. 100 random hyperparameter settings or limited time.

@@ -24,8 +24,7 @@
 	test_img_data("MNIST", (28, 28, 1, 70000))
 	test_img_data("FashionMNIST", (28, 28, 1, 70000))
 	# this takes a lot of time...
-	fast = true
-	if fast
+	if !complete
 		@info "Skipping tests on CIFAR10 and SVHN2..."
 	else
 		@info "Testing CIFA10 and SVHN2 datasets, consider running with the flag --fast"
