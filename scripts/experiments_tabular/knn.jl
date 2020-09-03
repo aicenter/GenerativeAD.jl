@@ -8,14 +8,14 @@ using BSON
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-    "dataset"
-        required = true
-        arg_type = String
-        help = "dataset"
    "seed"
         required = true
         arg_type = Int
         help = "seed"
+    "dataset"
+        required = true
+        arg_type = String
+        help = "dataset"
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, seed = parsed_args
@@ -89,10 +89,12 @@ end
 ################ THIS PART IS COMMON FOR ALL MODELS ################
 # paths
 savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)") 
+mkpath(savepath)
 
 # get params, initialize the model, train it, predict scores and save everything
 data = GenerativeAD.load_data(dataset, seed=seed)
 
+# set a maximum for parameter sampling retries
 try_counter = 0
 max_tries = 10
 while try_counter < max_tries 
