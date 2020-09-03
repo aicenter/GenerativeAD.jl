@@ -22,4 +22,3 @@ end
 function StatsBase.predict(model::PIDForest, x; err=0.1, pct=50) where T<:Real
     -model.forest.predict(x; err=0.1, pct=50)[end] # last element contains scores
 end
-
