@@ -62,7 +62,8 @@ function fit(data, parameters)
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
 	catch e
-		return Dict(:fit_t => NaN), (nothing, nothing)
+		# return an empty array if fit fails so nothing is computed
+		return Dict(:fit_t => NaN), [] 
 	end
 
 	# construct return information 
