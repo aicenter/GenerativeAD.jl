@@ -4,6 +4,7 @@ authors = ["vitskvara"]
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
+BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
 DataDeps = "124859b0-ceae-595e-8997-d05f6a7a8dfe"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
