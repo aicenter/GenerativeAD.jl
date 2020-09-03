@@ -3,7 +3,7 @@
 
 Eval score function on test/val/train data and save.
 """
-function experiment(score_fun, parameters, data, savepath; save_entries...)
+function experiment(score_fun, parameters, data, savepath; verb=true, save_entries...)
 	tr_data, val_data, tst_data = data
 
 	# extract scores
@@ -27,5 +27,20 @@ function experiment(score_fun, parameters, data, savepath; save_entries...)
 		)
 	result = merge(result, save_entries)
 	tagsave(savef, result, safe = true)
+	verb ? (@info "Results saved to $savef") : nothing
 	result
+end
+
+"""
+	check_params(edit_params_f, savepath, data, parameters)
+
+This checks if the model with given parameters wasn't already trained and saved. 
+"""
+function check_params(edit_params_f, savepath, data, parameters)
+	eparams = edit_params_f(data, parameters) 
+	saved_params = map(x->DrWatson.parse_savename(x)[2], readdir(savepath))
+	for params in saved_params
+		all(map(k->params[String(k)] == eparams[k], collect(keys(eparams)))) ? (return false) : nothing
+	end
+	return true
 end

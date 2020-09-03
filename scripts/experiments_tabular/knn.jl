@@ -24,23 +24,39 @@ parsed_args = parse_args(ARGS, s)
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "knn"
 # sample parameters, should return a Dict of model kwargs 
+"""
+	sample_params()
+
+Should return a Dict that contains a sample of model parameters.
+"""
 function sample_params()
 	par_vec = (1:2:101,)
 	argnames = (:k,)
 	return Dict(zip(argnames, map(x->sample(x, 1)[1], par_vec)))
 end
-# check if the model with given parameters wasn't already trained and saved
-function check_params(savepath, parameters, data)
-	# TODO
-	return true
+"""
+	edit_params(data, parameters)
+
+This modifies parameters according to data - only useful for some models.
+"""
+function edit_params(data, parameters)
+	eparams = copy(parameters)
+	return eparams
 end
-# this is the most important function - returns training info and a tuple or a vector of tuples (score_fun, final_parameters)
-# info contains additional information on the training process, the same for all anomaly score functions
-# each element of the return vector contains a specific anomaly score function - there can be multiple for each trained model
-# final parameters is a dict of names and hyperparameter values that are used for creation of the savefile name
+"""
+	fit(data, parameters)
+
+This is the most important function - returns `training_info` and a tuple or a vector of tuples `(score_fun, final_parameters)`.
+`training_info` contains additional information on the training process, the same for all anomaly score functions.
+Each element of the return vector contains a specific anomaly score function - there can be multiple for each trained model.
+Final parameters is a Dict of names and parameter values that are used for creation of the savefile name.
+"""
 function fit(data, parameters)
-	# construct model
-	model = GenerativeAD.Models.knn_constructor(v=:kappa; parameters...)
+	# edit params if needed
+	parameters = edit_params(data, parameters)
+
+	# construct model - constructor should only accept kwargs
+	model = GenerativeAD.Models.knn_constructor(;v=:kappa, parameters...)
 
 	# fit train data
 	try
@@ -78,21 +94,22 @@ savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
 data = GenerativeAD.load_data(dataset, seed=seed)
 
 try_counter = 0
-max_tries = 100
+max_tries = 10
 while try_counter < max_tries 
 	parameters = sample_params()
 	# here, check if a model with the same parameters was already tested
-	if check_params(savepath, parameters, data)
-		# 
+	if GenerativeAD.check_params(edit_params, savepath, data, parameters)
+		# fit
 		training_info, results = fit(data, parameters)
 		# here define what additional info should be saved together with parameters, scores, labels and predict times
 		save_entries = Dict(
+				:model => modelname,
 				:seed => seed,
 				:dataset => dataset,
 				:fit_t => training_info[:fit_t]
 				)
 		
-		# now loop over all anomaly score funs	
+		# now loop over all anomaly score funs
 		for result in results
 			GenerativeAD.experiment(result..., data, savepath; save_entries...)
 		end
