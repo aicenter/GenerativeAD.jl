@@ -9,6 +9,8 @@ mutable struct PIDForest
 		from pidforest.forest import Forest
 
 		def construct_pidforest(kwargs):
+			kwargs['sample_axis'] = 1
+			kwargs['threshold'] = 0
 			return Forest(**kwargs)
 		"""
 		new(py"construct_pidforest"(parameters))

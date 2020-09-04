@@ -21,10 +21,15 @@ parsed_args = parse_args(ARGS, s)
 
 modelname = "pidforest"
 function sample_params()
-	par_vec = (6:2:10, 50:25:200, 50:50:200, 3:6, [0.05, 0.1, 0.2], [1], [0], )
-	argnames = (:max_depth, :n_trees, :max_samples, :max_buckets, :epsilon, :sample_axis, :threshold,)
+	par_vec = (6:2:10, 50:25:200, 50:50:200, 3:6, [0.05, 0.1, 0.2], )
+	argnames = (:max_depth, :n_trees, :max_samples, :max_buckets, :epsilon, )
 
 	return Dict(zip(argnames, map(x->sample(x, 1)[1], par_vec)))
+end
+
+function edit_params(data, parameters)
+	eparams = copy(parameters)
+	return eparams
 end
 
 function fit(data, parameters)
