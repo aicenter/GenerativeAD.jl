@@ -13,22 +13,32 @@ function experiment(score_fun, parameters, data, savepath; verb=true, save_entri
 
 	# now save the stuff
 	savef = joinpath(savepath, savename(parameters, "bson"))
-	result = Dict(
-		:parameters => parameters,
-		:tr_scores => tr_scores,
-		:tr_labels => tr_data[2], 
-		:tr_eval_t => tr_eval_t,
-		:val_scores => val_scores,
-		:val_labels => val_data[2], 
-		:val_eval_t => val_eval_t,
-		:tst_scores => tst_scores,
-		:tst_labels => tst_data[2], 
-		:tst_eval_t => tst_eval_t
+	result = (
+		parameters = parameters,
+		tr_scores = tr_scores,
+		tr_labels = tr_data[2], 
+		tr_eval_t = tr_eval_t,
+		val_scores = val_scores,
+		val_labels = val_data[2], 
+		val_eval_t = val_eval_t,
+		tst_scores = tst_scores,
+		tst_labels = tst_data[2], 
+		tst_eval_t = tst_eval_t
 		)
-	result = merge(result, save_entries)
+	result = Dict{Symbol, Any}([sym=>val for (sym,val) in pairs(merge(result, save_entries))]) # this has to be a Dict 
 	tagsave(savef, result, safe = true)
 	verb ? (@info "Results saved to $savef") : nothing
 	result
+end
+
+"""
+	edit_params(data, parameters)
+
+This modifies parameters according to data. Default version only returns the input arg. 
+Overload for models where this is needed.
+"""
+function edit_params(data, parameters)
+	parameters
 end
 
 """
@@ -42,5 +52,5 @@ function check_params(edit_params_f, savepath, data, parameters)
 	for params in saved_params
 		all(map(k->params[String(k)] == eparams[k], collect(keys(eparams)))) ? (return false) : nothing
 	end
-	return true
+	true
 end

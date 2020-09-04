@@ -25,7 +25,7 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamin
 	end
 
 	# now do the train/validation/test split
-	return train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
+	train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
 end
 
 """
@@ -38,7 +38,7 @@ function load_uci_data(dataset::String)
 	# does not necessarily represent a good anomaly detection scenario
 	data, _, _ = UCI.get_loda_data(dataset) 
 	# return only easy and medium anomalies
-	return UCI.normalize(data.normal, hcat(data.easy, data.medium)) # data (standardized)
+	UCI.normalize(data.normal, hcat(data.easy, data.medium)) # data (standardized)
 end
 
 """
@@ -67,7 +67,7 @@ function load_mldatasets_data(dataset::String; anomaly_class_ind::Int=1)
 	# return the normal and anomalous data
 	label_list = unique(labels)
 	aclass_inds = labels .== label_list[anomaly_class_ind] # indices of anomalous data
-	return data[:,:,:,.!aclass_inds], data[:,:,:,aclass_inds]
+	data[:,:,:,.!aclass_inds], data[:,:,:,aclass_inds]
 end
 
 """
@@ -93,7 +93,7 @@ function train_val_test_inds(indices, ratios=(0.6,0.2,0.2); seed=nothing)
     (seed == nothing) ? nothing : Random.seed!()
     
     # return the sets of indices
-    return _indices[1:ns[1]], _indices[ns[1]+1:ns[2]], _indices[ns[2]+1:ns[3]]
+    _indices[1:ns[1]], _indices[ns[1]+1:ns[2]], _indices[ns[2]+1:ns[3]]
 end
 
 """
@@ -137,5 +137,5 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	val_y = vcat(zeros(size(val_n, nd)), ones(size(val_a,nd)))
 	tst_y = vcat(zeros(size(tst_n, nd)), ones(size(tst_a,nd)))
 
-	return (tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
+	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
 end
