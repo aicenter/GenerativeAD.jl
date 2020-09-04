@@ -38,7 +38,7 @@ function fit(data, parameters)
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
 	catch e
-		return Dict(:fit_t => NaN), (nothing, nothing)
+		return Dict(:fit_t => NaN), []
 	end
 
 	training_info = Dict(
@@ -46,7 +46,7 @@ function fit(data, parameters)
 		)
 
 	# there are parameters for the predict function, which could be specified here and put into parameters
-	training_info, [(x -> predict(model, x), parameters)]
+	training_info, [(x -> predict(model, x, pct=p), merge(parameters, Dict(:percentile => p))) for p in [25, 50, 75]]
 end
 
 ## test code 
