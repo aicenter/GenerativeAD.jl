@@ -49,33 +49,27 @@ function fit(data, parameters)
 	training_info, [(x -> predict(model, x, pct=p), merge(parameters, Dict(:percentile => p))) for p in [25, 50, 75]]
 end
 
-## test code 
-# parameters = sample_params()
-# dataset, seed = "statlog-satimage", 1
-# data = GenerativeAD.load_data(dataset, seed=seed)
-# model = PIDForest(parameters)
-# @timed fit!(model, data[1][1])
-# predict(model, data[3][1])
-# training_info, results = fit(data, parameters)
-
 savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)") 
 
 data = GenerativeAD.load_data(dataset, seed=seed)
 
 try_counter = 0
-max_tries = 2
+max_tries = 10
 while try_counter < max_tries 
 	parameters = sample_params()
 	# here, check if a model with the same parameters was already tested
-	if check_params(savepath, parameters, data)
+	if GenerativeAD.check_params(edit_params, savepath, data, parameters)
+		# fit
 		training_info, results = fit(data, parameters)
+		# here define what additional info should be saved together with parameters, scores, labels and predict times
 		save_entries = Dict(
+				:model => modelname,
 				:seed => seed,
 				:dataset => dataset,
 				:fit_t => training_info[:fit_t]
 				)
 		
-		# now loop over all anomaly score funs	
+		# now loop over all anomaly score funs
 		for result in results
 			GenerativeAD.experiment(result..., data, savepath; save_entries...)
 		end
