@@ -15,7 +15,7 @@ Then install the package itself:
 
 ## Experimental setup:
 
-1) Each model has methods `constructor(args**, kwargs**)`, `train!(model, data)`, `fit(model, data)` and `sample_params()`.
+1) Each model has methods for model construction, fitting and prediction. For details, see e.g. the readme in `scripts/experiments_tabular`.
 2) On a single dataset, run each model on a limited budget, e.g. 100 random hyperparameter settings or limited time.
 3) Do train/validation/test split with a fixed seed.
 4) Crossvalidation only for the best model? Or not at all? 10 folds would be very expensive, especially on image data.

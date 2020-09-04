@@ -9,6 +9,9 @@ where `max_seed` is an integer that specifies the number of random crossvalidati
 
 To run a model in a parallel way across datasets, run
 ```
-./run_parallel.sh model_name max_seed 
+./run_parallel.sh run_script_name max_seed 
 ```
-which parellelizes the run across a set number of CPU cores.
+which parellelizes the run across a set number of CPU cores. Example:
+```
+./run_parallel.sh knn_run 5 
+```
