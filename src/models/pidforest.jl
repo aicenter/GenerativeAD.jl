@@ -16,9 +16,12 @@ mutable struct PIDForest
 end
 
 function StatsBase.fit!(model::PIDForest, X::Array{T, 2}) where T<:Real
+	# no need for data transposition as the forest is learned on column major
     model.forest.fit(X)
 end
 
-function StatsBase.predict(model::PIDForest, x; err=0.1, pct=50) where T<:Real
-    -model.forest.predict(x; err=0.1, pct=50)[end] # last element contains scores
+function StatsBase.predict(model::PIDForest, x; pct=50) where T<:Real
+	# anomaly scores correspond to percentile `pct` over trees
+	# the lower the score the more anomalous the sample should be
+    -model.forest.predict(x; pct=pct)[end]
 end
