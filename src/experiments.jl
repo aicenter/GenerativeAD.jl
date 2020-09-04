@@ -37,8 +37,11 @@ end
 This checks if the model with given parameters wasn't already trained and saved. 
 """
 function check_params(edit_params_f, savepath, data, parameters)
-	eparams = edit_params_f(data, parameters) 
-	saved_params = map(x->DrWatson.parse_savename(x)[2], readdir(savepath))
+	eparams = edit_params_f(data, parameters)
+	if ~isdir(savepath)
+		return true
+	end
+	saved_params = map(x -> DrWatson.parse_savename(x)[2], readdir(savepath))
 	for params in saved_params
 		all(map(k->params[String(k)] == eparams[k], collect(keys(eparams)))) ? (return false) : nothing
 	end
