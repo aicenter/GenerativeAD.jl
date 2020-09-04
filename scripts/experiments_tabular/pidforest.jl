@@ -7,14 +7,14 @@ using BSON
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-    "dataset"
-        required = true
-        arg_type = String
-        help = "dataset"
    "seed"
         required = true
         arg_type = Int
         help = "seed"
+    "dataset"
+        required = true
+        arg_type = String
+        help = "dataset"
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, seed = parsed_args
@@ -24,25 +24,21 @@ function sample_params()
 	par_vec = (6:2:10, 50:25:200, 50:50:200, 3:6, [0.05, 0.1, 0.2], )
 	argnames = (:max_depth, :n_trees, :max_samples, :max_buckets, :epsilon, )
 
-	return Dict(zip(argnames, map(x->sample(x, 1)[1], par_vec)))
-end
-
-function edit_params(data, parameters)
-	eparams = copy(parameters)
-	return eparams
+	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
 
 function fit(data, parameters)
-	model = GenerativeAD.Models.PIDForest(parameters)
+	model = GenerativeAD.Models.PIDForest(Dict(pairs(parameters)))
 
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
 	catch e
-		return Dict(:fit_t => NaN), []
+		return (fit_t = NaN,), []
 	end
 
-	training_info = Dict(
-		:fit_t => fit_t
+	training_info = (
+		fit_t = fit_t,
+		model = nothing
 		)
 
 	# there are parameters for the predict function, which could be specified here and put into parameters
@@ -50,6 +46,7 @@ function fit(data, parameters)
 end
 
 savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)") 
+mkpath(savepath)
 
 data = GenerativeAD.load_data(dataset, seed=seed)
 
@@ -58,16 +55,11 @@ max_tries = 10
 while try_counter < max_tries 
 	parameters = sample_params()
 	# here, check if a model with the same parameters was already tested
-	if GenerativeAD.check_params(edit_params, savepath, data, parameters)
+	if GenerativeAD.check_params(GenerativeAD.edit_params, savepath, data, parameters)
 		# fit
 		training_info, results = fit(data, parameters)
 		# here define what additional info should be saved together with parameters, scores, labels and predict times
-		save_entries = Dict(
-				:model => modelname,
-				:seed => seed,
-				:dataset => dataset,
-				:fit_t => training_info[:fit_t]
-				)
+		save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
 		
 		# now loop over all anomaly score funs
 		for result in results
