@@ -1,10 +1,11 @@
 uci_datasets = ["abalone", "blood-transfusion", "breast-cancer-wisconsin", "breast-tissue", 
-	"cardiotocography", "ecoli", "gisette", "glass", "haberman", "ionosphere", "iris", "isolet", 
-	"letter-recognition", "libras", "madelon", "magic-telescope", "miniboone", "multiple-features", 
+	"cardiotocography", "ecoli", "glass", "haberman", "ionosphere", "iris", "isolet", 
+	"letter-recognition", "libras", "magic-telescope", "miniboone", "multiple-features", 
 	"page-blocks", "parkinsons", "pendigits", "pima-indians", "sonar", "spect-heart", "statlog-satimage", 
 	"statlog-segment", "statlog-shuttle", "statlog-vehicle", "synthetic-control-chart", 
 	"wall-following-robot", "waveform-1", "waveform-2", "wine", "yeast"]
-	#"vertebral-column"] - no easy and medium anomalies
+	# "gisette", "madelon"] - no easy anomalies + very large in size
+	# "vertebral-column"] - no easy and medium anomalies
 mldatasets = ["MNIST", "FashionMNIST", "CIFAR10", "SVHN2"]
 
 """
