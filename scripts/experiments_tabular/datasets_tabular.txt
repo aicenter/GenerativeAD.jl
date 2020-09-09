@@ -4,7 +4,6 @@ breast-cancer-wisconsin
 breast-tissue
 cardiotocography
 ecoli
-gisette
 glass
 haberman
 ionosphere
@@ -12,7 +11,6 @@ iris
 isolet
 letter-recognition
 libras
-madelon
 magic-telescope
 miniboone
 multiple-features
