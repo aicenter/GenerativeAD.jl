@@ -5,7 +5,13 @@ using StatsBase
 using Statistics
 using LinearAlgebra
 
+using Flux
+using ImageTransformations
+using MLDataPattern
+using ProgressMeter: Progress, next!
+
 include("knn.jl")
 include("pidforest.jl")
+include("GANomaly.jl")
 
 end
