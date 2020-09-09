@@ -42,7 +42,7 @@ function fit(data, parameters)
 		)
 
 	# there are parameters for the predict function, which could be specified here and put into parameters
-	training_info, [(x -> predict(model, x, pct=p), merge(parameters, Dict(:percentile => p))) for p in [25, 50, 75]]
+	training_info, [(x -> predict(model, x, pct=p), merge(parameters, Dict(:percentile => p))) for p in [10, 25, 50]]
 end
 
 savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)") 
