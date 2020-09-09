@@ -1,10 +1,11 @@
-uci_datasets = ["abalone", "blood-transfusion", "breast-cancer-wisconsin", "breast-tissue",
-	"cardiotocography", "ecoli", "gisette", "glass", "haberman", "ionosphere", "iris", "isolet",
-	"letter-recognition", "libras", "madelon", "magic-telescope", "miniboone", "multiple-features",
-	"page-blocks", "parkinsons", "pendigits", "pima-indians", "sonar", "spect-heart", "statlog-satimage",
-	"statlog-segment", "statlog-shuttle", "statlog-vehicle", "synthetic-control-chart",
+uci_datasets = ["abalone", "blood-transfusion", "breast-cancer-wisconsin", "breast-tissue", 
+	"cardiotocography", "ecoli", "glass", "haberman", "ionosphere", "iris", "isolet", 
+	"letter-recognition", "libras", "magic-telescope", "miniboone", "multiple-features", 
+	"page-blocks", "parkinsons", "pendigits", "pima-indians", "sonar", "spect-heart", "statlog-satimage", 
+	"statlog-segment", "statlog-shuttle", "statlog-vehicle", "synthetic-control-chart", 
 	"wall-following-robot", "waveform-1", "waveform-2", "wine", "yeast"]
-	#"vertebral-column"] - no easy and medium anomalies
+	# "gisette", "madelon"] - no easy anomalies + very large in size
+	# "vertebral-column"] - no easy and medium anomalies
 mldatasets = ["MNIST", "FashionMNIST", "CIFAR10", "SVHN2"]
 
 """
@@ -133,9 +134,9 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	tst_x = cat(tst_n, tst_a, dims = nd)
 
 	# now create labels
-	tr_y = vcat(zeros(size(tr_n, nd)), Array{Float32}(ones(size(tr_a,nd))))
-	val_y = vcat(zeros(size(val_n, nd)), Array{Float32}(ones(size(val_a,nd))))
-	tst_y = vcat(zeros(size(tst_n, nd)), Array{Float32}(ones(size(tst_a,nd))))
+	tr_y = vcat(zeros(Float32, size(tr_n, nd)), ones(Float32, size(tr_a,nd)))
+	val_y = vcat(zeros(Float32, size(val_n, nd)), ones(Float32, size(val_a,nd)))
+	tst_y = vcat(zeros(Float32, size(tst_n, nd)), ones(Float32, size(tst_a,nd)))
 
 	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
 end
