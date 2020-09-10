@@ -64,7 +64,7 @@ function fit(data, parameters)
         history = info[1] # losses through time
 		)
 
-    return training_info, [(x -> predict(generator|>cpu, disciriminator|>cpu, x), parameters)]
+    return training_info, [(x -> predict(generator|>cpu, x; dims=3), parameters)]
     # not sure if I should return generator and disciriminator in GPU
 end
 

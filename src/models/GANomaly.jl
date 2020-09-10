@@ -201,7 +201,7 @@ end
 """
     function generator_loss(g::Generator, d::Discriminator, real_input, weights=[1,50,1])
 
-    will perform forward pass of generator and returns NTuple{4, Float32} of losses.
+will perform forward pass of generator and returns NTuple{4, Float32} of losses.
     Generator loss:     L_gen = w_1 * L_adv + w_2 * L_con + w_3 * L_enc
     Adversarial loss:   L_adv = || f(x) - f(D(E1(x)) ||_2
     Contextual loss:    L_con = || x - D(E1(x)) ||_1
@@ -247,6 +247,15 @@ function discriminator_loss(d::Discriminator, real_input, fake_input)
     return 0.5f0*(loss_for_real+loss_for_fake)
 end
 
+"""
+    function anomaly_score(generator::Generator, real_input;dims=3)
+
+computes unscaled anomaly score A(x) = || E1(x) - E2(D(E1(x))) ||_1
+"""
+function anomaly_score(generator::Generator, real_input;dims=3)
+    _, latent_i, latent_o = generator(real_input)
+    return vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims)))'
+end
 
 
 """
@@ -293,8 +302,15 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, opt,
     return history, generator, discriminator
 end
 
-function StatsBase.predict(generator::Generator, discriminator::Discriminator, data)
-    anomaly_score = [generator_loss(generator, discriminator, x)[4] for x in Flux.Data.DataLoader(data)]
+"""
+    StatsBase.predict(generator::Generator, data; dims=3)
+
+computes scaled anomaly score (interval [0,1]). Data should contain both anomal and normal datapoints. 
+"""
+
+function StatsBase.predict(generator::Generator, data; dims=3)
+    _, latent_i, latent_o = generator(data)
+    anomaly_score = anomaly_score(generator, data;dims=dims)
     s_anomaly_score = (anomaly_score .- minimum(anomaly_score))./(maximum(anomaly_score)-minimum(anomaly_score))
     return s_anomaly_score
 end
