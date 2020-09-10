@@ -19,7 +19,7 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamin
 	if dataset in uci_datasets # UCI Loda data, standardized
 		data_normal, data_anomalous = load_uci_data(dataset; kwargs...)
 	elseif dataset in mldatasets # MNIST,FMNIST, SVHN2, CIFAR10
-		data_normal, data_anomalous = load_mldatasets_data(dataset; kwargs...) 
+		data_normal, data_anomalous = load_mldatasets_data(dataset; kwargs...)
 	else
 		error("Dataset not known, either not implemented or misspeled.")
 		# TODO add the rest
@@ -37,7 +37,7 @@ Loads basic UCI data.
 function load_uci_data(dataset::String)
 	# I have opted for the original Loda datasets, use of multiclass problems in all vs one case
 	# does not necessarily represent a good anomaly detection scenario
-	data, _, _ = UCI.get_loda_data(dataset) 
+	data, _, _ = UCI.get_loda_data(dataset)
 	# return only easy and medium anomalies
 	UCI.normalize(data.normal, hcat(data.easy, data.medium)) # data (standardized)
 end
@@ -50,12 +50,12 @@ Loads MNIST, FMNIST, SVHN2 and CIFAR10 datasets.
 function load_mldatasets_data(dataset::String; anomaly_class_ind::Int=1)
 	(dataset in mldatasets) ? nothing : error("$dataset not available in MLDatasets.jl")
 	# since the functions for MLDatasets.MNIST, MLDatasets.CIFAR10 are the same
-	sublib = getfield(MLDatasets, Symbol(dataset)) 
-	
+	sublib = getfield(MLDatasets, Symbol(dataset))
+
 	# do we need to download it?
-	isdir(joinpath(first(DataDeps.standard_loadpath), dataset)) ? 
+	isdir(joinpath(first(DataDeps.standard_loadpath), dataset)) ?
 		nothing : sublib.download(i_accept_the_terms_of_use=true)
-	
+
 	# now get the data
 	tr_x, tst_x = sublib.traintensor(Float32), sublib.testtensor(Float32)
 	if ndims(tr_x) == 3 # some datasets are 3D tensors :(
@@ -77,22 +77,22 @@ end
 Split indices.
 """
 function train_val_test_inds(indices, ratios=(0.6,0.2,0.2); seed=nothing)
-    (sum(ratios) == 1 && length(ratios) == 3) ? nothing : 
+    (sum(ratios) == 1 && length(ratios) == 3) ? nothing :
     	error("ratios must be a vector of length 3 that sums up to 1")
-    
+
     # set seed
     (seed == nothing) ? nothing : Random.seed!(seed)
-    
+
     # set number of samples in individual subsets
     n = length(indices)
     ns = cumsum([x for x in floor.(Int, n .* ratios)])
-    
+
     # scramble indices
     _indices = sample(indices, n, replace=false)
-    
+
     # restart seed
     (seed == nothing) ? nothing : Random.seed!()
-    
+
     # return the sets of indices
     _indices[1:ns[1]], _indices[ns[1]+1:ns[2]], _indices[ns[2]+1:ns[3]]
 end
@@ -105,7 +105,7 @@ Split data.
 """
 function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); seed=nothing,
 	    	contamination::Real=0.0)
-	# split the normal data, add some anomalies to the train set and divide 
+	# split the normal data, add some anomalies to the train set and divide
 	# the rest between validation and test
 	(0 <= contamination <= 1) ? nothing : error("contamination must be in the interval [0,1]")
 	nd = ndims(data_normal) # differentiate between 2D tabular and 4D image data
@@ -132,11 +132,11 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	tr_x = cat(tr_n, tr_a, dims = nd)
 	val_x = cat(val_n, val_a, dims = nd)
 	tst_x = cat(tst_n, tst_a, dims = nd)
-	
+
 	# now create labels
-	tr_y = vcat(zeros(size(tr_n, nd)), ones(size(tr_a,nd)))
-	val_y = vcat(zeros(size(val_n, nd)), ones(size(val_a,nd)))
-	tst_y = vcat(zeros(size(tst_n, nd)), ones(size(tst_a,nd)))
+	tr_y = vcat(zeros(Float32, size(tr_n, nd)), ones(Float32, size(tr_a,nd)))
+	val_y = vcat(zeros(Float32, size(val_n, nd)), ones(Float32, size(val_a,nd)))
+	tst_y = vcat(zeros(Float32, size(tst_n, nd)), ones(Float32, size(tst_a,nd)))
 
 	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
 end
