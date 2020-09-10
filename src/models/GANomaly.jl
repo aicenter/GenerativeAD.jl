@@ -194,9 +194,8 @@ function (g::Generator)(x)
 end
 
 
-"""
-    Implementation of loss functions for both generator and discriminator
-"""
+
+#    Implementation of loss functions for both generator and discriminator
 """
     function generator_loss(g::Generator, d::Discriminator, real_input, weights=[1,50,1])
 

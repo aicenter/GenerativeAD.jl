@@ -1,9 +1,9 @@
+using DrWatson
+@quickactivate
 using ArgParse
 using GenerativeAD
 import StatsBase: fit!, predict
 using StatsBase
-using DrWatson
-@quickactivate
 using BSON
 
 s = ArgParseSettings()
