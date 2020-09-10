@@ -1,5 +1,8 @@
 #!/bin/bash
-# this runs parallel experiments over all datasets
+# This runs parallel experiments over all datasets.
+# USAGE EXAMPLE
+# 	./run_parallel.sh pidforest 3 1 2
+# Run from this folder only.
 MODEL=$1 		# which model to run
 NUM_SAMPLES=$2	# how many repetitions
 MAX_SEED=$3		# how many folds over dataset
