@@ -24,4 +24,4 @@ while read d; do
 
     # for local testing    
     # ./${MODEL}_run.sh $MAX_SEED $d
-done < one_tabular.txt
+done < datasets_tabular.txt
