@@ -42,7 +42,7 @@ Note:
 """
 function fit(data, parameters)
     # prepare batches & loaders
-    train_loader = MLDataPattern.RandomBatches(data, parameters.batch_size, parameters.iters)
+    train_loader = MLDataPattern.RandomBatches(data |> gpu, parameters.batch_size, parameters.iters)
     #valid_loader = Flux.Data.DataLoader((X_val,y_val), batchsize=parameters.batch_size, shuffle=false)
     #test_loader = Flux.Data.DataLoader((X_test, y_test), batchsize=parameters.batch_size, shuffle=false)
 
@@ -53,19 +53,19 @@ function fit(data, parameters)
     opt = Flux.Optimise.ADAM(parameters.lr)
 
     try
-		global info, fit_t, _, _, _ = @timed fit!(generator, discriminator, opt, train_loader)
+		global info, fit_t, _, _, _ = @timed fit!(generator|>gpu, discriminator|>gpu, opt, train_loader)
 	catch e
 		return (fit_t = NaN,), []
 	end
 
     training_info = (
 		fit_t = fit_t,
-        model = (generator, discriminator),
+        model = (generator|>cpu, discriminator|>cpu),
         history = info[1] # losses through time
 		)
 
-    return training_info, [(x -> predict(generator, disciriminator, x), parameters)]
-
+    return training_info, [(x -> predict(generator|>cpu, disciriminator|>cpu, x), parameters)]
+    # not sure if I should return generator and disciriminator in GPU
 end
 
 #_________________________________________________________________________________________________
@@ -75,7 +75,7 @@ savepath = datadir("experiments/images/$(modelname)/$(dataset)/seed=$(seed)")
 data = GenerativeAD.load_data(dataset, seed=seed)
 
 try_counter = 0
-max_tries = 2 
+max_tries = 2
 while try_counter < max_tries
 	parameters = sample_params()
 

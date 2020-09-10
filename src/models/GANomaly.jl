@@ -241,7 +241,7 @@ function discriminator_loss(d::Discriminator, real_input, fake_input)
     pred_real, feat_real = d(real_input)
     pred_fake, feat_fake = d(fake_input)
 
-    loss_for_real = Flux.crossentropy(pred_real, 1f0)
+    loss_for_real = Flux.crossentropy(pred_real, 1f0) # ones(typeof(pred_real), size(pred_real)) has same speed 
     loss_for_fake = Flux.crossentropy(1f0.-pred_fake, 1f0)
     return 0.5f0*(loss_for_real+loss_for_fake)
 end
