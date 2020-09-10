@@ -197,10 +197,11 @@ end
 """
     Implementation of loss functions for both generator and discriminator
 """
+
 """
     function generator_loss(g::Generator, d::Discriminator, real_input, weights=[1,50,1])
 
-will perform forward pass of generator and returns NTuple{4, Float32} of losses.
+    will perform forward pass of generator and returns NTuple{4, Float32} of losses.
     Generator loss:     L_gen = w_1 * L_adv + w_2 * L_con + w_3 * L_enc
     Adversarial loss:   L_adv = || f(x) - f(D(E1(x)) ||_2
     Contextual loss:    L_con = || x - D(E1(x)) ||_1
@@ -241,7 +242,7 @@ function discriminator_loss(d::Discriminator, real_input, fake_input)
     pred_real, feat_real = d(real_input)
     pred_fake, feat_fake = d(fake_input)
 
-    loss_for_real = Flux.crossentropy(pred_real, 1f0) # ones(typeof(pred_real), size(pred_real)) has same speed 
+    loss_for_real = Flux.crossentropy(pred_real, 1f0) # ones(typeof(pred_real), size(pred_real)) has same speed
     loss_for_fake = Flux.crossentropy(1f0.-pred_fake, 1f0)
     return 0.5f0*(loss_for_real+loss_for_fake)
 end
