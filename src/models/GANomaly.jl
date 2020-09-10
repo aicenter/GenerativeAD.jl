@@ -297,3 +297,24 @@ function StatsBase.predict(generator::Generator, discriminator::Discriminator, d
     s_anomaly_score = (anomaly_score .- minimum(anomaly_score))./(maximum(anomaly_score)-minimum(anomaly_score))
     return s_anomaly_score
 end
+
+"""
+    conv GANomaly constructor for parameters
+"""
+function ganomaly_constructor(kwargs)
+    generator_params = (isize=kwargs.isize,
+                        latent_dim=kwargs.latent_dim,
+                        in_ch = kwargs.in_ch,
+                        nf = kwargs.num_filters,
+                        extra_layers = kwargs.extra_layers)
+
+    discriminator_params = (isize=kwargs.isize,
+                            out_ch = 1,
+                            in_ch = kwargs.in_ch,
+                            nf = kwargs.num_filters,
+                            extra_layers = kwargs.extra_layers)
+
+    generator = ConvGenerator(generator_params...)
+    discrimiantor = ConvDiscriminator(discriminator_params...)
+    return generator, discriminator, generator_params, discriminator_params
+end

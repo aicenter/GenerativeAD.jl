@@ -22,7 +22,6 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, seed = parsed_args
 
-
 modelname = "Conv-GANomaly"
 
 
@@ -42,27 +41,13 @@ Note:
     (x_train, y_train), (x_val, y_val), (x_test, y_test) = data
 """
 function fit(data, parameters)
-    # data preprocessing
-    (X_train,_), (X_val, y_val), (X_test, y_test) = data
-
-    # computing additional parameters and resizing input data
-    in_ch = out_ch = size(X_train,3)
-    isize = maximum([size(X_train,1),size(X_train,2)])
-    residue = isize % 16
-    if residue != 0
-        isize = isize + 16 - residue
-        X_train = GenerativeAD.resize_images(X_train, isize, in_ch)
-        X_val = GenerativeAD.resize_images(X_val, isize, in_ch)
-        X_test = GenerativeAD.resize_images(X_test, isize, in_ch)
-    end
     # prepare batches & loaders
-    train_loader = MLDataPattern.RandomBatches(X_train, parameters.batch_size, parameters.iters)
+    train_loader = MLDataPattern.RandomBatches(data, parameters.batch_size, parameters.iters)
     #valid_loader = Flux.Data.DataLoader((X_val,y_val), batchsize=parameters.batch_size, shuffle=false)
     #test_loader = Flux.Data.DataLoader((X_test, y_test), batchsize=parameters.batch_size, shuffle=false)
 
     # define models (Generator, Discriminator)
-    generator = GenerativeAD.Models.ConvGenerator(isize, parameters.latent_dim, in_ch, parameters.num_filters, parameters.extra_layers)
-    discriminator = GenerativeAD.Models.ConvDiscriminator(isize, in_ch, out_ch, parameters.num_filters, parameters.extra_layers)
+    generator, discriminator, _, _ = GenerativeAD.Models.ganomaly_constructor(parameters)
 
     # define optimiser
     opt = Flux.Optimise.ADAM(parameters.lr)
@@ -70,14 +55,53 @@ function fit(data, parameters)
     try
 		global info, fit_t, _, _, _ = @timed fit!(generator, discriminator, opt, train_loader)
 	catch e
-		return Dict(:fit_t => NaN), (nothing, nothing)
+		return (fit_t = NaN,), []
 	end
 
-    training_info = Dict(
-		:fit_t => fit_t,
-        :history => info[1]
+    training_info = (
+		fit_t = fit_t,
+        model = (generator, discriminator),
+        history = info[1] # losses through time
 		)
 
-    return training_info, predict(X_val)
+    return training_info, [(x -> predict(generator, disciriminator, x), parameters)]
 
 end
+
+#_________________________________________________________________________________________________
+
+savepath = datadir("experiments/images/$(modelname)/$(dataset)/seed=$(seed)")
+
+data = GenerativeAD.load_data(dataset, seed=seed)
+
+try_counter = 0
+max_tries = 2 
+while try_counter < max_tries
+	parameters = sample_params()
+
+    # computing additional parameters
+    in_ch = size(data[1][1],3)
+    isize = maximum([size(data[1][1],1),size(data[1][1],2)])
+    # update parameter
+    parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
+	# here, check if a model with the same parameters was already tested
+	if check_params(savepath, parameters, data)
+
+        data = GenerativeAD.preprocess_images(data, parameters)
+        #(X_train,_), (X_val, y_val), (X_test, y_test) = data
+
+		training_info, results = fit(data[1][1], parameters)
+
+        save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+
+		# now loop over all anomaly score funs
+		for result in results
+			GenerativeAD.experiment(result..., data, savepath; save_entries...)
+		end
+		break
+	else
+		@info "Model already present, sampling new hyperparameters..."
+		global try_counter += 1
+	end
+end
+(try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing

@@ -25,3 +25,24 @@ function update_history(history::Dict{String,Array{Float32,1}}, gl::NTuple{4,Flo
 	push!(history["discriminator_loss"], dl)
 	return history
 end
+
+
+"""
+    function preprocess_images(data, parameters)
+
+Preprocess image data for ganomaly.
+"""
+function preprocess_images(data, parameters)
+    (X_train, y_train), (X_val, y_val), (X_test, y_test) = data
+    isize = parameters.isize
+    in_ch = parameters.in_ch
+
+    residue = isize % 16
+    if residue != 0
+        isize = isize + 16 - residue
+        X_train = resize_images(X_train, isize, in_ch)
+        X_val = resize_images(X_val, isize, in_ch)
+        X_test = resize_images(X_test, isize, in_ch)
+    end
+    return (X_train, y_train), (X_val, y_val), (X_test, y_test)
+end
