@@ -33,6 +33,7 @@ function fit(data, parameters)
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
 	catch e
+		@info "Failed training PIDForest$(parameters) due to \n$e"
 		return (fit_t = NaN,), []
 	end
 
