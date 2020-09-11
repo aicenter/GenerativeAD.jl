@@ -34,7 +34,7 @@ Preprocess image data for ganomaly.
 """
 function preprocess_images(data, parameters)
     (X_train, y_train), (X_val, y_val), (X_test, y_test) = data
-    isize = maximum([size(X_train,1),size(x_train,2)]) # there is already fixed isize in parameters
+    isize = maximum([size(X_train,1),size(X_train,2)]) # there is already fixed isize in parameters
     in_ch = parameters.in_ch
 
     residue = isize % 16

@@ -278,7 +278,7 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, opt,
 
 
 	progress = Progress(length(train_loader))
-	for X in data_loader
+	for X in train_loader
 		#generator update
 		loss1, back = Flux.pullback(ps_g) do
 			generator_loss(generator, discriminator, X)
@@ -305,7 +305,7 @@ end
 """
     StatsBase.predict(generator::Generator, data; dims=3)
 
-computes scaled anomaly score (interval [0,1]). Data should contain both anomal and normal datapoints. 
+computes scaled anomaly score (interval [0,1]). Data should contain both anomal and normal datapoints.
 """
 
 function StatsBase.predict(generator::Generator, data; dims=3)
@@ -332,6 +332,6 @@ function ganomaly_constructor(kwargs)
                             extra_layers = kwargs.extra_layers)
 
     generator = ConvGenerator(generator_params...)
-    discrimiantor = ConvDiscriminator(discriminator_params...)
+    discriminator = ConvDiscriminator(discriminator_params...)
     return generator, discriminator, generator_params, discriminator_params
 end
