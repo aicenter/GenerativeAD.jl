@@ -51,7 +51,9 @@ function check_params(edit_params_f, savepath, data, parameters)
 	if ~isdir(savepath)
 		return true
 	end
-	saved_params = map(x -> DrWatson.parse_savename(x)[2], readdir(savepath))
+	# filter out duplicates created by tagsave
+	fs = filter(x->!(occursin("_#", x)), readdir(savepath))
+	saved_params = map(x -> DrWatson.parse_savename(x)[2], fs)
 	for params in saved_params
 		all(map(k->params[String(k)] == eparams[k], collect(keys(eparams)))) ? (return false) : nothing
 	end
