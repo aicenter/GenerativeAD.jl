@@ -43,9 +43,6 @@ Each element of the return vector contains a specific anomaly score function - t
 Final parameters is a Dict of names and parameter values that are used for creation of the savefile name.
 """
 function fit(data, parameters)
-	# edit params if needed
-	parameters = GenerativeAD.edit_params(data, parameters)
-
 	# construct model - constructor should only accept kwargs
 	model = GenerativeAD.Models.knn_constructor(;v=:kappa, parameters...)
 
@@ -92,11 +89,14 @@ while try_counter < max_tries
 
 		# get data
 		data = GenerativeAD.load_data(dataset, seed=seed)
+		
+		# edit parameters
+		edited_parameters = GenerativeAD.edit_params(data, parameters)
 
 		# check if a combination of parameters and seed alread exists
-		if GenerativeAD.check_params(GenerativeAD.edit_params, savepath, data, parameters)
+		if GenerativeAD.check_params(savepath, data, edited_parameters)
 			# fit
-			training_info, results = fit(data, parameters)
+			training_info, results = fit(data, edited_parameters)
 			# here define what additional info should be saved together with parameters, scores, labels and predict times
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
 
