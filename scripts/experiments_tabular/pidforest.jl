@@ -1,13 +1,13 @@
-using ArgParse
-using GenerativeAD
-import StatsBase: fit!, predict, sample
 using DrWatson
 @quickactivate
+using ArgParse
+using GenerativeAD
+using StatsBase: fit!, predict, sample
 using BSON
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-   "seed"
+   "max_seed"
         required = true
         arg_type = Int
         help = "seed"
@@ -17,7 +17,7 @@ s = ArgParseSettings()
         help = "dataset"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, seed = parsed_args
+@unpack dataset, max_seed = parsed_args
 
 modelname = "pidforest"
 function sample_params()
@@ -42,34 +42,35 @@ function fit(data, parameters)
 		model = nothing
 		)
 
-	# there are parameters for the predict function, which could be specified here and put into parameters
 	training_info, [(x -> predict(model, x, pct=p), merge(parameters, Dict(:percentile => p))) for p in [10, 25, 50]]
 end
 
-savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)") 
-mkpath(savepath)
-
-data = GenerativeAD.load_data(dataset, seed=seed)
-
 try_counter = 0
 max_tries = 10
-while try_counter < max_tries 
-	parameters = sample_params()
-	# here, check if a model with the same parameters was already tested
-	if GenerativeAD.check_params(GenerativeAD.edit_params, savepath, data, parameters)
-		# fit
-		training_info, results = fit(data, parameters)
-		# here define what additional info should be saved together with parameters, scores, labels and predict times
-		save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
-		
-		# now loop over all anomaly score funs
-		for result in results
-			GenerativeAD.experiment(result..., data, savepath; save_entries...)
+while try_counter < max_tries
+    parameters = sample_params()
+
+    for seed in 1:max_seed
+		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
+		mkpath(savepath)
+
+		data = GenerativeAD.load_data(dataset, seed=seed)
+		edited_parameters = GenerativeAD.edit_params(data, parameters)
+
+		if GenerativeAD.check_params(savepath, data, edited_parameters)
+			@info "Started training on $(dataset):$(seed)"
+			
+			training_info, results = fit(data, edited_parameters)
+			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+
+			for result in results
+				GenerativeAD.experiment(result..., data, savepath; save_entries...)
+			end
+			global try_counter = max_tries + 1
+		else
+			@info "Model already present, trying new hyperparameters..."
+			global try_counter += 1
 		end
-		break
-	else
-		@info "Model already present, sampling new hyperparameters..."
-		global try_counter += 1
-	end 
+	end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
