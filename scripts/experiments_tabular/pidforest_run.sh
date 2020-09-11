@@ -16,7 +16,4 @@ export PYTHON="${HOME}/pidforest-env/bin/python"
 # PyCall needs to be rebuilt if environment changed
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-for ((SEED=1; SEED<=$MAX_SEED; SEED++))
-do	
-	julia --project ./pidforest.jl $SEED $DATASET
-done
+julia --project ./pidforest.jl $MAX_SEED $DATASET
