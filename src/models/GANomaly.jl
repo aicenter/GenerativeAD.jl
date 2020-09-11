@@ -188,7 +188,7 @@ Flux.@functor Generator
 """ Definition of Generators's forward pass """
 function (g::Generator)(x)
 	latent_i = g.encoder1(x)
-    gen_imag = g.decoder(latent_i)
+    gen_imag = tanh.(g.decoder(latent_i))
     latent_o = g.encoder2(gen_imag)
     return gen_imag, latent_i, latent_o
 end
