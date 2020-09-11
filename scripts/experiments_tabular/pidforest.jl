@@ -21,10 +21,21 @@ parsed_args = parse_args(ARGS, s)
 
 modelname = "pidforest"
 function sample_params()
-	par_vec = (6:2:10, 50:25:200, 50:50:200, 3:6, [0.05, 0.1, 0.2], )
+	par_vec = (6:2:10, 50:25:200, [50, 100, 250, 500, 1000, 5000], 3:6, [0.05, 0.1, 0.2], )
 	argnames = (:max_depth, :n_trees, :max_samples, :max_buckets, :epsilon, )
 
 	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
+end
+
+function GenerativeAD.edit_params(data, parameters)
+	D, N = size(data[1][1])
+	if N < parameters.max_samples
+		# if there are not enough samples, choose closest multiple of 50
+		@info "Not enough samples in training, changing max_samples for each tree."
+		return merge(parameters, (;max_samples = max(25, N - mod(N, 50))))
+	else 
+		return parameters
+	end
 end
 
 function fit(data, parameters)
