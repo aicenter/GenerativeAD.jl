@@ -82,7 +82,7 @@ end
 ################ THIS PART IS COMMON FOR ALL MODELS ################
 # set a maximum for parameter sampling retries
 try_counter = 0
-max_tries = 10*max_seed
+max_tries = 10
 while try_counter < max_tries
     parameters = sample_params()
 
