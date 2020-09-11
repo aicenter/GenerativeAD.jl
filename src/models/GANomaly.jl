@@ -257,12 +257,29 @@ function anomaly_score(generator::Generator, real_input;dims=3)
     return vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims)))'
 end
 
+"""
+    function update_history(history::Dict{String,Array{Float32,1}}, gl::NTuple{4,Float32}, dl::Float32)
+
+do logging losses into history
+"""
+function update_history(history::Dict{String,Array{Float32,1}}, gl, dl)
+	push!(history["generator_loss"], gl[1])
+	push!(history["adversarial_loss"], gl[2])
+	push!(history["contextual_loss"], gl[3])
+	push!(history["encoder_loss"], gl[4])
+	push!(history["discriminator_loss"], dl)
+	return history
+end
+
 
 """
     Model's training and inference
 """
 
-function StatsBase.fit!(generator::Generator, discriminator::Discriminator, opt, train_loader)
+"""
+    fit!(generator::Generator, discriminator::Discriminator, opt, train_loader, epochs)
+"""
+function StatsBase.fit!(generator::Generator, discriminator::Discriminator, opt, train_loader, epochs)
 
     # training info logger
     history = Dict(
@@ -276,29 +293,31 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, opt,
 	ps_g = Flux.params(generator)
     ps_d = Flux.params(discriminator)
 
+    for epoch = 1:epochs
+        progress = Progress(length(train_loader))
+        for X in train_loader
+            #generator update
+            loss1, back = Flux.pullback(ps_g) do
+                generator_loss(generator, discriminator, X)
+            end
+            grad = back((1f0, 0f0, 0f0, 0f0))
+            Flux.Optimise.update!(opt, ps_g, grad)
 
-	progress = Progress(length(train_loader))
-	for X in train_loader
-		#generator update
-		loss1, back = Flux.pullback(ps_g) do
-			generator_loss(generator, discriminator, X)
-		end
-		grad = back((1f0, 0f0, 0f0, 0f0))
-		Flux.Optimise.update!(opt, ps_g, grad)
+            # discriminator update
+            loss2, back = Flux.pullback(ps_d) do
+                discriminator_loss(generator, discriminator, X)
+            end
+            grad = back(1f0)
+            Flux.Optimise.update!(opt, ps_d, grad)
 
-		# discriminator update
-		loss2, back = Flux.pullback(ps_d) do
-			discriminator_loss(generator, discriminator, X)
-		end
-		grad = back(1f0)
-		Flux.Optimise.update!(opt, ps_d, grad)
-
-		history = update_history(history, loss1, loss2)
-		next!(progress; showvalues=[(:generator_loss, loss1[1]), (:discriminator_loss, loss2)])
-
-        #případně přidat kontrolu velikosti chyby s restartem discriminatoru
-
-	end
+            history = update_history(history, loss1, loss2)
+            next!(progress; showvalues=[(:epoch, "$(epoch)/$(epochs)"),
+                                        (:generator_loss, loss1[1]),
+                                        (:discriminator_loss, loss2)
+                                        ])
+            #případně přidat kontrolu velikosti chyby s restartem discriminatoru
+        end
+    end
     return history, generator, discriminator
 end
 
@@ -310,7 +329,7 @@ computes scaled anomaly score (interval [0,1]). Data should contain both anomal 
 
 function StatsBase.predict(generator::Generator, data; dims=3)
     _, latent_i, latent_o = generator(data)
-    anomaly_score = anomaly_score(generator, data;dims=dims)
+    anomaly_score = anomaly_score(generator, data; dims=dims)
     s_anomaly_score = (anomaly_score .- minimum(anomaly_score))./(maximum(anomaly_score)-minimum(anomaly_score))
     return s_anomaly_score
 end

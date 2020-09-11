@@ -1,5 +1,6 @@
 using ArgParse
 using GenerativeAD
+using GenerativeAD.Models: anomaly_score
 using DrWatson
 @quickactivate
 using BSON
@@ -26,13 +27,13 @@ modelname = "Conv-GANomaly"
 
 
 function sample_params()
-    argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :iters, :batch_size, )
+    argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :epochs, :batch_size, )
 	options = (
             [10:10:200...],
             [2^x for x=2:8],
             [1:5...],
             [0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
-            [1000],
+            [20],
             [2^x for x=2:8],
             )
 	return NamedTuple{argnames}(map(x->sample(x,1)[1], options))
@@ -61,7 +62,8 @@ Note:
 """
 function fit(data, parameters)
     # prepare batches & loaders
-    train_loader = MLDataPattern.RandomBatches(data |> gpu, parameters.batch_size, parameters.iters)
+    train_loader = Flux.Data.DataLoader(data |> gpu, batchsize=parameters.batch_size, shuffle=true)
+    #train_loader = MLDataPattern.RandomBatches(data |> gpu, parameters.batch_size, parameters.iters)
     #valid_loader = Flux.Data.DataLoader((X_val,y_val), batchsize=parameters.batch_size, shuffle=false)
     #test_loader = Flux.Data.DataLoader((X_test, y_test), batchsize=parameters.batch_size, shuffle=false)
 
@@ -72,8 +74,9 @@ function fit(data, parameters)
     opt = Flux.Optimise.ADAM(parameters.lr)
 
     try
-		global info, fit_t, _, _, _ = @timed fit!(generator|>gpu, discriminator|>gpu, opt, train_loader)
+		global info, fit_t, _, _, _ = @timed fit!(generator|>gpu, discriminator|>gpu, opt, train_loader, parameters.epochs)
 	catch e
+        println("Error caught.")
 		return (fit_t = NaN,), []
 	end
 
@@ -83,7 +86,7 @@ function fit(data, parameters)
         history = info[1] # losses through time
 		)
 
-    return training_info, [(x -> predict(generator|>cpu, x; dims=3), parameters)]
+    return training_info, [(x -> GenerativeAD.Models.anomaly_score(generator|>cpu, x; dims=3), parameters)]
     # not sure if I should return generator and disciriminator in GPU
 end
 

@@ -12,20 +12,6 @@ function resize_images(images, isize::Int, channels=1) """ zjisiti jestli to tak
 	return cat(channels_list..., dims=3)
 end
 
-"""
-    function update_history(history::Dict{String,Array{Float32,1}}, gl::NTuple{4,Float32}, dl::Float32)
-
-do logging losses into history
-"""
-function update_history(history::Dict{String,Array{Float32,1}}, gl, dl)
-	push!(history["generator_loss"], gl[1]|>cpu)
-	push!(history["adversarial_loss"], gl[2]|>cpu)
-	push!(history["contextual_loss"], gl[3]|>cpu)
-	push!(history["encoder_loss"], gl[4]|>cpu)
-	push!(history["discriminator_loss"], dl|>cpu)
-	return history
-end
-
 
 """
     function preprocess_images(data, parameters)
