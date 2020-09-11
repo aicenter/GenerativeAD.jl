@@ -25,6 +25,25 @@ parsed_args = parse_args(ARGS, s)
 modelname = "Conv-GANomaly"
 
 
+function sample_params()
+    argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :iters, :batch_size, )
+	options = (
+            [10:10:200...],
+            [2^x for x=2:8],
+            [1:5...],
+            [0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
+            [1000],
+            [2^x for x=2:8],
+            )
+	return NamedTuple{argnames}(map(x->sample(x,1)[1], options))
+end
+
+
+function check_params(savepath, parameters, data)
+	# TODO
+	return true
+end
+
 """
     function fit(data, parameters)
 
@@ -82,6 +101,8 @@ while try_counter < max_tries
     # computing additional parameters
     in_ch = size(data[1][1],3)
     isize = maximum([size(data[1][1],1),size(data[1][1],2)])
+
+    isize = isize + 16 - isize %16
     # update parameter
     parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
 	# here, check if a model with the same parameters was already tested
