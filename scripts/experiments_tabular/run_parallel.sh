@@ -20,7 +20,6 @@ while read d; do
     sbatch \
     --array=1-${NUM_SAMPLES}%${NUM_CONC} \
     --output="${LOG_DIR}/${d}-%A_%a.out" \
-    --error="${LOG_DIR}/${d}-%A_%a.err" \
      ./${MODEL}_run.sh $MAX_SEED $d
 
     # for local testing    
