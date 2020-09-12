@@ -44,7 +44,7 @@ function fit(data, parameters)
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
 	catch e
-		@info "Failed training PIDForest$(parameters) due to \n$e"
+		@info "Failed training due to \n$e"
 		return (fit_t = NaN,), []
 	end
 
@@ -54,6 +54,16 @@ function fit(data, parameters)
 		)
 
 	training_info, [(x -> predict(model, x, pct=p), merge(parameters, Dict(:percentile => p))) for p in [10, 25, 50]]
+end
+
+function remove_constant_features(data)
+	X = data[1][1]
+	mask = (maximum(X, dims=2) .== minimum(X, dims=2))[:]
+	if any(mask)
+		@info "Removing $(sum(mask)) features with constant values."
+		return Tuple((data[i][1][.~mask,:], data[i][2]) for i in 1:3)
+	end
+	data
 end
 
 try_counter = 0
@@ -66,10 +76,11 @@ while try_counter < max_tries
 		mkpath(savepath)
 
 		data = GenerativeAD.load_data(dataset, seed=seed)
+		data = remove_constant_features(data)
 		edited_parameters = GenerativeAD.edit_params(data, parameters)
 
 		if GenerativeAD.check_params(savepath, data, edited_parameters)
-			@info "Started training on $(dataset):$(seed)"
+			@info "Started training PIDForest$(edited_parameters) on $(dataset):$(seed)"
 			
 			training_info, results = fit(data, edited_parameters)
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
