@@ -27,7 +27,7 @@ modelname = "knn"
 """
 	sample_params()
 
-Should return a Dict that contains a sample of model parameters.
+Should return a named tuple that contains a sample of model parameters.
 """
 function sample_params()
 	par_vec = (1:2:101,)
@@ -40,7 +40,7 @@ end
 This is the most important function - returns `training_info` and a tuple or a vector of tuples `(score_fun, final_parameters)`.
 `training_info` contains additional information on the training process that should be saved, the same for all anomaly score functions.
 Each element of the return vector contains a specific anomaly score function - there can be multiple for each trained model.
-Final parameters is a Dict of names and parameter values that are used for creation of the savefile name.
+Final parameters is a named tuple of names and parameter values that are used for creation of the savefile name.
 """
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
@@ -79,7 +79,7 @@ end
 ################ THIS PART IS COMMON FOR ALL MODELS ################
 # set a maximum for parameter sampling retries
 try_counter = 0
-max_tries = 10
+max_tries = 10*max_seed
 while try_counter < max_tries
     parameters = sample_params()
 

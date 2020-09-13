@@ -1,3 +1,5 @@
+using PyCall
+
 abstract type SKmodel end
 
 function StatsBase.fit!(model::SKmodel, X::Array{T, 2}) where T<:Real

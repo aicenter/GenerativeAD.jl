@@ -10,8 +10,6 @@ using ImageTransformations
 using MLDataPattern
 using ProgressMeter: Progress, next!
 
-using PyCall
-
 include("knn.jl")
 include("pidforest.jl")
 include("GANomaly.jl")
