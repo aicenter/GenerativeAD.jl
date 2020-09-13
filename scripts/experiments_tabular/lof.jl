@@ -22,7 +22,7 @@ parsed_args = parse_args(ARGS, s)
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "knn"
+modelname = "lof"
 # sample parameters, should return a Dict of model kwargs 
 """
 	sample_params()
@@ -30,8 +30,8 @@ modelname = "knn"
 Should return a Dict that contains a sample of model parameters.
 """
 function sample_params()
-	par_vec = (1:2:101,)
-	argnames = (:k,)
+	par_vec = (1:100,)
+	argnames = (:n_neighbors,)
 	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
 """
@@ -44,7 +44,7 @@ Final parameters is a Dict of names and parameter values that are used for creat
 """
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.knn_constructor(;v=:kappa, parameters...)
+	model = GenerativeAD.Models.LOF(;parameters...)
 
 	# fit train data
 	try
@@ -61,18 +61,7 @@ function fit(data, parameters)
 		)
 
 	# now return the different scoring functions
-	function knn_predict(model, x, v::Symbol)
-		try 
-			return predict(model, x, v)
-		catch e
-			if isa(e, ArgumentError) # this happens in the case when k > number of points
-				return NaN # or nothing?
-			else
-				rethrow(e)
-			end
-		end
-	end
-	training_info, [(x -> knn_predict(model, x, v), merge(parameters, (distance = v,))) for v in [:gamma, :kappa, :delta]]
+	training_info, [(x->predict(model, x), parameters)]
 end
 
 ####################################################################
