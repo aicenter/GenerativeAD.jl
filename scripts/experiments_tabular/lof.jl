@@ -24,24 +24,22 @@ parsed_args = parse_args(ARGS, s)
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "lof"
 # sample parameters, should return a Dict of model kwargs 
-"""
-	sample_params()
 
-Should return a Dict that contains a sample of model parameters.
-"""
 function sample_params()
 	par_vec = (1:100,)
 	argnames = (:n_neighbors,)
 	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
-"""
-	fit(data, parameters)
-
-This is the most important function - returns `training_info` and a tuple or a vector of tuples `(score_fun, final_parameters)`.
-`training_info` contains additional information on the training process that should be saved, the same for all anomaly score functions.
-Each element of the return vector contains a specific anomaly score function - there can be multiple for each trained model.
-Final parameters is a Dict of names and parameter values that are used for creation of the savefile name.
-"""
+function GenerativeAD.edit_params(data, parameters)
+	D, N = size(data[1][1])
+	if N < parameters.n_neighbors
+		# if there are not enough samples, set the number of neighbors to N-1 as in the Python implementation
+		@info "Not enough samples in training, changing n_neighbors value from $(parameters.n_neighbors) to $(N-1)."
+		return merge(parameters, (;n_neighbors = N-1))
+	else 
+		return parameters
+	end
+end
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
 	model = GenerativeAD.Models.LOF(;parameters...)
@@ -68,7 +66,7 @@ end
 ################ THIS PART IS COMMON FOR ALL MODELS ################
 # set a maximum for parameter sampling retries
 try_counter = 0
-max_tries = 10
+max_tries = 10*max_seed
 while try_counter < max_tries
     parameters = sample_params()
 
