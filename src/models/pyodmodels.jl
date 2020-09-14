@@ -50,4 +50,22 @@ mutable struct ABOD <: PyODmodel
 	end
 end
 
- 
+
+"""
+	HBOS(n_bins=10, alpha=0.1, tol=0.5)
+
+The HBOS model.
+"""
+mutable struct HBOS <: PyODmodel
+	model
+
+	function HBOS(;kwargs...)
+		py"""
+		from pyod.models.hbos import HBOS
+
+		def construct_hbos(kwargs):
+			return HBOS(**kwargs)
+		"""
+		new(py"construct_hbos"(kwargs))
+	end
+end
