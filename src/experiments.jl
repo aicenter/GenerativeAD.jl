@@ -12,7 +12,7 @@ function experiment(score_fun, parameters, data, savepath; verb=true, save_entri
 	tst_scores, tst_eval_t, _, _, _ = @timed score_fun(tst_data[1])
 
 	# now save the stuff
-	savef = joinpath(savepath, savename(parameters, "bson"))
+	savef = joinpath(savepath, savename(parameters, "bson", digits=5))
 	result = (
 		parameters = parameters,
 		tr_scores = tr_scores,
