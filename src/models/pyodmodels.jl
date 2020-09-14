@@ -31,3 +31,23 @@ mutable struct LODA <: PyODmodel
 	end
 end
 
+"""
+	ABOD(n_neighbors=5, method='fast')
+
+The ABOD model.
+"""
+mutable struct ABOD <: PyODmodel
+	model
+
+	function ABOD(;kwargs...)
+		py"""
+		from pyod.models.abod import ABOD
+
+		def construct_abod(kwargs):
+			return ABOD(**kwargs)
+		"""
+		new(py"construct_abod"(kwargs))
+	end
+end
+
+ 
