@@ -1,8 +1,8 @@
+using DrWatson
+@quickactivate
 using ArgParse
 using GenerativeAD
 using GenerativeAD.Models: anomaly_score
-using DrWatson
-@quickactivate
 using BSON
 using StatsBase: fit!, predict
 
@@ -11,21 +11,21 @@ using MLDataPattern
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-	"dataset"
-		required = true
-		arg_type = String
-		help = "dataset"
-	"seed"
-		required = true
-		arg_type = Int
-		help = "seed"
-	"anomaly_class_ind"
-		required = true
-		arg_type = Int
-		help = "anomaly_class_ind"
+   "max_seed"
+        required = true
+        arg_type = Int
+        help = "seed"
+    "dataset"
+        required = true
+        arg_type = String
+        help = "dataset"
+    "anomaly_classes"
+        arg_type = Int
+        default = 10
+        help = "number of anomaly classes"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, seed = parsed_args
+@unpack dataset, max_seed, anomaly_classes = parsed_args
 
 modelname = "Conv-GANomaly"
 
@@ -87,40 +87,44 @@ end
 
 #_________________________________________________________________________________________________
 
-savepath = datadir("experiments/images/$(modelname)_ac=$(anomaly_class_ind)/$(dataset)/seed=$(seed)")
-
-data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=anomaly_class_ind)
 
 try_counter = 0
-max_tries = 2
+max_tries = 10*max_seed
+
 while try_counter < max_tries
 	parameters = sample_params()
 
-	# computing additional parameters
-	in_ch = size(data[1][1],3)
-	isize = maximum([size(data[1][1],1),size(data[1][1],2)])
+    for seed in 1:max_seed
+        for i in 1:anomaly_classes
+            savepath = datadir("experiments/images/$(modelname)/$(dataset)_ac=$(i)/seed=$(seed)")
 
-	isize = isize + 16 - isize % 16
-	# update parameter
-	parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
-	# here, check if a model with the same parameters was already tested
-	if GenerativeAD.check_params(savepath, parameters, data)
+            data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
+        	# computing additional parameters
+        	in_ch = size(data[1][1],3)
+        	isize = maximum([size(data[1][1],1),size(data[1][1],2)])
 
-		data = GenerativeAD.preprocess_images(data, parameters)
-		#(X_train,_), (X_val, y_val), (X_test, y_test) = data
+        	isize = isize + 16 - isize % 16
+        	# update parameter
+        	parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
+        	# here, check if a model with the same parameters was already tested
+        	if GenerativeAD.check_params(savepath, parameters, data)
 
-        training_info, results = fit(data[1][1], parameters)
+        		data = GenerativeAD.preprocess_images(data, parameters)
+        		#(X_train,_), (X_val, y_val), (X_test, y_test) = data
+                training_info, results = fit(data[1][1], parameters)
 
-		save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+        		save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
 
-		# now loop over all anomaly score funs
-		for result in results
-			GenerativeAD.experiment(result..., data, savepath; save_entries...)
-		end
-		break
-	else
-		@info "Model already present, sampling new hyperparameters..."
-		global try_counter += 1
+        		# now loop over all anomaly score funs
+        		for result in results
+        			GenerativeAD.experiment(result..., data, savepath; save_entries...)
+        		end
+        		break
+        	else
+        		@info "Model already present, sampling new hyperparameters..."
+        		global try_counter += 1
+            end
+        end
     end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
