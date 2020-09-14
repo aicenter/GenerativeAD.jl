@@ -8,7 +8,6 @@ function StatsBase.fit!(model::SKmodel, X::Array{T, 2}) where T<:Real
 end
 
 function StatsBase.predict(model::SKmodel, X::Array{T, 2}) where T<:Real
-	# anomaly scores correspond to percentile `pct` over trees
     -model.model.score_samples(Array(transpose(X)))
 end
 
