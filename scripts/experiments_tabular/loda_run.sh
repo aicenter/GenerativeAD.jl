@@ -10,8 +10,8 @@ module load Julia/1.4.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
 # load virtualenv
-source ${HOME}/pyod-env/bin/activate
-export PYTHON="${HOME}/pyod-env/bin/python"
+source ${HOME}/sklearn-env/bin/activate
+export PYTHON="${HOME}/sklearn-env/bin/python"
 
 # PyCall needs to be rebuilt if environment changed
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
