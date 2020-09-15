@@ -1,7 +1,6 @@
 module GenerativeAD
 
 using DrWatson
-using Random
 using StatsBase
 using Flux
 using Statistics
