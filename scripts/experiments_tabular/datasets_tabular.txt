@@ -30,3 +30,5 @@ waveform-1
 waveform-2
 wine
 yeast
+annthyroid
+arrhythmia
