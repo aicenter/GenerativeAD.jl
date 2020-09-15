@@ -23,6 +23,8 @@ function __init__()
             ],
             "fbecd00c2ab44e0c95fb135e9c2f39d597fb8074dfaa8581ac2f889c927d40ad"
     ))
+	# this ensures eager loading (upon first usage of the package)
+    datadep"annthyroid"
 end
 
 function load_annthyroid()
