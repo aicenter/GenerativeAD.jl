@@ -6,28 +6,6 @@ uci_datasets = ["abalone", "blood-transfusion", "breast-cancer-wisconsin", "brea
 	"wall-following-robot", "waveform-1", "waveform-2", "wine", "yeast"]
 	# "gisette", "madelon"] - no easy anomalies + very large in size
 	# "vertebral-column"] - no easy and medium anomalies
-mldatasets = ["MNIST", "FashionMNIST", "CIFAR10", "SVHN2"]
-
-"""
-	load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamination::Real=0.0)
-
-Returns 3 tuples of (data, labels) representing train/validation/test part. Arguments are the splitting
-ratios for normal data, seed and training data contamination.
-"""
-function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamination::Real=0.0, kwargs...)
-	# extract data and labels
-	if dataset in uci_datasets # UCI Loda data, standardized
-		data_normal, data_anomalous = load_uci_data(dataset; kwargs...)
-	elseif dataset in mldatasets # MNIST,FMNIST, SVHN2, CIFAR10
-		data_normal, data_anomalous = load_mldatasets_data(dataset; kwargs...)
-	else
-		error("Dataset not known, either not implemented or misspeled.")
-		# TODO add the rest
-	end
-
-	# now do the train/validation/test split
-	train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
-end
 
 """
 	load_uci_data(dataset::String)
@@ -40,35 +18,6 @@ function load_uci_data(dataset::String)
 	data, _, _ = UCI.get_loda_data(dataset)
 	# return only easy and medium anomalies
 	UCI.normalize(data.normal, hcat(data.easy, data.medium)) # data (standardized)
-end
-
-"""
-	load_mldatasets_data(dataset::String[; anomaly_class_ind=1])
-
-Loads MNIST, FMNIST, SVHN2 and CIFAR10 datasets.
-"""
-function load_mldatasets_data(dataset::String; anomaly_class_ind::Int=1)
-	(dataset in mldatasets) ? nothing : error("$dataset not available in MLDatasets.jl")
-	# since the functions for MLDatasets.MNIST, MLDatasets.CIFAR10 are the same
-	sublib = getfield(MLDatasets, Symbol(dataset))
-
-	# do we need to download it?
-	isdir(joinpath(first(DataDeps.standard_loadpath), dataset)) ?
-		nothing : sublib.download(i_accept_the_terms_of_use=true)
-
-	# now get the data
-	tr_x, tst_x = sublib.traintensor(Float32), sublib.testtensor(Float32)
-	if ndims(tr_x) == 3 # some datasets are 3D tensors :(
-		tr_x = reshape(tr_x, size(tr_x,1), size(tr_x,2), 1, :)
-		tst_x = reshape(tst_x, size(tst_x,1), size(tst_x,2), 1, :)
-	end
-	data = cat(tr_x, tst_x, dims=4)
-	labels = cat(sublib.trainlabels(), sublib.testlabels(), dims=1)
-
-	# return the normal and anomalous data
-	label_list = unique(labels)
-	aclass_inds = labels .== label_list[anomaly_class_ind] # indices of anomalous data
-	data[:,:,:,.!aclass_inds], data[:,:,:,aclass_inds]
 end
 
 """
@@ -139,4 +88,25 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	tst_y = vcat(zeros(Float32, size(tst_n, nd)), ones(Float32, size(tst_a,nd)))
 
 	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
+end
+
+"""
+	load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamination::Real=0.0)
+
+Returns 3 tuples of (data, labels) representing train/validation/test part. Arguments are the splitting
+ratios for normal data, seed and training data contamination.
+"""
+function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamination::Real=0.0, kwargs...)
+	# extract data and labels
+	if dataset in uci_datasets # UCI Loda data, standardized
+		data_normal, data_anomalous = load_uci_data(dataset; kwargs...)
+	elseif dataset in mldatasets # MNIST,FMNIST, SVHN2, CIFAR10
+		data_normal, data_anomalous = load_mldatasets_data(dataset; kwargs...)
+	else
+		error("Dataset not known, either not implemented or misspeled.")
+		# TODO add the rest
+	end
+
+	# now do the train/validation/test split
+	train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
 end
