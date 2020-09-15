@@ -92,7 +92,8 @@ while try_counter < max_tries
 		
 		# edit parameters
 		edited_parameters = GenerativeAD.edit_params(data, parameters)
-
+		
+		@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
 		# check if a combination of parameters and seed alread exists
 		if GenerativeAD.check_params(savepath, data, edited_parameters)
 			# fit
