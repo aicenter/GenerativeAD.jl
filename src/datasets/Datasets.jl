@@ -9,7 +9,7 @@ using Random
 
 export load_data
 
-include("annthyroid.jl")
+include("tabular.jl")
 include("img.jl")
 include("basics.jl")
 

@@ -1,25 +1,3 @@
-uci_datasets = ["abalone", "blood-transfusion", "breast-cancer-wisconsin", "breast-tissue", 
-	"cardiotocography", "ecoli", "glass", "haberman", "ionosphere", "iris", "isolet", 
-	"letter-recognition", "libras", "magic-telescope", "miniboone", "multiple-features", 
-	"page-blocks", "parkinsons", "pendigits", "pima-indians", "sonar", "spect-heart", "statlog-satimage", 
-	"statlog-segment", "statlog-shuttle", "statlog-vehicle", "synthetic-control-chart", 
-	"wall-following-robot", "waveform-1", "waveform-2", "wine", "yeast"]
-	# "gisette", "madelon"] - no easy anomalies + very large in size
-	# "vertebral-column"] - no easy and medium anomalies
-
-"""
-	load_uci_data(dataset::String)
-
-Loads basic UCI data.
-"""
-function load_uci_data(dataset::String)
-	# I have opted for the original Loda datasets, use of multiclass problems in all vs one case
-	# does not necessarily represent a good anomaly detection scenario
-	data, _, _ = UCI.get_loda_data(dataset)
-	# return only easy and medium anomalies
-	UCI.normalize(data.normal, hcat(data.easy, data.medium)) # data (standardized)
-end
-
 """
     train_val_test_inds(indices, ratios=(0.6,0.2,0.2); seed=nothing)
 
@@ -102,8 +80,9 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamin
 		data_normal, data_anomalous = load_uci_data(dataset; kwargs...)
 	elseif dataset in mldatasets # MNIST,FMNIST, SVHN2, CIFAR10
 		data_normal, data_anomalous = load_mldatasets_data(dataset; kwargs...)
-	elseif dataset == "annthyroid"
-		data_normal, data_anomalous = load_annthyroid()
+	elseif dataset in other_datasets
+		load_f = eval(Symbol("load_"*dataset))
+		data_normal, data_anomalous = load_f(;kwargs...)
 	else
 		error("Dataset $(dataset) not known, either not implemented or misspeled.")
 		# TODO add the rest
