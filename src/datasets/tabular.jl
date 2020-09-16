@@ -20,8 +20,7 @@ function load_uci_data(dataset::String)
 	UCI.normalize(data.normal, hcat(data.easy, data.medium)) # data (standardized)
 end
 
-other_datasets = ["annthyroid", "arrhythmia", "htru2"]
-
+other_datasets = ["annthyroid", "arrhythmia", "htru2", "kdd99"]
 function __init__()
 	register(
 		DataDep(
@@ -97,7 +96,37 @@ function __init__()
             post_fetch_method = unpack
     	))
     datadep"htru2"
-    
+
+    register(
+		DataDep(
+            "kdd99",
+            """
+            Dataset: KDD Cup 1999
+            Authors: Stolfo et al.
+            Website: http://kdd.ics.uci.edu/databases/kddcup99/kddcup99.html
+            
+            [Stolfo, 2000]
+            	 S. J. Stolfo, W. Fan, W. Lee, A. Prodromidis, and P. K. Chan. 
+            	"Costbased modeling for fraud and intrusion detection: Results from the jam project." 
+            	discex, 2000.
+
+		    This is the data set used for The Third International Knowledge Discovery and Data Mining Tools
+		    Competition, which was held in conjunction with KDD-99 The Fifth International Conference on 
+		    Knowledge Discovery and Data Mining. The competition task was to build a network intrusion 
+		    detector, a predictive model capable of distinguishing between ``bad'' connections, called 
+		    intrusions or attacks, and ``good'' normal connections. This database contains a standard set 
+		    of data to be audited, which includes a wide variety of intrusions simulated in a military 
+		    network environment.
+
+		    WARNING for users of the RCI cluster - if the automatic unpacking fails, try to run it manually
+		    in the `.julia/datadeps/kdd99` folder - e.g. `gzip -d kddcup.data.gz`.
+            """,
+            ["http://kdd.ics.uci.edu/databases/kddcup99/kddcup.data.gz", 
+            "http://kdd.ics.uci.edu/databases/kddcup99/kddcup.data_10_percent.gz"],
+            "bb29388a787b1cea818a6fd427d14ad45b556176b5fbf13257ca33c1d2dad7f3",
+            post_fetch_method = unpack
+    	))
+    datadep"kdd99"    
 end
 
 """
@@ -137,8 +166,53 @@ end
 function load_htru2()
 	data_path = datadep"htru2"
 	f = joinpath(data_path, "HTRU_2.csv")
-	raw_data = CSV.read(f, header = false)
+	raw_data = CSV.read(f, DataFrame, header = false)
 	data = Array{Float32,2}(transpose(Array(raw_data[:,1:end-1])))
 	labels = raw_data[:,end]
 	data[:, labels.==0], data[:, labels.==1]
+end
+
+function _load_kdd99(f::String)
+	raw_data = readdlm(f, ',')
+	M,N = size(raw_data)
+	labels = raw_data[:,end]
+	# the 2nd, 3rd and 4th columns contain nonnumericalvalues and must be one hot encoded
+	# 2nd col = 3 unique vals
+	# 3 = 66
+	# 4 = 11
+	unss = [unique(raw_data[:,2]), unique(raw_data[:,3]), unique(raw_data[:,4])] 
+	ls = length.(unss)
+	data = zeros(Float32,N+sum(ls)-4, M) # this is the final output array
+	# copy first col
+	data[1, :] = raw_data[:,1]
+	# onehot encode the 3 following
+	start_ind = 1
+	for (uns,l,j) in zip(unss,ls,2:4)
+		for i in 1:M
+			data[(start_ind+1):(start_ind+l),i] = Flux.onehot(raw_data[i,j], uns)
+		end
+		start_ind = start_ind + l
+	end
+	# now copy the rest
+	data[(sum(ls)+2):end,:] = transpose(raw_data[:,5:end-1])
+
+	data[:, labels.=="normal."], data[:, labels.!="normal."]
+end
+
+"""
+	load_kdd99_small()
+"""
+function load_kdd99_small()
+	data_path = datadep"kdd99"
+	f = joinpath(data_path, "kddcup.data_10_percent")
+	_load_kdd99(f)
+end
+
+"""
+	load_kdd99()
+"""
+function load_kdd99()
+	data_path = datadep"kdd99"
+	f = joinpath(data_path, "kddcup.data")
+	_load_kdd99(f)
 end
