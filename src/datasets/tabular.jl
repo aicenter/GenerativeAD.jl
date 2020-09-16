@@ -20,113 +20,132 @@ function load_uci_data(dataset::String)
 	UCI.normalize(data.normal, hcat(data.easy, data.medium)) # data (standardized)
 end
 
-other_datasets = ["annthyroid", "arrhythmia", "htru2", "kdd99"]
+other_datasets = ["annthyroid", "arrhythmia", "htru2", "kdd99", "kdd99_small", "spambase"]
 function __init__()
 	register(
 		DataDep(
-            "annthyroid",
-            """
-            Dataset: ANNThyroid
-            Authors: Ross Quinlan
-            Website: https://archive.ics.uci.edu/ml/datasets/Thyroid+Disease
-            
-            [Quinlan, 1987]
-            	Quinlan, John Ross, et al. 
-            	"Inductive knowledge acquisition: a case study." 
-            	Proceedings of the Second Australian Conference on Applications of expert systems. 1987.
-            
-            The original thyroid disease (ann-thyroid) dataset from UCI machine learning repository is 
-            a classification dataset, which is suited for training ANNs. It has 3772 training instances 
-            and 3428 testing instances. It has 15 categorical and 6 real attributes. The problem is to 
-            determine whether a patient referred to the clinic is hypothyroid. Therefore three classes 
-            are built: normal (not hypothyroid), hyperfunction and subnormal functioning.
-            """,
-            [
-            	"https://archive.ics.uci.edu/ml/machine-learning-databases/thyroid-disease/ann-train.data",
-            	"https://archive.ics.uci.edu/ml/machine-learning-databases/thyroid-disease/ann-test.data"
-            ],
-            "fbecd00c2ab44e0c95fb135e9c2f39d597fb8074dfaa8581ac2f889c927d40ad"
-    	))
+			"annthyroid",
+			"""
+			Dataset: ANNThyroid
+			Authors: Ross Quinlan
+			Website: https://archive.ics.uci.edu/ml/datasets/Thyroid+Disease
+			
+			[Quinlan, 1987]
+				Quinlan, John Ross, et al. 
+				"Inductive knowledge acquisition: a case study." 
+				Proceedings of the Second Australian Conference on Applications of expert systems. 1987.
+			
+			The original thyroid disease (ann-thyroid) dataset from UCI machine learning repository is 
+			a classification dataset, which is suited for training ANNs. It has 3772 training instances 
+			and 3428 testing instances. It has 15 categorical and 6 real attributes. The problem is to 
+			determine whether a patient referred to the clinic is hypothyroid. Therefore three classes 
+			are built: normal (not hypothyroid), hyperfunction and subnormal functioning.
+			""",
+			[
+				"https://archive.ics.uci.edu/ml/machine-learning-databases/thyroid-disease/ann-train.data",
+				"https://archive.ics.uci.edu/ml/machine-learning-databases/thyroid-disease/ann-test.data"
+			],
+			"fbecd00c2ab44e0c95fb135e9c2f39d597fb8074dfaa8581ac2f889c927d40ad"
+		))
 	# this ensures eager loading (upon first usage of the package)
-    datadep"annthyroid"
+	datadep"annthyroid"
 
 	register(
 		DataDep(
-            "arrhythmia",
-            """
-            Dataset: Arrhythmia
-            Authors: H. Altay Guvenir
-            Website: https://archive.ics.uci.edu/ml/datasets/Arrhythmia
-            
-            [Guvenir, 1997]
-            	Guvenir, H. Altay, et al. 
-            	"A supervised machine learning algorithm for arrhythmia analysis." 
-            	Computers in Cardiology 1997. IEEE, 1997.
-            
-            The aim is to distinguish between the presence and absence of cardiac arrhythmia and to classify 
-            it in one of the 16 groups. Class 01 refers to 'normal' ECG classes 02 to 15 refers to different 
-            classes of arrhythmia and class 16 refers to the rest of unclassified ones. For the time being, 
-            there exists a computer program that makes such a classification. However there are differences 
-            between the cardiolog's and the programs classification. Taking the cardiolog's as a gold standard 
-            we aim to minimise this difference by means of machine learning tools.
-            """,
-            "https://archive.ics.uci.edu/ml/machine-learning-databases/arrhythmia/arrhythmia.data",
-            "a7f0f4ca289a4c58b5ed85a9adb793189acd38425828ce3dfbb70adb45f30169"
-    	))
-    datadep"arrhythmia"
+			"arrhythmia",
+			"""
+			Dataset: Arrhythmia
+			Authors: H. Altay Guvenir
+			Website: https://archive.ics.uci.edu/ml/datasets/Arrhythmia
+			
+			[Guvenir, 1997]
+				Guvenir, H. Altay, et al. 
+				"A supervised machine learning algorithm for arrhythmia analysis." 
+				Computers in Cardiology 1997. IEEE, 1997.
+			
+			The aim is to distinguish between the presence and absence of cardiac arrhythmia and to classify 
+			it in one of the 16 groups. Class 01 refers to 'normal' ECG classes 02 to 15 refers to different 
+			classes of arrhythmia and class 16 refers to the rest of unclassified ones. For the time being, 
+			there exists a computer program that makes such a classification. However there are differences 
+			between the cardiolog's and the programs classification. Taking the cardiolog's as a gold standard 
+			we aim to minimise this difference by means of machine learning tools.
+			""",
+			"https://archive.ics.uci.edu/ml/machine-learning-databases/arrhythmia/arrhythmia.data",
+			"a7f0f4ca289a4c58b5ed85a9adb793189acd38425828ce3dfbb70adb45f30169"
+		))
+	datadep"arrhythmia"
 
-    register(
+	register(
 		DataDep(
-            "htru2",
-            """
-            Dataset: HTRU2
-            Authors: Dr. Robert Lyon
-            Website: https://archive.ics.uci.edu/ml/datasets/HTRU2
-            
-            [Keith, 2010]
-            	M. J. Keith et al.
-            	"The High Time Resolution Universe Pulsar Survey - I. System Configuration and Initial Discoveries." 
-            	onthly Notices of the Royal Astronomical Society, 2010.
-            
-            HTRU2 is a data set which describes a sample of pulsar candidates collected during 
-            the High Time Resolution Universe Survey (South).
-            """,
-            "https://archive.ics.uci.edu/ml/machine-learning-databases/00372/HTRU2.zip",
-            "ba442c076dd22a8952700f26e38499fc1806037dcf7bea0e125e6bfba393f379",
-            post_fetch_method = unpack
-    	))
-    datadep"htru2"
+			"htru2",
+			"""
+			Dataset: HTRU2
+			Authors: Dr. Robert Lyon
+			Website: https://archive.ics.uci.edu/ml/datasets/HTRU2
+			
+			[Keith, 2010]
+				M. J. Keith et al.
+				"The High Time Resolution Universe Pulsar Survey - I. System Configuration and Initial Discoveries." 
+				onthly Notices of the Royal Astronomical Society, 2010.
+			
+			HTRU2 is a data set which describes a sample of pulsar candidates collected during 
+			the High Time Resolution Universe Survey (South).
+			""",
+			"https://archive.ics.uci.edu/ml/machine-learning-databases/00372/HTRU2.zip",
+			"ba442c076dd22a8952700f26e38499fc1806037dcf7bea0e125e6bfba393f379",
+			post_fetch_method = unpack
+		))
+	datadep"htru2"
 
-    register(
+	register(
 		DataDep(
-            "kdd99",
-            """
-            Dataset: KDD Cup 1999
-            Authors: Stolfo et al.
-            Website: http://kdd.ics.uci.edu/databases/kddcup99/kddcup99.html
-            
-            [Stolfo, 2000]
-            	 S. J. Stolfo, W. Fan, W. Lee, A. Prodromidis, and P. K. Chan. 
-            	"Costbased modeling for fraud and intrusion detection: Results from the jam project." 
-            	discex, 2000.
+			"kdd99",
+			"""
+			Dataset: KDD Cup 1999
+			Authors: Stolfo et al.
+			Website: http://kdd.ics.uci.edu/databases/kddcup99/kddcup99.html
+			
+			[Stolfo, 2000]
+				 S. J. Stolfo, W. Fan, W. Lee, A. Prodromidis, and P. K. Chan. 
+				"Costbased modeling for fraud and intrusion detection: Results from the jam project." 
+				discex, 2000.
 
-		    This is the data set used for The Third International Knowledge Discovery and Data Mining Tools
-		    Competition, which was held in conjunction with KDD-99 The Fifth International Conference on 
-		    Knowledge Discovery and Data Mining. The competition task was to build a network intrusion 
-		    detector, a predictive model capable of distinguishing between ``bad'' connections, called 
-		    intrusions or attacks, and ``good'' normal connections. This database contains a standard set 
-		    of data to be audited, which includes a wide variety of intrusions simulated in a military 
-		    network environment.
+			This is the data set used for The Third International Knowledge Discovery and Data Mining Tools
+			Competition, which was held in conjunction with KDD-99 The Fifth International Conference on 
+			Knowledge Discovery and Data Mining. The competition task was to build a network intrusion 
+			detector, a predictive model capable of distinguishing between ``bad'' connections, called 
+			intrusions or attacks, and ``good'' normal connections. This database contains a standard set 
+			of data to be audited, which includes a wide variety of intrusions simulated in a military 
+			network environment.
 
-		    WARNING for users of the RCI cluster - if the automatic unpacking fails, try to run it manually
-		    in the `.julia/datadeps/kdd99` folder - e.g. `gzip -d kddcup.data.gz`.
-            """,
-            ["http://kdd.ics.uci.edu/databases/kddcup99/kddcup.data.gz", 
-            "http://kdd.ics.uci.edu/databases/kddcup99/kddcup.data_10_percent.gz"],
-            "bb29388a787b1cea818a6fd427d14ad45b556176b5fbf13257ca33c1d2dad7f3",
-            post_fetch_method = unpack
-    	))
-    datadep"kdd99"    
+			WARNING for users of the RCI cluster - if the automatic unpacking fails, try to run it manually
+			in the `.julia/datadeps/kdd99` folder - e.g. `gzip -d kddcup.data.gz`.
+			""",
+			["http://kdd.ics.uci.edu/databases/kddcup99/kddcup.data.gz", 
+			"http://kdd.ics.uci.edu/databases/kddcup99/kddcup.data_10_percent.gz"],
+			"bb29388a787b1cea818a6fd427d14ad45b556176b5fbf13257ca33c1d2dad7f3",
+			post_fetch_method = unpack
+		))
+	datadep"kdd99"	
+
+	register(
+		DataDep(
+			"spambase",
+			"""
+			Dataset: Spambase
+			Authors: Mark Hopkins, Erik Reeber, George Forman, Jaap Suermondt
+			Website: https://archive.ics.uci.edu/ml/datasets/spambase
+			
+			Our collection of spam e-mails came from our postmaster and individuals who had filed spam. 
+			Our collection of non-spam e-mails came from filed work and personal e-mails, and hence 
+			the word 'george' and the area code '650' are indicators of non-spam. These are useful when 
+			constructing a personalized spam filter. One would either have to blind such non-spam indicators
+			or get a very wide collection of non-spam to generate a general purpose spam filter.
+			""",
+			"https://archive.ics.uci.edu/ml/machine-learning-databases/spambase/spambase.data",
+			"b1ef93de71f97714d3d7d4f58fc9f718da7bbc8ac8a150eff2778616a8097b12"
+		))
+	datadep"spambase"
 end
 
 """
@@ -216,3 +235,16 @@ function load_kdd99()
 	f = joinpath(data_path, "kddcup.data")
 	_load_kdd99(f)
 end
+
+"""
+	load_spambase()
+"""
+function load_spambase()
+	data_path = datadep"spambase"
+	f = joinpath(data_path, "spambase.data")
+	raw_data = readdlm(f, ',', Float32)
+	data = Array{Float32,2}(transpose(Array(raw_data[:,1:end-1])))
+	labels = raw_data[:,end]
+	data[:, labels.==0], data[:, labels.==1]
+end
+
