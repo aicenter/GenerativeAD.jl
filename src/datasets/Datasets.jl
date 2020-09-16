@@ -7,6 +7,8 @@ using StatsBase
 using DelimitedFiles
 using Random
 using CSV
+using DataFrames
+using Flux # for one-hot encoding
 
 export load_data
 
