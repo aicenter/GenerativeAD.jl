@@ -20,7 +20,7 @@ function load_uci_data(dataset::String)
 	UCI.normalize(data.normal, hcat(data.easy, data.medium)) # data (standardized)
 end
 
-other_datasets = ["annthyroid", "arrhythmia"]
+other_datasets = ["annthyroid", "arrhythmia", "htru2"]
 
 function __init__()
 	register(
@@ -48,6 +48,9 @@ function __init__()
             ],
             "fbecd00c2ab44e0c95fb135e9c2f39d597fb8074dfaa8581ac2f889c927d40ad"
     	))
+	# this ensures eager loading (upon first usage of the package)
+    datadep"annthyroid"
+
 	register(
 		DataDep(
             "arrhythmia",
@@ -70,11 +73,31 @@ function __init__()
             """,
             "https://archive.ics.uci.edu/ml/machine-learning-databases/arrhythmia/arrhythmia.data",
             "a7f0f4ca289a4c58b5ed85a9adb793189acd38425828ce3dfbb70adb45f30169"
-    	),
-    )
-	# this ensures eager loading (upon first usage of the package)
+    	))
     datadep"arrhythmia"
-    datadep"annthyroid"
+
+    register(
+		DataDep(
+            "htru2",
+            """
+            Dataset: HTRU2
+            Authors: Dr. Robert Lyon
+            Website: https://archive.ics.uci.edu/ml/datasets/HTRU2
+            
+            [Keith, 2010]
+            	M. J. Keith et al.
+            	"The High Time Resolution Universe Pulsar Survey - I. System Configuration and Initial Discoveries." 
+            	onthly Notices of the Royal Astronomical Society, 2010.
+            
+            HTRU2 is a data set which describes a sample of pulsar candidates collected during 
+            the High Time Resolution Universe Survey (South).
+            """,
+            "https://archive.ics.uci.edu/ml/machine-learning-databases/00372/HTRU2.zip",
+            "ba442c076dd22a8952700f26e38499fc1806037dcf7bea0e125e6bfba393f379",
+            post_fetch_method = unpack
+    	))
+    datadep"htru2"
+    
 end
 
 """
@@ -106,4 +129,16 @@ function load_annthyroid()
 	labels = raw_data[end,:]
 	data = raw_data[1:end-1,:]
 	data[:, labels.==3], data[:, labels.!=3]
+end
+
+"""
+	load_htru2()
+"""
+function load_htru2()
+	data_path = datadep"htru2"
+	f = joinpath(data_path, "HTRU_2.csv")
+	raw_data = CSV.read(f, header = false)
+	data = Array{Float32,2}(transpose(Array(raw_data[:,1:end-1])))
+	labels = raw_data[:,end]
+	data[:, labels.==0], data[:, labels.==1]
 end
