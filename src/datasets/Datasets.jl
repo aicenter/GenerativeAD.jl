@@ -6,6 +6,7 @@ using DataDeps
 using StatsBase
 using DelimitedFiles
 using Random
+using CSV
 
 export load_data
 
