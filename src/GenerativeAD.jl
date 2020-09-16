@@ -17,6 +17,6 @@ include("utils.jl")
 include("experiments.jl")
 #include("evaluation.jl")
 include("models/Models.jl")
-include("models/GANomaly.jl")
+
 
 end #module

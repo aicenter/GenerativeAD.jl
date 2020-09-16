@@ -13,5 +13,6 @@ using ProgressMeter: Progress, next!
 include("knn.jl")
 include("pidforest.jl")
 include("GANomaly.jl")
+include("SkipGANomaly.jl")
 
 end

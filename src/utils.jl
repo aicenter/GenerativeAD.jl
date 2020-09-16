@@ -22,14 +22,14 @@ end
 
 Preprocess image data for ganomaly.
 """
-function preprocess_images(data, parameters; range=[-1,1])
+function preprocess_images(data, parameters; range=[-1,1], denominator=16)
     (X_train, y_train), (X_val, y_val), (X_test, y_test) = data
     isize = maximum([size(X_train,1),size(X_train,2)]) # there is already fixed isize in parameters
     in_ch = parameters.in_ch
 
-    residue = isize % 16
+    residue = isize % denominator
     if residue != 0
-        isize = isize + 16 - residue
+        isize = isize + denominator - residue
         X_train = scale_to_interval(resize_images(X_train, isize, in_ch), range=range)
         X_val = scale_to_interval(resize_images(X_val, isize, in_ch), range=range)
         X_test = scale_to_interval(resize_images(X_test, isize, in_ch), range=range)
