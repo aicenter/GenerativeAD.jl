@@ -30,15 +30,16 @@ parsed_args = parse_args(ARGS, s)
 modelname = "Conv-SkipGANomaly"
 
 function sample_params()
-    argnames = (:num_filters, :extra_layers, :lr, :epochs, :batch_size, :lambda)
+    argnames = (:num_filters, :extra_layers, :lr, :epochs, :batch_size, :patience, :lambda,)
     options = (
-                   [2^x for x=2:8],
-                   [1:5 ...],
-                   [0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
-                   [20],
-                   [2^x for x=2:8],
-                   [0.9],
-                   )
+               [2^x for x=2:8],
+               [1:5 ...],
+               [0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
+               [20],
+               [2^x for x=2:8],
+               [3],
+               [0.9],
+               )
     w = (weights= StatsBase.sample([1,10:10:90...],3),)
     return merge(NamedTuple{argnames}(map(x->StatsBase.sample(x,1)[1], options)), w)
 end
@@ -58,17 +59,11 @@ Note:
 	(x_train, y_train), (x_val, y_val), (x_test, y_test) = data
 """
 function fit(data, parameters)
-	# prepare batches & loaders
-	train_loader = Flux.Data.DataLoader(data, batchsize=parameters.batch_size, shuffle=true)
-
 	# define models (Generator, Discriminator)
 	model, _ = GenerativeAD.Models.SkipGANomaly_constructor(parameters)
 
-	# define optimiser
-	opt = Flux.Optimise.ADAM(parameters.lr)
-
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model |>gpu , opt, train_loader, parameters)
+		global info, fit_t, _, _, _ = @timed fit!(model |>gpu , data, parameters)
 	catch e
 		println("Error caught.")
 		return (fit_t = NaN,), []
@@ -81,6 +76,7 @@ function fit(data, parameters)
 		)
 
 	return training_info, [(x -> GenerativeAD.Models.anomaly_score(model |> cpu, x, parameters.lambda), parameters)]
+    #TODO add multiple anomaly scores
 	# not sure if I should return generator and disciriminator in GPU
 end
 
@@ -109,7 +105,7 @@ while try_counter < max_tries
 
         		data = GenerativeAD.preprocess_images(data, parameters, denominator=32)
         		#(X_train,_), (X_val, y_val), (X_test, y_test) = data
-                training_info, results = fit(data[1][1], parameters)
+                training_info, results = fit(data, parameters)
 
         		save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
 

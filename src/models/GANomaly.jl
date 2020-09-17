@@ -247,6 +247,23 @@ function discriminator_loss(d::Discriminator, real_input, fake_input)
 	return 0.5f0*(loss_for_real+loss_for_fake)
 end
 
+
+function validation_loss(g::Generator, d::Discriminator, real_input, weights=[1,50,1])
+    fake, latent_i, latent_o = g(real_input)
+	pred_real, feat_real = d(real_input)
+	pred_fake, feat_fake = d(fake)
+
+	adversarial_loss = Flux.mse(feat_real, feat_fake) # l2_loss
+	contextual_loss = Flux.mae(fake, real_input) # l1_loss
+	encoder_loss = Flux.mse(latent_o, latent_i)
+
+    loss_for_real = Flux.crossentropy(pred_real, 1f0) # ones(typeof(pred_real), size(pred_real)) has same speed
+    loss_for_fake = Flux.crossentropy(1f0.-pred_fake, 1f0)
+
+	return adversarial_loss*weights[1]+contextual_loss*weights[2]+encoder_loss*weights[3],
+		0.5f0*(loss_for_real+loss_for_fake)
+end
+
 """
 	function anomaly_score(generator::Generator, real_input;dims=3)
 
@@ -257,38 +274,26 @@ function anomaly_score(generator::Generator, real_input;dims=3)
 	return vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims)))'
 end
 
-"""
-	function update_history(history::Dict{String,Array{Float32,1}}, gl::NTuple{4,Float32}, dl::Float32)
-
-do logging losses into history
-"""
-function update_history(history::Dict{String,Array{Float32,1}}, gl, dl)
-	push!(history["generator_loss"], gl[1])
-	push!(history["adversarial_loss"], gl[2])
-	push!(history["contextual_loss"], gl[3])
-	push!(history["encoder_loss"], gl[4])
-	push!(history["discriminator_loss"], dl)
-	return history
-end
-
 
 """
 	Model's training and inference
 """
 
 """
-	fit!(generator::Generator, discriminator::Discriminator, opt, train_loader, epochs)
+	fit!(generator::Generator, discriminator::Discriminator, data, params)
 """
-function StatsBase.fit!(generator::Generator, discriminator::Discriminator, opt, train_loader, epochs)
+function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data, param)
+    # prepare batches & loaders
+    train_loader, val_loader = GenerativeAD.prepare_dataloaders(data, params)
+    # training info logger
+    history = GenerativeAD.GANomalyHistory()
+    # prepare for early stopping
+    best_generator = deepcopy(generator)
+    best_discriminator = deepcopy(discriminator)
+    patience = params.patience
+    best_val_loss = 1e10
 
-	# training info logger
-	history = Dict(
-		"generator_loss" => Array{Float32}([]),
-		"adversarial_loss" => Array{Float32}([]),
-		"contextual_loss" => Array{Float32}([]),
-		"encoder_loss" => Array{Float32}([]),
-		"discriminator_loss" => Array{Float32}([])
-		)
+    opt = Flux.Optimise.ADAM(params.lr)
 
 	ps_g = Flux.params(generator)
 	ps_d = Flux.params(discriminator)
@@ -310,15 +315,35 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, opt,
 			grad = back(1f0)
 			Flux.Optimise.update!(opt, ps_d, grad)
 
-			history = update_history(history, loss1, loss2)
+			history = GenerativeAD.update_history(history, loss1, loss2)
 			next!(progress; showvalues=[(:epoch, "$(epoch)/$(epochs)"),
 										(:generator_loss, loss1[1]),
 										(:discriminator_loss, loss2)
 										])
 			#případně přidat kontrolu velikosti chyby s restartem discriminatoru
 		end
+        total_val_loss_g = 0
+        total_val_loss_d = 0
+        for X_val in val_loader
+            vgl, vdl = validation_loss(generator, discriminator, X_val |> gpu)
+            total_val_loss_g += vgl
+            total_val_loss_d += vdl
+        end
+        history = GenerativeAD.update_history(history, nothing, nothing, total_val_loss_g total_val_loss_d)
+        if total_val_loss_g < best_val_loss
+            best_val_loss = total_val_loss_g
+            patience = params.patience
+            best_generator = deepcopy(generator)
+            best_generator = deepcopy(discriminator)
+        else
+            patience -= 1
+            if patience == 0
+                @info "Stopped training after $(epoch) epochs"
+                break
+            end
+        end
 	end
-	return history, generator, discriminator
+	return history, best_generator, best_discriminator
 end
 
 """

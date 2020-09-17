@@ -31,7 +31,7 @@ modelname = "Conv-GANomaly"
 
 
 function sample_params()
-	argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :epochs, :batch_size, )
+	argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :epochs, :batch_size, :patience, )
 	options = (
 			[10:10:200...],
 			[2^x for x=2:8],
@@ -39,6 +39,7 @@ function sample_params()
 			[0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
 			[20],
 			[2^x for x=2:8],
+            [3], 
 			)
 	return NamedTuple{argnames}(map(x->sample(x,1)[1], options))
 end
@@ -59,17 +60,12 @@ Note:
 	(x_train, y_train), (x_val, y_val), (x_test, y_test) = data
 """
 function fit(data, parameters)
-	# prepare batches & loaders
-	train_loader = Flux.Data.DataLoader(data, batchsize=parameters.batch_size, shuffle=true)
-
 	# define models (Generator, Discriminator)
 	generator, discriminator, _, _ = GenerativeAD.Models.ganomaly_constructor(parameters)
 
 	# define optimiser
-	opt = Flux.Optimise.ADAM(parameters.lr)
-
 	try
-		global info, fit_t, _, _, _ = @timed fit!(generator|>gpu, discriminator|>gpu, opt, train_loader, parameters.epochs)
+		global info, fit_t, _, _, _ = @timed fit!(generator|>gpu, discriminator|>gpu, data, parameters)
 	catch e
 		println("Error caught.")
 		return (fit_t = NaN,), []
@@ -111,7 +107,7 @@ while try_counter < max_tries
 
         		data = GenerativeAD.preprocess_images(data, parameters)
         		#(X_train,_), (X_val, y_val), (X_test, y_test) = data
-                training_info, results = fit(data[1][1], parameters)
+                training_info, results = fit(data, parameters)
 
         		save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
 

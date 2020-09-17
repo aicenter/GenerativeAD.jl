@@ -200,7 +200,7 @@ will perform forward pass of generator and returns NTuple{4, Float32} of losses.
 
 """
 function generator_loss(SkipGAN::SkipGANomaly, real_input; weights=[1,50,1])
-    fake = SkipGAN.generator(real_input + randn(typeof(real_input[1]),size(real_input)))
+    fake = SkipGAN.generator(real_input) #+ randn(typeof(real_input[1]),size(real_input))
 
 	pred_real, feat_real = SkipGAN.discriminator(real_input)
 	pred_fake, feat_fake = SkipGAN.discriminator(fake)
@@ -234,6 +234,24 @@ function discriminator_loss(SkipGAN::SkipGANomaly, real_input)
 	return loss_for_real + loss_for_fake + lat_loss
 end
 
+
+function validation_loss(SkipGAN::SkipGANomaly, real_input; weights=[1,50,1])
+    fake = SkipGAN.generator(real_input)
+
+	pred_real, feat_real = SkipGAN.discriminator(real_input)
+	pred_fake, feat_fake = SkipGAN.discriminator(fake)
+
+    adv_loss = Flux.crossentropy(pred_fake, 1f0)
+    con_loss  = Flux.mae(fake, real_input)
+    lat_loss = Flux.mse(feat_fake, feat_real)
+
+	loss_for_real = Flux.crossentropy(pred_real, 1f0)
+	loss_for_fake = Flux.crossentropy(1f0.-pred_fake, 1f0)
+
+	return adv_loss * weights[1] + con_loss * weights[2] + lat_loss * weights[3],
+        loss_for_real + loss_for_fake + lat_loss
+end
+
 """
     function anomaly_score(SkipGAN::SkipGANomaly, real_input; lambda = 0.5)
 computes unscaled anomaly score of real input, losses are weighted by factor lambda
@@ -247,21 +265,7 @@ function anomaly_score(SkipGAN::SkipGANomaly, real_input; lambda = 0.9)
     rec_loss  = Flux.mse(fake, real_input) # reconstruction loss -> similar to contextual loss
     lat_loss = Flux.mse(feat_fake, feat_real) # loss of latent representation
 	return lambda * rec_loss + (1 - lambda) * lat_loss
-    #TODO check correct loss functions
-end
 
-"""
-	function update_history(history::Dict{String,Array{Float32,1}}, gl::NTuple{4,Float32}, dl::Float32)
-
-do logging losses into history
-"""
-function update_history(history::Dict{String,Array{Float32,1}}, gl, dl)
-	push!(history["generator_loss"], gl[1])
-	push!(history["adversarial_loss"], gl[2])
-	push!(history["contextual_loss"], gl[3])
-	push!(history["encoder_loss"], gl[4])
-	push!(history["discriminator_loss"], dl)
-	return history
 end
 
 
@@ -270,18 +274,19 @@ end
 """
 
 """
-	fit!(SkipGAN::SkipGANomaly, opt, train_loader, epochs)
+	fit!(SkipGAN::SkipGANomaly, data, params)
 """
-function StatsBase.fit!(SkipGAN::SkipGANomaly, opt, train_loader, params)
-
-	# training info logger
-	history = Dict(
-		"generator_loss" => Array{Float32}([]),
-		"adversarial_loss" => Array{Float32}([]),
-		"contextual_loss" => Array{Float32}([]),
-		"latent_loss" => Array{Float32}([]),
-		"discriminator_loss" => Array{Float32}([])
-		)
+function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
+    # prepare batches & loaders
+    train_loader, val_loader = GenerativeAD.prepare_dataloaders(data, params)
+    # training info logger
+    history = GenerativeAD.GANomalyHistory()
+    # prepare for early stopping
+    best_model = deepcopy(SkipGAN)
+    patience = params.patience
+    best_val_loss = 1e10
+    # define optimiser
+	opt = Flux.Optimise.ADAM(params.lr)
 
 	ps_g = Flux.params(SkipGAN.generator)
 	ps_d = Flux.params(SkipGAN.discriminator)
@@ -303,15 +308,34 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, opt, train_loader, params)
 			grad = back(1f0)
 			Flux.Optimise.update!(opt, ps_d, grad)
 
-			history = update_history(history, loss1, loss2)
+			history = GenerativeAD.update_history(history, loss1, loss2)
 			next!(progress; showvalues=[(:epoch, "$(epoch)/$(params.epochs)"),
 										(:generator_loss, loss1[1]),
 										(:discriminator_loss, loss2)
 										])
 			#TODO add discriminator restrart if its loss drops under 1e-5
 		end
+        total_val_loss_g = 0
+        total_val_loss_d = 0
+        for X_val in val_loader
+            vgl, vdl = validation_loss(SkipGAN, X_val |> gpu, weights=params.weights)
+            total_val_loss_g += vgl
+            total_val_loss_d += vdl
+        end
+        history = GenerativeAD.update_history(history, nothing, nothing, total_val_loss_g total_val_loss_d)
+        if total_val_loss_g < best_val_loss
+            best_val_loss = total_val_loss_g
+            patience = params.patience
+            best_model = deepcopy(SkipGAN)
+        else
+            patience -= 1
+            if patience == 0
+                @info "Stopped training after $(epoch) epochs"
+                break
+            end
+        end
 	end
-	return history, SkipGAN
+	return history, best_model
 end
 
 """
