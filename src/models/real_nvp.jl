@@ -70,7 +70,7 @@ function StatsBase.fit!(model::RealNVPFlow, data::Tuple, p)
 		else
 			patience -= 1
 			if patience == 0
-				@info "Stopped training at $(i) iteration."
+				@info "Stopped training after $(i) iterations."
 				break
 			end
 		end

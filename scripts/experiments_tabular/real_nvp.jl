@@ -28,7 +28,7 @@ function sample_params()
 end
 
 function fit(data, parameters)
-	D, N = size(data[1][1])
+	D = size(data[1][1], 1)
 
 	model = GenerativeAD.Models.RealNVPFlow(
 				parameters.nflows,
@@ -67,6 +67,8 @@ while try_counter < max_tries
 
 		if GenerativeAD.check_params(savepath, data, edited_parameters)
 			@info "Started training $(modelname)$(edited_parameters) on $(dataset):$(seed)"
+			@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[2][1], 2))"
+			@info "Number of features: $(size(data[1][1], 1))"
 			
 			training_info, results = fit(data, edited_parameters)
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
