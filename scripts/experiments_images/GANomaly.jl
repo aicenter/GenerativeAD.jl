@@ -39,7 +39,7 @@ function sample_params()
 			[0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
 			[20],
 			[2^x for x=2:8],
-            [3], 
+            [3],
 			)
 	return NamedTuple{argnames}(map(x->sample(x,1)[1], options))
 end
@@ -86,6 +86,7 @@ end
 
 try_counter = 0
 max_tries = 10*max_seed
+done = false
 
 while try_counter < max_tries
 	parameters = sample_params()
@@ -105,7 +106,7 @@ while try_counter < max_tries
         	# here, check if a model with the same parameters was already tested
         	if GenerativeAD.check_params(savepath, parameters, data)
 
-        		data = GenerativeAD.preprocess_images(data, parameters)
+        		data = GenerativeAD.Models.preprocess_images(data, parameters)
         		#(X_train,_), (X_val, y_val), (X_test, y_test) = data
                 training_info, results = fit(data, parameters)
 
@@ -115,12 +116,15 @@ while try_counter < max_tries
         		for result in results
         			GenerativeAD.experiment(result..., data, savepath; save_entries...)
         		end
-        		break
+        		global done = true
         	else
         		@info "Model already present, sampling new hyperparameters..."
         		global try_counter += 1
             end
         end
+    end
+    if done
+        break
     end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing

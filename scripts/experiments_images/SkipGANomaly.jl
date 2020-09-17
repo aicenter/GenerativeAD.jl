@@ -84,6 +84,7 @@ end
 
 try_counter = 0
 max_tries = 10*max_seed
+done = false
 
 while try_counter < max_tries
 	parameters = sample_params()
@@ -103,7 +104,7 @@ while try_counter < max_tries
         	# here, check if a model with the same parameters was already tested
         	if GenerativeAD.check_params(savepath, parameters, data)
 
-        		data = GenerativeAD.preprocess_images(data, parameters, denominator=32)
+        		data = GenerativeAD.Models.preprocess_images(data, parameters, denominator=32)
         		#(X_train,_), (X_val, y_val), (X_test, y_test) = data
                 training_info, results = fit(data, parameters)
 
@@ -113,12 +114,15 @@ while try_counter < max_tries
         		for result in results
         			GenerativeAD.experiment(result..., data, savepath; save_entries...)
         		end
-        		break
+		        global done = true
         	else
         		@info "Model already present, sampling new hyperparameters..."
         		global try_counter += 1
             end
         end
+    end
+    if done
+        break
     end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing

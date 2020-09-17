@@ -285,11 +285,11 @@ end
 """
 	fit!(generator::Generator, discriminator::Discriminator, data, params)
 """
-function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data, param)
+function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data, params)
     # prepare batches & loaders
-    train_loader, val_loader = GenerativeAD.prepare_dataloaders(data, params)
+    train_loader, val_loader = prepare_dataloaders(data, params)
     # training info logger
-    history = GenerativeAD.GANomalyHistory()
+    history = GANomalyHistory()
     # prepare for early stopping
     best_generator = deepcopy(generator)
     best_discriminator = deepcopy(discriminator)
@@ -300,8 +300,8 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 
 	ps_g = Flux.params(generator)
 	ps_d = Flux.params(discriminator)
-
-	for epoch = 1:epochs
+    println("starting to train model!!!")
+	for epoch = 1:params.epochs
 		progress = Progress(length(train_loader))
 		for X in train_loader
 			#generator update
@@ -318,8 +318,8 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 			grad = back(1f0)
 			Flux.Optimise.update!(opt, ps_d, grad)
 
-			history = GenerativeAD.update_history(history, loss1, loss2)
-			next!(progress; showvalues=[(:epoch, "$(epoch)/$(epochs)"),
+			history = update_history(history, loss1, loss2, nothing, nothing)
+			next!(progress; showvalues=[(:epoch, "$(epoch)/$(params.epochs)"),
 										(:generator_loss, loss1[1]),
 										(:discriminator_loss, loss2)
 										])
@@ -332,7 +332,7 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
             total_val_loss_g += vgl
             total_val_loss_d += vdl
         end
-        history = GenerativeAD.update_history(history, nothing, nothing, total_val_loss_g total_val_loss_d)
+        history = update_history(history, nothing, nothing, total_val_loss_g, total_val_loss_d)
         if total_val_loss_g < best_val_loss
             best_val_loss = total_val_loss_g
             patience = params.patience

@@ -13,7 +13,6 @@ using MLDataPattern
 #using EvalMetrics
 
 include("data.jl")
-include("utils.jl")
 include("experiments.jl")
 #include("evaluation.jl")
 include("models/Models.jl")

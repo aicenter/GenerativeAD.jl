@@ -115,60 +115,6 @@ function UnetSkipGenerator(isize::Int, in_ch::Int, nf::Int)
     return Chain(UnetSkipGenerator(unet), x->tanh.(x))
 end
 
-
-"""
-    Discriminator
-"""
-
-struct Discriminator
-	features
-	classifier
-end
-"""
-	function Discriminator(isize::Int, in_ch::Int, out_ch::Int, nf::Int, extra_layers::Int)
-
-Create the convolutional discriminator with parameters (almost the same structure as Encoder)
-	isize           - size of output image (must be divisible by 16 i.e isize%16==0)
-	in_ch           - number of input channels / dimension of latent space
-	out_ch          - number of output channels / same as original input channels
-	nf              - number of covnolutional masks/filters
-	extra_layers    - number of additional conv blocks (conv2d + batch norm + leaky relu)
-"""
-function ConvDiscriminator(isize::Int, in_ch::Int, out_ch::Int, nf::Int, extra_layers::Int)
-	features = []
-	push!(features, Conv((4, 4), in_ch => nf; stride = 2, pad = 1))
-	push!(features, BatchNorm(nf))
-	push!(features, x->leakyrelu.(x, 0.2f0))
-
-	csize, cnf = isize/2, nf
-	for i=1:extra_layers
-		push!(features, Conv((3, 3), cnf => cnf; stride = 1, pad = 1))
-		push!(features, BatchNorm(cnf))
-		push!(features, x->leakyrelu.(x, 0.2f0))
-	end
-
-	while csize > 4
-		in_feat = cnf
-		out_feat = cnf*2
-		push!(features, Conv((4, 4), in_feat => out_feat; stride = 2, pad = 1))
-		push!(features, BatchNorm(out_feat))
-		push!(features, x->leakyrelu.(x, 0.2f0))
-		cnf = cnf*2
-		csize=csize/2
-	end
-	cls = Conv((4, 4), cnf => out_ch, sigmoid; stride = 1, pad = 0)
-	return Discriminator(Chain(features...), cls)
-end
-
-Flux.@functor Discriminator
-
-""" Definition of Discriminator's forward pass """
-function (d::Discriminator)(x)
-	feat = d.features(x)
-	class = d.classifier(feat)
-	return class, feat
-end
-
 """
     SkipGANomaly
 """
@@ -281,9 +227,9 @@ end
 """
 function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
     # prepare batches & loaders
-    train_loader, val_loader = GenerativeAD.prepare_dataloaders(data, params)
+    train_loader, val_loader = prepare_dataloaders(data, params)
     # training info logger
-    history = GenerativeAD.GANomalyHistory()
+    history = GANomalyHistory()
     # prepare for early stopping
     best_model = deepcopy(SkipGAN)
     patience = params.patience
@@ -311,7 +257,7 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 			grad = back(1f0)
 			Flux.Optimise.update!(opt, ps_d, grad)
 
-			history = GenerativeAD.update_history(history, loss1, loss2)
+			history = update_history(history, loss1, loss2)
 			next!(progress; showvalues=[(:epoch, "$(epoch)/$(params.epochs)"),
 										(:generator_loss, loss1[1]),
 										(:discriminator_loss, loss2)
@@ -325,7 +271,7 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
             total_val_loss_g += vgl
             total_val_loss_d += vdl
         end
-        history = GenerativeAD.update_history(history, nothing, nothing, total_val_loss_g total_val_loss_d)
+        history = update_history(history, nothing, nothing, total_val_loss_g, total_val_loss_d)
         if total_val_loss_g < best_val_loss
             best_val_loss = total_val_loss_g
             patience = params.patience

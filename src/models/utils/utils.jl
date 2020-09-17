@@ -38,7 +38,6 @@ function preprocess_images(data, parameters; range=[-1,1], denominator=16)
     return (X_train, y_train), (X_val, y_val), (X_test, y_test)
 end
 
-
 function GANomalyHistory()
     history = Dict(
         "generator_loss" => Array{Float32}([]),
@@ -72,7 +71,7 @@ function update_history(history, gl, dl, vgl=nothing, vdl=nothing)
 	return history
 end
 
-function prepare_dataloders(data, params)
+function prepare_dataloaders(data, params)
     train_loader = Flux.Data.DataLoader(data[1][1], batchsize=params.batch_size, shuffle=true)
     # for cheching convergence I need to drop anomal samples from validation data
     val_data_ind = findall(x->x==0, data[2][2])
