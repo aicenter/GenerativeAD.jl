@@ -161,7 +161,7 @@ version = "1.4.1"
 deps = ["Flux", "Random"]
 git-tree-sha1 = "f2ff286352f753b9d0974da61ee23230cc104d53"
 repo-rev = "master"
-repo-url = "git@github.com:janfrancu/ContinuousFlows.jl.git"
+repo-url = "https://github.com/janfrancu/ContinuousFlows.jl.git"
 uuid = "a619b042-bc39-44bf-9795-de5439ba9456"
 version = "0.1.0"
 
