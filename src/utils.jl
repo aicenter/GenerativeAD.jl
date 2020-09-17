@@ -47,7 +47,7 @@ function GANomalyHistory()
         "generator_loss" => Array{Float32}([]),
         "adversarial_loss" => Array{Float32}([]),
         "contextual_loss" => Array{Float32}([]),
-        "latent_loss" => Array{Float32}([]),
+        "encoder/latent_loss" => Array{Float32}([]),
         "discriminator_loss" => Array{Float32}([]),
         "val_generator_loss" => Array{Float32}([]),
         "val_discriminator_loss" => Array{Float32}([])
@@ -65,7 +65,7 @@ function update_history(history::GANomalyHistory, gl, dl, vgl=nothing, vdl=nothi
     	push!(history["generator_loss"], gl[1])
     	push!(history["adversarial_loss"], gl[2])
     	push!(history["contextual_loss"], gl[3])
-    	push!(history["encoder_loss"], gl[4])
+    	push!(history["encoder/latent_loss"], gl[4])
     	push!(history["discriminator_loss"], dl)
     end
     if vgl != nothing & vdl != nothing

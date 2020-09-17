@@ -320,7 +320,7 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 										(:generator_loss, loss1[1]),
 										(:discriminator_loss, loss2)
 										])
-			#případně přidat kontrolu velikosti chyby s restartem discriminatoru
+			#TODO optionaly add discriminator restrart if its loss drops under 1e-5
 		end
         total_val_loss_g = 0
         total_val_loss_d = 0
