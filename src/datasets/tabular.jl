@@ -20,7 +20,7 @@ function load_uci_data(dataset::String)
 	UCI.normalize(data.normal, hcat(data.easy, data.medium)) # data (standardized)
 end
 
-other_datasets = ["annthyroid", "arrhythmia", "htru2", "kdd99", "kdd99_small", "spambase", "mammography"]
+other_datasets = ["annthyroid", "arrhythmia", "htru2", "kdd99", "kdd99_small", "spambase", "mammography", "har", "seismic"]
 function __init__()
 	register(
 		DataDep(
@@ -162,6 +162,36 @@ function __init__()
 			))
 	datadep"mammography"
 
+	register(
+		DataDep(
+			"har",
+			"""
+			Dataset: Human Activity Recognition
+			Authors: Jorge L. Reyes
+			Website: https://archive.ics.uci.edu/ml/datasets/human+activity+recognition+using+smartphones
+			
+			Human Activity Recognition dataset. Normal class = "WALKING", anomalous class = other.
+			""",
+			"https://archive.ics.uci.edu/ml/machine-learning-databases/00240/UCI%20HAR%20Dataset.zip",
+			"2045e435c955214b38145fb5fa00776c72814f01b203fec405152dac7d5bfeb0",
+			post_fetch_method = unpack
+			))
+	datadep"har"
+
+	register(
+		DataDep(
+			"seismic",
+			"""
+			Dataset: Seismic activity
+			Authors: Marek Sikora
+			Website: https://archive.ics.uci.edu/ml/datasets/seismic-bumps
+			
+			Seismic bumps from mining activity.
+			""",
+			"https://archive.ics.uci.edu/ml/machine-learning-databases/00266/seismic-bumps.arff",
+			"aabe512fab65b36d1dfb462650b75cfd8d99d8cc2723e8ecb4e6f5e1caccd5a7",
+			))
+	datadep"seismic"
 end
 
 """
@@ -290,5 +320,64 @@ function load_mammography()
 	labels = parse.(Int,replace.(raw_data[!,:class], "'" => ""))
 	data = Array{Float32,2}(transpose(Array(raw_data[:,1:end-1])))
 	data[:, labels.==-1], data[:, labels.==1]
+end
+
+"""
+	load_har()
+"""
+function load_har()
+	data_path = datadep"har"
+	X_test = readdlm(joinpath(data_path, "UCI HAR Dataset/test/X_test.txt"), Float32)
+	X_train = readdlm(joinpath(data_path, "UCI HAR Dataset/train/X_train.txt"), Float32)
+	y_test = readdlm(joinpath(data_path, "UCI HAR Dataset/test/y_test.txt"), Float32)
+	y_train = readdlm(joinpath(data_path, "UCI HAR Dataset/train/y_train.txt"), Float32)
+
+	data = Array(transpose(vcat(X_test, X_train)))
+	labels = vec(vcat(y_test, y_train))
+	data[:, labels.!=6], data[:, labels.==6] # other x laying
+end
+
+"""
+	load_seismic()
+"""
+function load_seismic()
+	data_path = datadep"seismic"
+	f = joinpath(data_path, "seismic-bumps.arff")
+	M,N = (2584,19)
+	raw_data = Array{Any,2}(zeros(M,N))
+	open(f) do file
+		for (i,ln) in enumerate(eachline(file))
+			(i > 154) ? (raw_data[i-154,:] = split(ln, ",")) : nothing
+		end
+	end
+	labels = parse.(Int,raw_data[:,end])
+
+	# the 1st, 2nd, 3rd and 8th columns contain nonnumericalvalues and must be one hot encoded
+	unss = [unique(raw_data[:,1]), unique(raw_data[:,2]), unique(raw_data[:,3]), unique(raw_data[:,8])] 
+	ls = length.(unss)
+	data = zeros(Float32,N+sum(ls)-5, M) # this is the final output array
+	start_ind = 0
+	for (uns,l,j) in zip(unss[1:3],ls[1:3],1:3)
+		for i in 1:M
+			data[(start_ind+1):(start_ind+l),i] = Flux.onehot(raw_data[i,j], uns)
+		end
+		start_ind = start_ind + l
+	end
+	
+	# copy columns 4:7
+	data[start_ind+1:start_ind+4,:] = transpose(parse.(Float32,raw_data[:,4:7]))
+	
+	# encode and fill col 8
+	start_ind = start_ind+5
+	uns = unss[4]
+	l = ls[4]
+	for i in 1:M
+		data[start_ind:start_ind+l-1,i] = Flux.onehot(raw_data[i,8], uns)
+	end
+	
+	# now copy the rest
+	data[(sum(ls)+5):end,:] = transpose(parse.(Float32, raw_data[:,9:end-1]))
+
+	data[:,labels.==0], data[:,labels.==1]
 end
 
