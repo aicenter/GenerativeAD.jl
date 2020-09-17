@@ -84,7 +84,6 @@ end
 
 try_counter = 0
 max_tries = 10*max_seed
-done = false
 
 while try_counter < max_tries
 	parameters = sample_params()
@@ -114,15 +113,11 @@ while try_counter < max_tries
         		for result in results
         			GenerativeAD.experiment(result..., data, savepath; save_entries...)
         		end
-		        global done = true
         	else
         		@info "Model already present, sampling new hyperparameters..."
         		global try_counter += 1
             end
         end
-    end
-    if done
-        break
     end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing

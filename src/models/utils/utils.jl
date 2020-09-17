@@ -52,23 +52,23 @@ function GANomalyHistory()
 end
 
 """
-	function update_history(history::GANomalyHistory, gl, dl, vgl=nothing, vdl=nothing)
+	function update_history(history, gl, dl, vgl=nothing, vdl=nothing)
 
 do logging losses into history
 """
-function update_history(history, gl, dl, vgl=nothing, vdl=nothing)
-    if gl != nothing & dl != nothing
-    	push!(history["generator_loss"], gl[1])
-    	push!(history["adversarial_loss"], gl[2])
-    	push!(history["contextual_loss"], gl[3])
-    	push!(history["encoder/latent_loss"], gl[4])
-    	push!(history["discriminator_loss"], dl)
-    end
-    if vgl != nothing & vdl != nothing
-        push!(history["val_generator_loss"], vgl)
-        push!(history["val_discriminator_loss"], vdl)
-    end
+function update_history(history, gl, dl)
+	push!(history["generator_loss"], gl[1])
+	push!(history["adversarial_loss"], gl[2])
+	push!(history["contextual_loss"], gl[3])
+	push!(history["encoder/latent_loss"], gl[4])
+	push!(history["discriminator_loss"], dl)
 	return history
+end
+
+function update_val_history(history, vgl, vdl)
+    push!(history["val_generator_loss"], vgl)
+    push!(history["val_discriminator_loss"], vdl)
+    return history
 end
 
 function prepare_dataloaders(data, params)

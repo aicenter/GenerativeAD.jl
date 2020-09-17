@@ -295,6 +295,7 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
     best_discriminator = deepcopy(discriminator)
     patience = params.patience
     best_val_loss = 1e10
+    val_batches = length(val_loader)
 
     opt = Flux.Optimise.ADAM(params.lr)
 
@@ -318,7 +319,7 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 			grad = back(1f0)
 			Flux.Optimise.update!(opt, ps_d, grad)
 
-			history = update_history(history, loss1, loss2, nothing, nothing)
+			history = update_history(history, loss1, loss2)
 			next!(progress; showvalues=[(:epoch, "$(epoch)/$(params.epochs)"),
 										(:generator_loss, loss1[1]),
 										(:discriminator_loss, loss2)
@@ -332,12 +333,12 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
             total_val_loss_g += vgl
             total_val_loss_d += vdl
         end
-        history = update_history(history, nothing, nothing, total_val_loss_g, total_val_loss_d)
+        history = update_val_history(history, total_val_loss_g/val_batches, total_val_loss_d/val_batches)
         if total_val_loss_g < best_val_loss
             best_val_loss = total_val_loss_g
             patience = params.patience
             best_generator = deepcopy(generator)
-            best_generator = deepcopy(discriminator)
+            best_discriminator = deepcopy(discriminator)
         else
             patience -= 1
             if patience == 0
@@ -346,7 +347,7 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
             end
         end
 	end
-	return history, best_generator, best_discriminator
+	return history, best_generator, best_discriminator, generator, discriminator
 end
 
 """

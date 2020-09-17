@@ -234,6 +234,7 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
     best_model = deepcopy(SkipGAN)
     patience = params.patience
     best_val_loss = 1e10
+	val_batches = length(val_loader)
     # define optimiser
 	opt = Flux.Optimise.ADAM(params.lr)
 
@@ -271,7 +272,7 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
             total_val_loss_g += vgl
             total_val_loss_d += vdl
         end
-        history = update_history(history, nothing, nothing, total_val_loss_g, total_val_loss_d)
+        history = update_val_history(history, total_val_loss_g/val_batches, total_val_loss_d/val_batches)
         if total_val_loss_g < best_val_loss
             best_val_loss = total_val_loss_g
             patience = params.patience
