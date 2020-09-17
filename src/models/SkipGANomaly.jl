@@ -234,7 +234,10 @@ function discriminator_loss(SkipGAN::SkipGANomaly, real_input)
 	return loss_for_real + loss_for_fake + lat_loss
 end
 
-
+"""
+    function validation_loss(SkipGAN::SkipGANomaly, real_input, weights=[1,50,1])
+computes generator and discriminator loss without additional pass through model
+"""
 function validation_loss(SkipGAN::SkipGANomaly, real_input; weights=[1,50,1])
     fake = SkipGAN.generator(real_input)
 

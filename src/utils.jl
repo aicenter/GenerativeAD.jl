@@ -38,9 +38,6 @@ function preprocess_images(data, parameters; range=[-1,1], denominator=16)
     return (X_train, y_train), (X_val, y_val), (X_test, y_test)
 end
 
-struct GANomalyHistory
-    history
-end
 
 function GANomalyHistory()
     history = Dict(
@@ -52,7 +49,7 @@ function GANomalyHistory()
         "val_generator_loss" => Array{Float32}([]),
         "val_discriminator_loss" => Array{Float32}([])
         )
-    return GANomalyHistory(history)
+    return history
 end
 
 """
@@ -60,7 +57,7 @@ end
 
 do logging losses into history
 """
-function update_history(history::GANomalyHistory, gl, dl, vgl=nothing, vdl=nothing)
+function update_history(history, gl, dl, vgl=nothing, vdl=nothing)
     if gl != nothing & dl != nothing
     	push!(history["generator_loss"], gl[1])
     	push!(history["adversarial_loss"], gl[2])

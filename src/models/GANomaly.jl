@@ -247,8 +247,11 @@ function discriminator_loss(d::Discriminator, real_input, fake_input)
 	return 0.5f0*(loss_for_real+loss_for_fake)
 end
 
-
-function validation_loss(g::Generator, d::Discriminator, real_input, weights=[1,50,1])
+"""
+    function validation_loss(g::Generator, d::Discriminator, real_input, weights=[1,50,1])
+computes generator and discriminator loss without additional pass through model
+"""
+function validation_loss(g::Generator, d::Discriminator, real_input; weights=[1,50,1])
     fake, latent_i, latent_o = g(real_input)
 	pred_real, feat_real = d(real_input)
 	pred_fake, feat_fake = d(fake)
