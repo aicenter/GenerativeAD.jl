@@ -10,7 +10,7 @@ uci_datasets = ["abalone", "blood-transfusion", "breast-cancer-wisconsin", "brea
 """
 	load_uci_data(dataset::String)
 
-Loads basic UCI data.
+Loads basic UCI data. For a list of available datasets, check `GenerativeAD.Datasets.uci_datasets`.
 """
 function load_uci_data(dataset::String)
 	# I have opted for the original Loda datasets, use of multiclass problems in all vs one case
@@ -20,7 +20,7 @@ function load_uci_data(dataset::String)
 	UCI.normalize(data.normal, hcat(data.easy, data.medium)) # data (standardized)
 end
 
-other_datasets = ["annthyroid", "arrhythmia", "htru2", "kdd99", "kdd99_small", "spambase"]
+other_datasets = ["annthyroid", "arrhythmia", "htru2", "kdd99", "kdd99_small", "spambase", "mammography"]
 function __init__()
 	register(
 		DataDep(
@@ -146,6 +146,38 @@ function __init__()
 			"b1ef93de71f97714d3d7d4f58fc9f718da7bbc8ac8a150eff2778616a8097b12"
 		))
 	datadep"spambase"
+
+	register(
+		DataDep(
+			"mammography",
+			"""
+			Dataset: Mammography
+			Authors: Tobias Kuehn
+			Website: https://www.openml.org/d/310
+			
+			Mammography dataset.
+			""",
+			"https://www.openml.org/data/get_csv/52214/phpn1jVwe",
+			"d39362668aa89b2b48aa0e6c2d12277850ace4c390e15b89862b7717f1525f0c"
+			))
+	datadep"mammography"
+
+end
+
+"""
+	load_other_dataset(dataset[; standardize=false])
+
+Load a dataset that is not a part of the UCI.jl package. For a list of available datasets, check
+`GenerativeAD.Datasets.other_datasets`.
+"""
+function load_other_data(dataset; standardize = false)
+	load_f = eval(Symbol("load_"*dataset))
+	data_normal, data_anomalous = load_f()
+	if standardize
+		return UCI.normalize(data_normal, data_anomalous) 
+	else
+		return data_normal, data_anomalous
+	end
 end
 
 """
@@ -246,5 +278,17 @@ function load_spambase()
 	data = Array{Float32,2}(transpose(Array(raw_data[:,1:end-1])))
 	labels = raw_data[:,end]
 	data[:, labels.==0], data[:, labels.==1]
+end
+
+"""
+	load_mammography()
+"""
+function load_mammography()
+	data_path = datadep"mammography"
+	f = joinpath(data_path, readdir(data_path)[1])
+	raw_data = CSV.read(f, DataFrame)
+	labels = parse.(Int,replace.(raw_data[!,:class], "'" => ""))
+	data = Array{Float32,2}(transpose(Array(raw_data[:,1:end-1])))
+	data[:, labels.==-1], data[:, labels.==1]
 end
 
