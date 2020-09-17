@@ -81,8 +81,7 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamin
 	elseif dataset in mldatasets # MNIST,FMNIST, SVHN2, CIFAR10
 		data_normal, data_anomalous = load_mldatasets_data(dataset; kwargs...)
 	elseif dataset in other_datasets
-		load_f = eval(Symbol("load_"*dataset))
-		data_normal, data_anomalous = load_f(;kwargs...)
+		data_normal, data_anomalous = load_other_data(dataset; standardize=true, kwargs...)
 	else
 		error("Dataset $(dataset) not known, either not implemented or misspeled.")
 		# TODO add the rest
