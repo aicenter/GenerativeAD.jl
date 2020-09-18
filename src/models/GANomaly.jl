@@ -301,53 +301,53 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 
 	ps_g = Flux.params(generator)
 	ps_d = Flux.params(discriminator)
-    println("starting to train model!!!")
-	for epoch = 1:params.epochs
-		progress = Progress(length(train_loader))
-		for X in train_loader
-			#generator update
-			loss1, back = Flux.pullback(ps_g) do
-				generator_loss(generator, discriminator, X|>gpu)
-			end
-			grad = back((1f0, 0f0, 0f0, 0f0))
-			Flux.Optimise.update!(opt, ps_g, grad)
 
-			# discriminator update
-			loss2, back = Flux.pullback(ps_d) do
-				discriminator_loss(generator, discriminator, X|>gpu)
-			end
-			grad = back(1f0)
-			Flux.Optimise.update!(opt, ps_d, grad)
-
-			history = update_history(history, loss1, loss2)
-			next!(progress; showvalues=[(:epoch, "$(epoch)/$(params.epochs)"),
-										(:generator_loss, loss1[1]),
-										(:discriminator_loss, loss2)
-										])
-			#TODO optionaly add discriminator restrart if its loss drops under 1e-5
+	progress = Progress(length(train_loader))
+	for (iter, X) in enumerate(train_loader)
+		#generator update
+		loss1, back = Flux.pullback(ps_g) do
+			generator_loss(generator, discriminator, getobs(X)|>gpu)
 		end
-        total_val_loss_g = 0
-        total_val_loss_d = 0
-        for X_val in val_loader
-            vgl, vdl = validation_loss(generator, discriminator, X_val |> gpu)
-            total_val_loss_g += vgl
-            total_val_loss_d += vdl
-        end
-        history = update_val_history(history, total_val_loss_g/val_batches, total_val_loss_d/val_batches)
-        if total_val_loss_g < best_val_loss
-            best_val_loss = total_val_loss_g
-            patience = params.patience
-            best_generator = deepcopy(generator)
-            best_discriminator = deepcopy(discriminator)
-        else
-            patience -= 1
-            if patience == 0
-                @info "Stopped training after $(epoch) epochs"
-                break
-            end
-        end
+		grad = back((1f0, 0f0, 0f0, 0f0))
+		Flux.Optimise.update!(opt, ps_g, grad)
+
+		# discriminator update
+		loss2, back = Flux.pullback(ps_d) do
+			discriminator_loss(generator, discriminator, getobs(X)|>gpu)
+		end
+		grad = back(1f0)
+		Flux.Optimise.update!(opt, ps_d, grad)
+
+		history = update_history(history, loss1, loss2)
+		next!(progress; showvalues=[(:iters, "$(iter)/$(params.iters)"),
+									(:generator_loss, loss1[1]),
+									(:discriminator_loss, loss2)
+									])
+		#TODO optionaly add discriminator restrart if its loss drops under 1e-5
+		if mod(iter, params.check_every) == 0
+	        total_val_loss_g = 0
+	        total_val_loss_d = 0
+	        for X_val in val_loader
+	            vgl, vdl = validation_loss(generator, discriminator, X_val |> gpu)
+	            total_val_loss_g += vgl
+	            total_val_loss_d += vdl
+	        end
+	        history = update_val_history(history, total_val_loss_g/val_batches, total_val_loss_d/val_batches)
+	        if total_val_loss_g < best_val_loss
+	            best_val_loss = total_val_loss_g
+	            patience = params.patience
+	            best_generator = deepcopy(generator)
+	            best_discriminator = deepcopy(discriminator)
+	        else
+	            patience -= 1
+	            if patience == 0
+	                @info "Stopped training after $(iter) iterations"
+	                break
+	            end
+	        end
+		end
 	end
-	return history, best_generator, best_discriminator, generator, discriminator
+	return history, best_generator, best_discriminator
 end
 
 """

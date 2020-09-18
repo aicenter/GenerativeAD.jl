@@ -241,49 +241,49 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 	ps_g = Flux.params(SkipGAN.generator)
 	ps_d = Flux.params(SkipGAN.discriminator)
 
-	for epoch = 1:params.epochs
-		progress = Progress(length(train_loader))
-		for X in train_loader
-			#generator update
-			loss1, back = Flux.pullback(ps_g) do
-				generator_loss(SkipGAN, X|>gpu, weights=params.weights)
-			end
-			grad = back((1f0, 0f0, 0f0, 0f0))
-			Flux.Optimise.update!(opt, ps_g, grad)
-
-			# discriminator update
-			loss2, back = Flux.pullback(ps_d) do
-				discriminator_loss(SkipGAN, X|>gpu)
-			end
-			grad = back(1f0)
-			Flux.Optimise.update!(opt, ps_d, grad)
-
-			history = update_history(history, loss1, loss2)
-			next!(progress; showvalues=[(:epoch, "$(epoch)/$(params.epochs)"),
-										(:generator_loss, loss1[1]),
-										(:discriminator_loss, loss2)
-										])
-			#TODO optionaly add discriminator restrart if its loss drops under 1e-5
+	progress = Progress(length(train_loader))
+	for (iters, X) in enumerate(train_loader)
+		#generator update
+		loss1, back = Flux.pullback(ps_g) do
+			generator_loss(SkipGAN, getobs(X)|>gpu, weights=params.weights)
 		end
-        total_val_loss_g = 0
-        total_val_loss_d = 0
-        for X_val in val_loader
-            vgl, vdl = validation_loss(SkipGAN, X_val |> gpu, weights=params.weights)
-            total_val_loss_g += vgl
-            total_val_loss_d += vdl
-        end
-        history = update_val_history(history, total_val_loss_g/val_batches, total_val_loss_d/val_batches)
-        if total_val_loss_g < best_val_loss
-            best_val_loss = total_val_loss_g
-            patience = params.patience
-            best_model = deepcopy(SkipGAN)
-        else
-            patience -= 1
-            if patience == 0
-                @info "Stopped training after $(epoch) epochs"
-                break
-            end
-        end
+		grad = back((1f0, 0f0, 0f0, 0f0))
+		Flux.Optimise.update!(opt, ps_g, grad)
+
+		# discriminator update
+		loss2, back = Flux.pullback(ps_d) do
+			discriminator_loss(SkipGAN, getobs(X)|>gpu)
+		end
+		grad = back(1f0)
+		Flux.Optimise.update!(opt, ps_d, grad)
+
+		history = update_history(history, loss1, loss2)
+		next!(progress; showvalues=[(:iters, "$(iter)/$(params.iters)"),
+									(:generator_loss, loss1[1]),
+									(:discriminator_loss, loss2)
+									])
+		#TODO optionaly add discriminator restrart if its loss drops under 1e-5
+		if mod(iter, params.check_every) == 0
+	        total_val_loss_g = 0
+	        total_val_loss_d = 0
+	        for X_val in val_loader
+	            vgl, vdl = validation_loss(SkipGAN, X_val |> gpu, weights=params.weights)
+	            total_val_loss_g += vgl
+	            total_val_loss_d += vdl
+	        end
+	        history = update_val_history(history, total_val_loss_g/val_batches, total_val_loss_d/val_batches)
+	        if total_val_loss_g < best_val_loss
+	            best_val_loss = total_val_loss_g
+	            patience = params.patience
+	            best_model = deepcopy(SkipGAN)
+	        else
+	            patience -= 1
+	            if patience == 0
+	                @info "Stopped training after $(iter) iters"
+	                break
+	            end
+	        end
+		end
 	end
 	return history, best_model
 end

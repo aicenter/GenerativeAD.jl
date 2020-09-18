@@ -72,7 +72,8 @@ function update_val_history(history, vgl, vdl)
 end
 
 function prepare_dataloaders(data, params)
-    train_loader = Flux.Data.DataLoader(data[1][1], batchsize=params.batch_size, shuffle=true)
+    train_loader = MLDataPattern.RandomBatches(data[1][1], size=params.batch_size, count=params.iters)
+    #train_loader = Flux.Data.DataLoader(data[1][1], batchsize=params.batch_size, shuffle=true)
     # for cheching convergence I need to drop anomal samples from validation data
     val_data_ind = findall(x->x==0, data[2][2])
     if length(size(data[2][1]))==4

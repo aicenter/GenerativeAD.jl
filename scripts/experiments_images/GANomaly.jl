@@ -31,15 +31,16 @@ modelname = "Conv-GANomaly"
 
 
 function sample_params()
-	argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :epochs, :batch_size, :patience, )
+	argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :batch_size, :iters, :check_every, :patience, )
 	options = (
 			[10:10:200...],
 			[2^x for x=2:8],
 			[1:5...],
 			[0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
-			[20],
-			[2^x for x=2:8],
-            [3],
+            [2^x for x=2:8],
+			[10000],
+            [30],
+            [10],
 			)
 	return NamedTuple{argnames}(map(x->sample(x,1)[1], options))
 end

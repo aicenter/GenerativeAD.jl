@@ -30,14 +30,15 @@ parsed_args = parse_args(ARGS, s)
 modelname = "Conv-SkipGANomaly"
 
 function sample_params()
-    argnames = (:num_filters, :extra_layers, :lr, :epochs, :batch_size, :patience, :lambda,)
+    argnames = (:num_filters, :extra_layers, :lr, :batch_size, :iters, :check_every, :patience, :lambda,)
     options = (
                [2^x for x=2:8],
                [1:5 ...],
                [0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
-               [20],
                [2^x for x=2:8],
-               [3],
+               [10000],
+               [30],
+               [10],
                [0.9],
                )
     w = (weights= StatsBase.sample([1,10:10:90...],3),)
