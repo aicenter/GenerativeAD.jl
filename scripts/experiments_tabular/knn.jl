@@ -51,7 +51,6 @@ function fit(data, parameters)
 		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
 	catch e
 		# return an empty array if fit fails so nothing is computed
-		rethrow(e)
 		return (fit_t = NaN,), [] 
 	end
 
