@@ -67,7 +67,7 @@ function remove_constant_features(data)
 end
 
 try_counter = 0
-max_tries = 10
+max_tries = 10*max_seed
 while try_counter < max_tries
     parameters = sample_params()
 
