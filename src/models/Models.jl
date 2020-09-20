@@ -18,7 +18,7 @@ include("pidforest.jl")
 include("GANomaly.jl")
 include("skmodels.jl")
 include("pyodmodels.jl")
-include("real_nvp.jl")
+include("tabular_flows.jl")
 
 
 end

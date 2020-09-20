@@ -2,11 +2,13 @@ using Flux
 using StatsBase
 using Distributions
 using DistributionsAD
-using ContinuousFlows: RealNVP
+using ContinuousFlows: RealNVP, MaskedAutoregressiveFlow
 using ValueHistories
 using MLDataPattern: RandomBatches
 
-struct RealNVPFlow
+abstract type TabularFlow end
+
+struct RealNVPFlow <: TabularFlow
 	flows
 	base
 end
@@ -21,15 +23,38 @@ function RealNVPFlow(nflows::Int, isize::Int, hsize::Int, nlayers::Int)
 end
 
 (nvpf::RealNVPFlow)(X) = nvpf.flows(X)
-
 Flux.trainable(nvpf::RealNVPFlow) = (nvpf.flows, )
 
-function loss(model::RealNVPFlow, X)
+struct MAF <: TabularFlow
+	flows
+	base
+end
+
+function MAF(nflows::Int, isize::Int, hsize::Int, nlayers::Int, ftype::String, ordering::String)
+	MAF(Chain([
+        MaskedAutoregressiveFlow(
+            isize, 
+            hsize,
+            nlayers, 
+            isize, 
+            ftype,
+            (ordering == "natural") ? (
+                (mod(i, 2) == 0) ? "reversed" : "sequential"
+              ) : "random"
+            ) 
+        for i in 1:nflows]...), MvNormal(isize, 1.0f0))
+end
+
+(maf::MAF)(X) = maf.flows(X)
+Flux.trainable(maf::MAF) = (maf.flows, )
+
+
+function loss(model::F, X) where {F <: TabularFlow}
     Z, logJ = model((X, _init_logJ(X)))
     -sum(logpdf(model.base, Z)' .+ logJ)/size(X, 2)
 end
 
-function StatsBase.fit!(model::RealNVPFlow, data::Tuple, p)
+function StatsBase.fit!(model::F, data::Tuple, p) where F <: TabularFlow
 	opt = Flux.ADAM(p.lr)
 	
 	trn_model = deepcopy(model)
@@ -83,7 +108,7 @@ function StatsBase.fit!(model::RealNVPFlow, data::Tuple, p)
 	(history=history, iterations=i, model=model)
 end
 
-function StatsBase.predict(model::RealNVPFlow, X)
+function StatsBase.predict(model::F, X) where {F <: TabularFlow}
 	Z, logJ = model((X, _init_logJ(X)))
     -(logpdf(model.base, Z)' .+ logJ)
 end
