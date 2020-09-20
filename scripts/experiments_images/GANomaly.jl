@@ -31,11 +31,12 @@ modelname = "Conv-GANomaly"
 
 
 function sample_params()
-	argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :batch_size, :iters, :check_every, :patience, )
+	argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :batch_size,
+                :iters, :check_every, :patience, )
 	options = (
 			[10:10:200...],
 			[2^x for x=2:8],
-			[1:5...],
+			[0:3...],
 			[0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
             [2^x for x=2:8],
 			[10000],

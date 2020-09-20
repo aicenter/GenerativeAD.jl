@@ -4,7 +4,7 @@ using ArgParse
 using GenerativeAD
 using GenerativeAD.Models: anomaly_score
 using BSON
-using StatsBase: fit!, predict
+using StatsBase: fit!, predict, sample
 
 using Flux
 using MLDataPattern
@@ -30,10 +30,11 @@ parsed_args = parse_args(ARGS, s)
 modelname = "Conv-SkipGANomaly"
 
 function sample_params()
-    argnames = (:num_filters, :extra_layers, :lr, :batch_size, :iters, :check_every, :patience, :lambda,)
+    argnames = (:num_filters, :extra_layers, :lr, :batch_size,
+                :iters, :check_every, :patience, :lambda,)
     options = (
-               [2^x for x=2:8],
-               [1:5 ...],
+               [2^x for x=2:6],
+               [0:3 ...],
                [0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
                [2^x for x=2:8],
                [10000],
@@ -41,8 +42,8 @@ function sample_params()
                [10],
                [0.9],
                )
-    w = (weights= StatsBase.sample([1,10:10:90...],3),)
-    return merge(NamedTuple{argnames}(map(x->StatsBase.sample(x,1)[1], options)), w)
+    w = (weights= sample([1,10:10:90...],3),)
+    return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], options)), w)
 end
 
 """

@@ -172,7 +172,7 @@ function discriminator_loss(SkipGAN::SkipGANomaly, real_input)
     fake = SkipGAN.generator(real_input) # + randn(typeof(real_input[1]), size(real_input))
 
 	pred_real, feat_real = SkipGAN.discriminator(real_input)
-	pred_fake, feat_fake = SkipGAN.discriminator(fake_input)
+	pred_fake, feat_fake = SkipGAN.discriminator(fake)
 
     lat_loss = Flux.mse(feat_fake, feat_real) # loss of latent representation
 	loss_for_real = Flux.crossentropy(pred_real, 1f0) # ones(typeof(pred_real), size(pred_real)) has same speed
@@ -198,23 +198,22 @@ function validation_loss(SkipGAN::SkipGANomaly, real_input; weights=[1,50,1])
 	loss_for_fake = Flux.crossentropy(1f0.-pred_fake, 1f0)
 
 	return adv_loss * weights[1] + con_loss * weights[2] + lat_loss * weights[3],
-        loss_for_real + loss_for_fake + lat_loss
+        loss_for_real + loss_for_fake + lat_loss, con_loss, lat_loss
 end
 
 """
     function anomaly_score(SkipGAN::SkipGANomaly, real_input; lambda = 0.5)
 computes unscaled anomaly score of real input, losses are weighted by factor lambda
 """
-function anomaly_score(SkipGAN::SkipGANomaly, real_input; lambda = 0.9)
+function anomaly_score(SkipGAN::SkipGANomaly, real_input; lambda = 0.9, dims=[1,2,3])
     fake = SkipGAN.generator(real_input) # + randn(typeof(real_input[1]), size(real_input))
 
     pred_real, feat_real = SkipGAN.discriminator(real_input)
-    pred_fake, feat_fake = SkipGAN.discriminator(fake_input)
+    pred_fake, feat_fake = SkipGAN.discriminator(fake)
 
-    rec_loss  = Flux.mse(fake, real_input) # reconstruction loss -> similar to contextual loss
-    lat_loss = Flux.mse(feat_fake, feat_real) # loss of latent representation
-	return lambda * rec_loss + (1 - lambda) * lat_loss
-
+	rec_loss  = Flux.mae(fake, real_input, agg=x->Flux.mean(x, dims=dims)) # reconstruction loss -> similar to contextual loss
+    lat_loss = Flux.mse(feat_fake, feat_real, agg=x->Flux.mean(x, dims=dims)) # loss of latent representation
+	return lambda .* rec_loss .+ (1 - lambda) .* lat_loss |>cpu
 end
 
 
@@ -258,28 +257,30 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 		Flux.Optimise.update!(opt, ps_d, grad)
 
 		history = update_history(history, loss1, loss2)
-		next!(progress; showvalues=[(:iters, "$(iter)/$(params.iters)"),
+		next!(progress; showvalues=[(:iters, "$(iters)/$(params.iters)"),
 									(:generator_loss, loss1[1]),
 									(:discriminator_loss, loss2)
 									])
 		#TODO optionaly add discriminator restrart if its loss drops under 1e-5
-		if mod(iter, params.check_every) == 0
-	        total_val_loss_g = 0
-	        total_val_loss_d = 0
+		if mod(iters, params.check_every) == 0
+	        tot_val_loss_g, tot_val_loss_d, tot_val_loss_rl, tot_val_loss_ll = 0, 0, 0, 0
 	        for X_val in val_loader
-	            vgl, vdl = validation_loss(SkipGAN, X_val |> gpu, weights=params.weights)
-	            total_val_loss_g += vgl
-	            total_val_loss_d += vdl
+	            vgl, vdl,  rl, ll = validation_loss(SkipGAN, X_val |> gpu, weights=params.weights)
+	            tot_val_loss_g += vgl
+	            tot_val_loss_d += vdl
+				tot_val_loss_rl += rl
+	            tot_val_loss_ll += ll
 	        end
-	        history = update_val_history(history, total_val_loss_g/val_batches, total_val_loss_d/val_batches)
-	        if total_val_loss_g < best_val_loss
-	            best_val_loss = total_val_loss_g
+	        history = update_val_history(history, tot_val_loss_g/val_batches, tot_val_loss_d/val_batches)
+			anomality = (params.lambda*tot_val_loss_rl + (1-params.lambda)*tot_val_loss_ll)
+			if anomality < best_val_loss
+	            best_val_loss = anomality
 	            patience = params.patience
 	            best_model = deepcopy(SkipGAN)
 	        else
 	            patience -= 1
 	            if patience == 0
-	                @info "Stopped training after $(iter) iters"
+	                @info "Stopped training after $(iters) iters"
 	                break
 	            end
 	        end

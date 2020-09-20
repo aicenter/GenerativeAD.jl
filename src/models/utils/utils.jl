@@ -71,6 +71,12 @@ function update_val_history(history, vgl, vdl)
     return history
 end
 
+"""
+    function prepare_dataloaders(data, params)
+
+Extracts normal data from validation dataset and returns training MLDataPattern.RandomBatches and 
+validation Flux.Data.DataLoader.
+"""
 function prepare_dataloaders(data, params)
     train_loader = MLDataPattern.RandomBatches(data[1][1], size=params.batch_size, count=params.iters)
     #train_loader = Flux.Data.DataLoader(data[1][1], batchsize=params.batch_size, shuffle=true)
