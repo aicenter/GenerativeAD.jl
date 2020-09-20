@@ -216,7 +216,18 @@ function anomaly_score(SkipGAN::SkipGANomaly, real_input; lambda = 0.9, dims=[1,
 	return lambda .* rec_loss .+ (1 - lambda) .* lat_loss |>cpu
 end
 
+function generalized_anomaly_score(SkipGAN::SkipGANomaly, real_input; R="mae", L="mae", lambda=0.9, dims=[1,2,3])
+	fake = SkipGAN.generator(real_input) # + randn(typeof(real_input[1]), size(real_input))
 
+    pred_real, feat_real = SkipGAN.discriminator(real_input)
+    pred_fake, feat_fake = SkipGAN.discriminator(fake)
+
+	R = getfield(Flux, Symbol(R))
+ 	L = getfield(Flux, Symbol(L))
+	rec_loss  = R(fake, real_input, agg=x->Flux.mean(x, dims=dims)) # reconstruction loss -> similar to contextual loss
+    lat_loss = L(feat_fake, feat_real, agg=x->Flux.mean(x, dims=dims)) # loss of latent representation
+	return lambda .* rec_loss .+ (1 - lambda) .* lat_loss |>cpu
+end
 """
 	Model's training and inference
 """
