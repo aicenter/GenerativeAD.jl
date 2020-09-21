@@ -21,9 +21,9 @@ Create the convolutional encoder with parameters
 	extra_layers    - number of additional conv blocks (conv2d + batch norm + leaky relu)
 """
 function ConvEncoder(isize::Int, in_ch::Int, out_ch::Int, nf::Int, extra_layers::Int)
-    # ověřit jestli isize%16==0
-    layers = []
-    push!(layers, Conv((4, 4), in_ch => nf; stride = 2, pad = 1))
+	# ověřit jestli isize%16==0
+	layers = []
+	push!(layers, Conv((4, 4), in_ch => nf; stride = 2, pad = 1))
 	push!(layers, BatchNorm(nf))
 	push!(layers, x->leakyrelu.(x, 0.2f0))
 
@@ -248,11 +248,11 @@ function discriminator_loss(d::Discriminator, real_input, fake_input)
 end
 
 """
-    function validation_loss(g::Generator, d::Discriminator, real_input, weights=[1,50,1])
+	function validation_loss(g::Generator, d::Discriminator, real_input, weights=[1,50,1])
 computes generator and discriminator loss without additional pass through model
 """
 function validation_loss(g::Generator, d::Discriminator, real_input; weights=[1,50,1])
-    fake, latent_i, latent_o = g(real_input)
+	fake, latent_i, latent_o = g(real_input)
 	pred_real, feat_real = d(real_input)
 	pred_fake, feat_fake = d(fake)
 
@@ -260,8 +260,8 @@ function validation_loss(g::Generator, d::Discriminator, real_input; weights=[1,
 	contextual_loss = Flux.mae(fake, real_input) # l1_loss
 	encoder_loss = Flux.mse(latent_o, latent_i)
 
-    loss_for_real = Flux.crossentropy(pred_real, 1f0) # ones(typeof(pred_real), size(pred_real)) has same speed
-    loss_for_fake = Flux.crossentropy(1f0.-pred_fake, 1f0)
+	loss_for_real = Flux.crossentropy(pred_real, 1f0) # ones(typeof(pred_real), size(pred_real)) has same speed
+	loss_for_fake = Flux.crossentropy(1f0.-pred_fake, 1f0)
 
 	return adversarial_loss*weights[1]+contextual_loss*weights[2]+encoder_loss*weights[3],
 		0.5f0*(loss_for_real+loss_for_fake)
@@ -286,18 +286,18 @@ end
 	fit!(generator::Generator, discriminator::Discriminator, data, params)
 """
 function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data, params)
-    # prepare batches & loaders
-    train_loader, val_loader = prepare_dataloaders(data, params)
-    # training info logger
-    history = GANomalyHistory()
-    # prepare for early stopping
-    best_generator = deepcopy(generator)
-    best_discriminator = deepcopy(discriminator)
-    patience = params.patience
-    best_val_loss = 1e10
-    val_batches = length(val_loader)
+	# prepare batches & loaders
+	train_loader, val_loader = prepare_dataloaders(data, params)
+	# training info logger
+	history = GANomalyHistory()
+	# prepare for early stopping
+	best_generator = deepcopy(generator)
+	best_discriminator = deepcopy(discriminator)
+	patience = params.patience
+	best_val_loss = 1e10
+	val_batches = length(val_loader)
 
-    opt = Flux.Optimise.ADAM(params.lr)
+	opt = Flux.Optimise.ADAM(params.lr)
 
 	ps_g = Flux.params(generator)
 	ps_d = Flux.params(discriminator)
@@ -326,26 +326,26 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 			])
 		#TODO optionaly add discriminator restrart if its loss drops under 1e-5
 		if mod(iter, params.check_every) == 0
-	        total_val_loss_g = 0
-	        total_val_loss_d = 0
-	        for X_val in val_loader
-	            vgl, vdl = validation_loss(generator, discriminator, X_val |> gpu)
-	            total_val_loss_g += vgl
-	            total_val_loss_d += vdl
-	        end
-	        history = update_val_history(history, total_val_loss_g/val_batches, total_val_loss_d/val_batches)
-	        if total_val_loss_g < best_val_loss
-	            best_val_loss = total_val_loss_g
-	            patience = params.patience
-	            best_generator = deepcopy(generator)
-	            best_discriminator = deepcopy(discriminator)
-	        else
-	            patience -= 1
-	            if patience == 0
-	                @info "Stopped training after $(iter) iterations"
-	                break
-	            end
-	        end
+			total_val_loss_g = 0
+			total_val_loss_d = 0
+			for X_val in val_loader
+				vgl, vdl = validation_loss(generator, discriminator, X_val |> gpu)
+				total_val_loss_g += vgl
+				total_val_loss_d += vdl
+			end
+			history = update_val_history(history, total_val_loss_g/val_batches, total_val_loss_d/val_batches)
+			if total_val_loss_g < best_val_loss
+				best_val_loss = total_val_loss_g
+				patience = params.patience
+				best_generator = deepcopy(generator)
+				best_discriminator = deepcopy(discriminator)
+			else
+				patience -= 1
+				if patience == 0
+					@info "Stopped training after $(iter) iterations"
+					break
+				end
+			end
 		end
 	end
 	return history, best_generator, best_discriminator

@@ -12,17 +12,17 @@ using MLDataPattern
 s = ArgParseSettings()
 @add_arg_table! s begin
    "max_seed"
-        required = true
-        arg_type = Int
-        help = "seed"
-    "dataset"
-        required = true
-        arg_type = String
-        help = "dataset"
-    "anomaly_classes"
-        arg_type = Int
-        default = 10
-        help = "number of anomaly classes"
+		required = true
+		arg_type = Int
+		help = "seed"
+	"dataset"
+		required = true
+		arg_type = String
+		help = "dataset"
+	"anomaly_classes"
+		arg_type = Int
+		default = 10
+		help = "number of anomaly classes"
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes = parsed_args
@@ -30,20 +30,20 @@ parsed_args = parse_args(ARGS, s)
 modelname = "Conv-SkipGANomaly"
 
 function sample_params()
-    argnames = (:num_filters, :extra_layers, :lr, :batch_size,
-                :iters, :check_every, :patience, :lambda,)
-    options = (
-               [2^x for x=2:6],
-               [0:3 ...],
-               [0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
-               [2^x for x=2:8],
-               [10000],
-               [30],
-               [10],
-               [0.9],
-               )
-    w = (weights= sample([1,10:10:90...],3),)
-    return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], options)), w)
+	argnames = (:num_filters, :extra_layers, :lr, :batch_size,
+				:iters, :check_every, :patience, :lambda,)
+	options = (
+			   [2^x for x=2:6],
+			   [0:3 ...],
+			   [0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
+			   [2^x for x=2:8],
+			   [10000],
+			   [30],
+			   [10],
+			   [0.9],
+			   )
+	w = (weights= sample([1,10:10:90...],3),)
+	return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], options)), w)
 end
 
 """
@@ -79,7 +79,7 @@ function fit(data, parameters)
 
 
 	return training_info, [(x -> generalized_anomaly_score(model|>cpu, x, R=r, L=l, lambda=lam), parameters)
-                            for r in ["mae", "mse"] for l in ["mae", "mse"] for lam = 0.1:0.1:0.9 ]
+							for r in ["mae", "mse"] for l in ["mae", "mse"] for lam = 0.1:0.1:0.9 ]
 end
 
 #_________________________________________________________________________________________________
@@ -90,37 +90,37 @@ max_tries = 10*max_seed
 while try_counter < max_tries
 	parameters = sample_params()
 
-    for seed in 1:max_seed
-        for i in 1:anomaly_classes
-            savepath = datadir("experiments/images/$(modelname)/$(dataset)_ac=$(i)/seed=$(seed)")
+	for seed in 1:max_seed
+		for i in 1:anomaly_classes
+			savepath = datadir("experiments/images/$(modelname)/$(dataset)_ac=$(i)/seed=$(seed)")
 
-            data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
-        	# computing additional parameters
-        	in_ch = size(data[1][1],3)
-        	isize = maximum([size(data[1][1],1),size(data[1][1],2)])
+			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
+			# computing additional parameters
+			in_ch = size(data[1][1],3)
+			isize = maximum([size(data[1][1],1),size(data[1][1],2)])
 
-        	isize = isize + 32 - isize % 32
-        	# update parameter
-        	parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
-        	# here, check if a model with the same parameters was already tested
-        	if GenerativeAD.check_params(savepath, parameters, data)
+			isize = isize + 32 - isize % 32
+			# update parameter
+			parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
+			# here, check if a model with the same parameters was already tested
+			if GenerativeAD.check_params(savepath, parameters, data)
 
-        		data = GenerativeAD.Models.preprocess_images(data, parameters, denominator=32)
-        		#(X_train,_), (X_val, y_val), (X_test, y_test) = data
-                training_info, results = fit(data, parameters)
+				data = GenerativeAD.Models.preprocess_images(data, parameters, denominator=32)
+				#(X_train,_), (X_val, y_val), (X_test, y_test) = data
+				training_info, results = fit(data, parameters)
 
-        		save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
+				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
 
-        		# now loop over all anomaly score funs
-        		for result in results
-        			GenerativeAD.experiment(result..., data, savepath; save_entries...)
-        		end
-                global try_counter = max_tries + 1
-        	else
-        		@info "Model already present, sampling new hyperparameters..."
-        		global try_counter += 1
-            end
-        end
-    end
+				# now loop over all anomaly score funs
+				for result in results
+					GenerativeAD.experiment(result..., data, savepath; save_entries...)
+				end
+				global try_counter = max_tries + 1
+			else
+				@info "Model already present, sampling new hyperparameters..."
+				global try_counter += 1
+			end
+		end
+	end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
