@@ -79,16 +79,13 @@ function fit(data, parameters)
 		history = info[1] # losses through time
 		)
 
-	return training_info, [(x -> GenerativeAD.Models.anomaly_score(generator|>cpu, x; dims=3), parameters)]
-	# not sure if I should return generator and disciriminator in GPU
+    return training_info, [(x -> GenerativeAD.Models.anomaly_score(generator|>cpu, x; dims=3), parameters)]
 end
 
 #_________________________________________________________________________________________________
 
-
 try_counter = 0
 max_tries = 10*max_seed
-
 
 while try_counter < max_tries
 	parameters = sample_params()
@@ -118,6 +115,7 @@ while try_counter < max_tries
         		for result in results
         			GenerativeAD.experiment(result..., data, savepath; save_entries...)
         		end
+                global try_counter = max_tries + 1
         	else
         		@info "Model already present, sampling new hyperparameters..."
         		global try_counter += 1

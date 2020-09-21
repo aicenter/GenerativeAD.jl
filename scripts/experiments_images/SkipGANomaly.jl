@@ -80,8 +80,6 @@ function fit(data, parameters)
 
 	return training_info, [(x -> generalized_anomaly_score(model|>cpu, x, R=r, L=l, lambda=lam), parameters)
                             for r in ["mae", "mse"] for l in ["mae", "mse"] for lam = 0.1:0.1:0.9 ]
-    #TODO add multiple anomaly scores
-	# not sure if I should return generator and disciriminator in GPU
 end
 
 #_________________________________________________________________________________________________
@@ -117,6 +115,7 @@ while try_counter < max_tries
         		for result in results
         			GenerativeAD.experiment(result..., data, savepath; save_entries...)
         		end
+                global try_counter = max_tries + 1
         	else
         		@info "Model already present, sampling new hyperparameters..."
         		global try_counter += 1

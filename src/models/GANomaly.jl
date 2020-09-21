@@ -319,10 +319,11 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 		Flux.Optimise.update!(opt, ps_d, grad)
 
 		history = update_history(history, loss1, loss2)
-		next!(progress; showvalues=[(:iters, "$(iter)/$(params.iters)"),
-									(:generator_loss, loss1[1]),
-									(:discriminator_loss, loss2)
-									])
+		next!(progress; showvalues=[
+			(:iters, "$(iter)/$(params.iters)"),
+			(:generator_loss, loss1[1]),
+			(:discriminator_loss, loss2)
+			])
 		#TODO optionaly add discriminator restrart if its loss drops under 1e-5
 		if mod(iter, params.check_every) == 0
 	        total_val_loss_g = 0

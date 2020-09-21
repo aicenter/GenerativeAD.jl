@@ -240,6 +240,7 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
     train_loader, val_loader = prepare_dataloaders(data, params)
     # training info logger
     history = GANomalyHistory()
+	history["anomality"] =  Array{Float32}([])
     # prepare for early stopping
     best_model = deepcopy(SkipGAN)
     patience = params.patience
@@ -268,10 +269,11 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 		Flux.Optimise.update!(opt, ps_d, grad)
 
 		history = update_history(history, loss1, loss2)
-		next!(progress; showvalues=[(:iters, "$(iters)/$(params.iters)"),
-									(:generator_loss, loss1[1]),
-									(:discriminator_loss, loss2)
-									])
+		next!(progress; showvalues=[
+			(:iters, "$(iters)/$(params.iters)"),
+			(:generator_loss, loss1[1]),
+			(:discriminator_loss, loss2)
+			])
 		#TODO optionaly add discriminator restrart if its loss drops under 1e-5
 		if mod(iters, params.check_every) == 0
 	        tot_val_loss_g, tot_val_loss_d, tot_val_loss_rl, tot_val_loss_ll = 0, 0, 0, 0
@@ -284,6 +286,7 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 	        end
 	        history = update_val_history(history, tot_val_loss_g/val_batches, tot_val_loss_d/val_batches)
 			anomality = (params.lambda*tot_val_loss_rl + (1-params.lambda)*tot_val_loss_ll)
+			push!(history["anomality"], anomality)
 			if anomality < best_val_loss
 	            best_val_loss = anomality
 	            patience = params.patience
