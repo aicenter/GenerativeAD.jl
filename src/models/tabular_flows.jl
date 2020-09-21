@@ -76,6 +76,11 @@ function StatsBase.fit!(model::F, data::Tuple, p) where F <: TabularFlow
 		# validation/early stopping
 		val_loss = loss(trn_model, X_val)
 		@info "$i - loss: $l (batch) | $val_loss (validation)"
+		
+		if isnan(val_loss) || isnan(l)
+			error("Encountered invalid values in loss function.")
+		end
+
 		push!(history, :training_loss, i, l)
 		push!(history, :validation_likelihood, i, val_loss)
 		
