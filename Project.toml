@@ -1,7 +1,7 @@
 name = "GenerativeAD"
 uuid = "a83054f2-ddd1-11e8-0102-5779cc6302e6"
 authors = ["vitskvara"]
-version = "0.1.2"
+version = "0.2.0"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
@@ -31,4 +31,4 @@ UCI = "a83054f2-ddd1-11e8-0102-5779cc6302e5"
 ValueHistories = "98cad3c8-aec3-5f06-8e41-884608649ab7"
 
 [compat]
-julia = "1.4.2"
+julia = "1.5.1"
