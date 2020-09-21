@@ -15,5 +15,6 @@ include("pidforest.jl")
 include("GANomaly.jl")
 include("skmodels.jl")
 include("pyodmodels.jl")
+include("vae.jl")
 
 end
