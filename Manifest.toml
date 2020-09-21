@@ -240,8 +240,10 @@ uuid = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 version = "1.15.1"
 
 [[EvalMetrics]]
-deps = ["DocStringExtensions", "RecipesBase", "Reexport", "Statistics", "StatsBase"]
-git-tree-sha1 = "5b735114e1317de1fb748f941a5437ac63bebabd"
+deps = ["RecipesBase", "Reexport", "Statistics"]
+git-tree-sha1 = "afbb69f6e48ee1aa7bb0b3b6e5fedbc41c7a8c6e"
+repo-rev = "docs"
+repo-url = "https://github.com/VaclavMacha/EvalMetrics.jl.git"
 uuid = "251d5f9e-10c1-4699-ba24-e0ad168fa3e4"
 version = "0.2.0"
 
