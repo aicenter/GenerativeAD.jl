@@ -63,7 +63,6 @@ function StatsBase.fit!(model::F, data::Tuple, p) where F <: TabularFlow
 	X = data[1][1]
 	X_val = data[2][1]
 
-	train_step = 0
 	history = MVHistory()
 	patience = p.patience
 	reg = (p.wreg > 0) ? l2_reg : _ -> 0.0
@@ -75,8 +74,6 @@ function StatsBase.fit!(model::F, data::Tuple, p) where F <: TabularFlow
 		gs = gradient(() -> begin l = loss(trn_model, batch) + p.wreg*reg(ps) end, ps)
 		Flux.update!(opt, ps, gs)
 
-		train_step += 1
-		
 		# validation/early stopping
 		val_loss = loss(trn_model, X_val)
 		@info "$i - loss: $l (batch) | $val_loss (validation)"
