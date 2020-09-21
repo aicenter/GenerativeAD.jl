@@ -159,11 +159,11 @@ version = "1.4.1"
 
 [[ContinuousFlows]]
 deps = ["Flux", "Random"]
-git-tree-sha1 = "2c4c04f9932ac85ffe99fbe5a740b96296050b71"
+git-tree-sha1 = "c38f541f3f394f33cf3669fae090496d21de7761"
 repo-rev = "master"
 repo-url = "https://github.com/janfrancu/ContinuousFlows.jl.git"
 uuid = "a619b042-bc39-44bf-9795-de5439ba9456"
-version = "0.1.2"
+version = "0.1.4"
 
 [[CoordinateTransformations]]
 deps = ["LinearAlgebra", "StaticArrays"]

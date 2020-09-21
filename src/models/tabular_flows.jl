@@ -30,14 +30,13 @@ struct MAF <: TabularFlow
 	base
 end
 
-function MAF(nflows::Int, isize::Int, hsize::Int, nlayers::Int, ftype::String, ordering::String)
+function MAF(nflows::Int, isize::Int, hsize::Int, nlayers::Int, ordering::String)
 	MAF(Chain([
         MaskedAutoregressiveFlow(
             isize, 
             hsize,
             nlayers, 
             isize, 
-            ftype,
             (ordering == "natural") ? (
                 (mod(i, 2) == 0) ? "reversed" : "sequential"
               ) : "random"

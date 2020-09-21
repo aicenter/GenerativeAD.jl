@@ -21,8 +21,8 @@ parsed_args = parse_args(ARGS, s)
 
 modelname = "MAF"
 function sample_params()
-	par_vec = ([2, 5, 10], [10, 50, 100, 200, 500, 1000], 2:3, ["natural", "random"], ["relu", "tanh"], [1f-4], [100], [30], [1f-6])
-	argnames = (:nflows, :hsize, :nlayers, :ordering, :ftype, :lr, :batchsize, :patience, :wreg)
+	par_vec = ([2, 5, 10], [10, 50, 100, 200, 500, 1000], 2:3, ["natural", "random"], [1f-4], [100], [30], [1f-6])
+	argnames = (:nflows, :hsize, :nlayers, :ordering, :lr, :batchsize, :patience, :wreg)
 
 	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
@@ -35,7 +35,6 @@ function fit(data, parameters)
 				D,
 				parameters.hsize,
 				parameters.nlayers,
-				parameters.ftype,
 				parameters.ordering)
 
 	try
