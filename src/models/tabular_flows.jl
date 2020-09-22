@@ -13,13 +13,13 @@ struct RealNVPFlow <: TabularFlow
 	base
 end
 
-function RealNVPFlow(nflows::Int, isize::Int, hsize::Int, nlayers::Int)
+function RealNVPFlow(nflows::Int, idim::Int, hdim::Int, nlayers::Int)
 	RealNVPFlow(Chain([
 		RealNVP(
-			isize, 
-			(d, o, ftype, postprocess) -> build_mlp(d, hsize, o, nlayers, ftype=ftype, lastlayer=postprocess),
+			idim, 
+			(d, o, act, postprocess) -> build_mlp(d, hdim, o, nlayers, activation=act, lastlayer=postprocess),
 			mod(i,2) == 0)
-		for i in 1:nflows]...), MvNormal(isize, 1.0f0))
+		for i in 1:nflows]...), MvNormal(idim, 1.0f0))
 end
 
 (nvpf::RealNVPFlow)(X) = nvpf.flows(X)
@@ -30,18 +30,18 @@ struct MAF <: TabularFlow
 	base
 end
 
-function MAF(nflows::Int, isize::Int, hsize::Int, nlayers::Int, ordering::String)
+function MAF(nflows::Int, idim::Int, hdim::Int, nlayers::Int, ordering::String)
 	MAF(Chain([
         MaskedAutoregressiveFlow(
-            isize, 
-            hsize,
+            idim, 
+            hdim,
             nlayers, 
-            isize, 
+            idim, 
             (ordering == "natural") ? (
                 (mod(i, 2) == 0) ? "reversed" : "sequential"
               ) : "random"
             ) 
-        for i in 1:nflows]...), MvNormal(isize, 1.0f0))
+        for i in 1:nflows]...), MvNormal(idim, 1.0f0))
 end
 
 (maf::MAF)(X) = maf.flows(X)
