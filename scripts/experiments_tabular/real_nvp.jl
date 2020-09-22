@@ -46,7 +46,7 @@ function fit(data, parameters)
 	training_info = (
 		fit_t = fit_t,
 		history = info.history,
-		model = nothing
+		model = info.model
 		)
 
 	training_info, [(x -> predict(info.model, x), parameters)]
@@ -71,7 +71,10 @@ while try_counter < max_tries
 			@info "Number of features: $(size(data[1][1], 1))"
 			
 			training_info, results = fit(data, edited_parameters)
-			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+
+			tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+			training_info = [p for p in pairs(training_info) if p[1] != :model]
+			save_entries = merge((;training_info...), (modelname = modelname, seed = seed, dataset = dataset))
 
 			for result in results
 				GenerativeAD.experiment(result..., data, savepath; save_entries...)
