@@ -21,19 +21,19 @@ parsed_args = parse_args(ARGS, s)
 
 modelname = "RealNVP"
 function sample_params()
-	par_vec = ([2, 5, 10], [10, 50, 100, 200, 500, 1000], 2:3, [1f-4], [100], [30], [1f-6])
-	argnames = (:nflows, :hsize, :nlayers, :lr, :batchsize, :patience, :wreg)
+	par_vec = ([2, 5, 10], 2 .^(4:10), 2:3, [1f-4], [100], [30], [1f-6])
+	argnames = (:nflows, :hdim, :nlayers, :lr, :batchsize, :patience, :wreg)
 
 	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
 
 function fit(data, parameters)
-	D = size(data[1][1], 1)
+	idim = size(data[1][1], 1)
 
 	model = GenerativeAD.Models.RealNVPFlow(
 				parameters.nflows,
-				D,
-				parameters.hsize,
+				idim,
+				parameters.hdim,
 				parameters.nlayers)
 
 	try
