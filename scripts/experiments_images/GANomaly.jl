@@ -4,7 +4,7 @@ using ArgParse
 using GenerativeAD
 using GenerativeAD.Models: anomaly_score
 using BSON
-using StatsBase: fit!, predict
+using StatsBase: fit!, predict, sample
 
 using Flux
 using MLDataPattern
