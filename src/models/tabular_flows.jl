@@ -68,6 +68,7 @@ function StatsBase.fit!(model::F, data::Tuple, p) where F <: TabularFlow
 	
 	best_val_loss = loss(trn_model, X_val)
 	i = 1
+	start_time = time()
 	for batch in RandomBatches(X, p.batchsize)
 		l = 0.0f0
 		gs = gradient(() -> begin l = loss(trn_model, batch) + p.wreg*reg(ps) end, ps)
@@ -84,6 +85,13 @@ function StatsBase.fit!(model::F, data::Tuple, p) where F <: TabularFlow
 		push!(history, :training_loss, i, l)
 		push!(history, :validation_likelihood, i, val_loss)
 		
+		# 23 hours time limit
+		if time() - start_time > 82600
+			@info "Stopped training after $(i) iterations due to time limit."
+			model = deepcopy(trn_model)
+			break
+		end
+
 		if val_loss < best_val_loss
 			best_val_loss = val_loss
 			patience = p.patience
