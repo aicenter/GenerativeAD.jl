@@ -167,7 +167,7 @@ struct Generator
 end
 
 """
-	function Discriminator(isize::Int, latent_dim::Int, in_ch::Int, num_filters::Int, extra_layers::Int)
+	function Generator(isize::Int, latent_dim::Int, in_ch::Int, num_filters::Int, extra_layers::Int)
 
 Create the convolutional discriminator with parameters (almost the same structure as Encoder)
 	isize           - size of output image (must be divisible by 16 i.e isize%16==0)
@@ -348,7 +348,7 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 			end
 		end
 	end
-	return history, best_generator, best_discriminator
+	return history, best_generator, best_discriminator, sum(map(p->length(p), ps_g))+sum(map(p->length(p), ps_d))
 end
 
 """

@@ -73,8 +73,9 @@ function fit(data, parameters)
 
 	training_info = (
 		fit_t = fit_t,
-		model = (model |> cpu),
-		history = info[1] # losses through time
+		model = (info[2] |> cpu),
+		history = info[1], # losses through time
+        n_parameters = info[3] # number of parameters
 		)
 
 
@@ -110,8 +111,8 @@ while try_counter < max_tries
 				training_info, results = fit(data, parameters)
 				# saving model separately
 				tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
-				training_info = [p for p in pairs(training_info) if p[1] != :model]
-				save_entries = merge((;training_info...), (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
+				training_info.model = nothing
+				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
 
 				# now loop over all anomaly score funs
 				for result in results

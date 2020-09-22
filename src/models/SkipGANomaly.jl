@@ -300,7 +300,7 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 			end
 		end
 	end
-	return history, best_model
+	return history, best_model, sum(map(p->length(p), ps_g)) + sum(map(p->length(p), ps_d))
 end
 
 """
