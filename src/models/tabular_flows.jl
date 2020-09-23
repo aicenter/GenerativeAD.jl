@@ -60,7 +60,8 @@ function StatsBase.fit!(model::F, data::Tuple, p) where F <: TabularFlow
 	ps = Flux.params(trn_model);
 
 	X = data[1][1]
-	X_val = data[2][1]
+	# filter only normal data from validation set
+	X_val = data[2][1][:, data[2][2] .== 0.0f0]
 
 	history = MVHistory()
 	patience = p.patience
