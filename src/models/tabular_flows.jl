@@ -120,5 +120,5 @@ end
 
 function StatsBase.predict(model::F, X) where {F <: TabularFlow}
 	Z, logJ = model((X, _init_logJ(X)))
-    -(logpdf(model.base, Z)' .+ logJ)
+    -(logpdf(model.base, Z)' .+ logJ)[:]
 end
