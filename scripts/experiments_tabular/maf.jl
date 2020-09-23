@@ -41,7 +41,7 @@ function fit(data, parameters)
 		global info, fit_t, _, _, _ = @timed fit!(model, data, parameters)
  	catch e
 		@info "Failed training due to \n$e"
-		return (fit_t = NaN,), []
+		return (fit_t = NaN, model = nothing,), []
 	end
 
 	training_info = (
@@ -75,9 +75,11 @@ while try_counter < max_tries
 			
 			training_info, results = fit(data, edited_parameters)
 
-			tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
-			training_info = [p for p in pairs(training_info) if p[1] != :model]
-			save_entries = merge((;training_info...), (modelname = modelname, seed = seed, dataset = dataset))
+			if training_info.model != nothing
+				tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+				training_info = merge(training_info, (model = nothing,))
+			end
+			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
 
 			for result in results
 				GenerativeAD.experiment(result..., data, savepath; save_entries...)
