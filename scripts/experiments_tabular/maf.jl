@@ -47,6 +47,8 @@ function fit(data, parameters)
 	training_info = (
 		fit_t = fit_t,
 		history = info.history,
+		niter = info.niter,
+		npars = info.npars,
 		model = info.model
 		)
 
