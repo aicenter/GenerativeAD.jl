@@ -1,8 +1,9 @@
+using DrWatson
+@quickactivate
 using Test
 using GenerativeAD
 using UCI
 using ArgParse
-using DrWatson
 
 s = ArgParseSettings()
 @add_arg_table! s begin

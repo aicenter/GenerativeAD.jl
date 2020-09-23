@@ -6,6 +6,8 @@ import StatsBase: fit!, predict
 using StatsBase
 using BSON
 using Flux
+dataset = "iris"
+seed = 1
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -31,8 +33,8 @@ modelname = "vae"
 Should return a named tuple that contains a sample of model parameters.
 """
 function sample_params()
-	par_vec = (2 .^(3:9) , ["relu", "swish", "tanh"], 2 .^(6:10), 3:4)
-	argnames = (:zdim, :activation, :hdim, :nlayers)
+	par_vec = (2 .^(3:8), 2 .^(4:10), 10f0 .^(-4:-2), 2 .^ (5:7), ["relu", "swish", "tanh"], 3:4)
+	argnames = (:zdim, :hdim, :lr, :batchsize, :activation, :nlayers)
 	parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 	# ensure that zdim < hdim
 	while parameters.zdim >= parameters.hdim
@@ -50,11 +52,13 @@ Final parameters is a named tuple of names and parameter values that are used fo
 """
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.vae_constructor(;parameters...)
+
+	model = GenerativeAD.Models.vae_constructor(;idim=size(data[1][1],1), parameters...)
 
 	# fit train data
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
+		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; max_train_time=82800, 
+			patience=30, check_interval=10, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
 		return (fit_t = NaN,), [] 
@@ -67,17 +71,6 @@ function fit(data, parameters)
 		)
 
 	# now return the different scoring functions
-	function knn_predict(model, x, v::Symbol)
-		try 
-			return predict(model, x, v)
-		catch e
-			if isa(e, ArgumentError) # this happens in the case when k > number of points
-				return NaN # or nothing?
-			else
-				rethrow(e)
-			end
-		end
-	end
 	training_info, [(x -> knn_predict(model, x, v), merge(parameters, (distance = v,))) for v in [:gamma, :kappa, :delta]]
 end
 
