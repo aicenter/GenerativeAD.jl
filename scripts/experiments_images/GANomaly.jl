@@ -93,7 +93,7 @@ while try_counter < max_tries
 
 	for seed in 1:max_seed
 		for i in 1:anomaly_classes
-			savepath = datadir("experiments/images/$(modelname)/$(dataset)_ac=$(i)/seed=$(seed)")
+			savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 
 			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
 			# computing additional parameters
