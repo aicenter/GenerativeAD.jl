@@ -115,7 +115,7 @@ function StatsBase.fit!(model::F, data::Tuple, p) where F <: TabularFlow
 	# returning model in this way is not ideal
 	# it would have to modify the reference the
 	# underlying structure
-	(history=history, iterations=i, model=model)
+	(history=history, niter=i, model=model, npars=sum(map(p->length(p), ps)))
 end
 
 function StatsBase.predict(model::F, X) where {F <: TabularFlow}
