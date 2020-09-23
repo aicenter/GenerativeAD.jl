@@ -66,7 +66,7 @@ function StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple; max_train_time
 	_patience = patience
 
 	tr_x = data[1][1]
-	val_x = data[2][1]
+	val_x = data[2][1][:,data[2][2] .== 0]
 	val_N = size(val_x,2)
 
 	# on large datasets, batching loss is faster
