@@ -75,7 +75,8 @@ function fit(data, parameters)
 		fit_t = fit_t,
 		model = (info[2] |> cpu),
 		history = info[1], # losses through time
-        npars = info[3] # number of parameters
+        npars = info[3], # number of parameters
+        iters = info[4] # optim iterations of model
 		)
 
 

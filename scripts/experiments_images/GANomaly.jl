@@ -77,7 +77,8 @@ function fit(data, parameters)
 		fit_t = fit_t,
 		model = (info[2]|>cpu, info[3]|>cpu),
 		history = info[1], # losses through time
-        npars = info[4] # number of parameters
+        npars = info[4], # number of parameters
+        iters = info[5] # optim iterations of model
 		)
 
 	return training_info, [(x -> GenerativeAD.Models.anomaly_score(generator|>cpu, x; dims=3), parameters)]

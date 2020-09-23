@@ -253,7 +253,7 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 	ps_d = Flux.params(SkipGAN.discriminator)
 
 	progress = Progress(length(train_loader))
-	for (iters, X) in enumerate(train_loader)
+	for (iter, X) in enumerate(train_loader)
 		#generator update
 		loss1, back = Flux.pullback(ps_g) do
 			generator_loss(SkipGAN, getobs(X)|>gpu, weights=params.weights)
@@ -270,12 +270,12 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 
 		history = update_history(history, loss1, loss2)
 		next!(progress; showvalues=[
-			(:iters, "$(iters)/$(params.iters)"),
+			(:iters, "$(iter)/$(params.iters)"),
 			(:generator_loss, loss1[1]),
 			(:discriminator_loss, loss2)
 			])
 		#TODO optionaly add discriminator restrart if its loss drops under 1e-5
-		if mod(iters, params.check_every) == 0
+		if mod(iter, params.check_every) == 0
 			tot_val_loss_g, tot_val_loss_d, tot_val_loss_rl, tot_val_loss_ll = 0, 0, 0, 0
 			for X_val in val_loader
 				vgl, vdl,  rl, ll = validation_loss(SkipGAN, X_val |> gpu, weights=params.weights)
@@ -294,13 +294,14 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 			else
 				patience -= 1
 				if patience == 0
-					@info "Stopped training after $(iters) iters"
+					@info "Stopped training after $(iter) iters"
+					iter = iter - params.check_every*params.patience
 					break
 				end
 			end
 		end
 	end
-	return history, best_model, sum(map(p->length(p), ps_g)) + sum(map(p->length(p), ps_d))
+	return history, best_model, sum(map(p->length(p), ps_g)) + sum(map(p->length(p), ps_d)), iter
 end
 
 """

@@ -343,12 +343,13 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 				patience -= 1
 				if patience == 0
 					@info "Stopped training after $(iter) iterations"
+					iter = iter - params.check_every*params.patience
 					break
 				end
 			end
 		end
 	end
-	return history, best_generator, best_discriminator, sum(map(p->length(p), ps_g))+sum(map(p->length(p), ps_d))
+	return history, best_generator, best_discriminator, sum(map(p->length(p), ps_g))+sum(map(p->length(p), ps_d)), iter
 end
 
 """
