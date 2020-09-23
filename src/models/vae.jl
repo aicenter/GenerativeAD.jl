@@ -103,7 +103,7 @@ function StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple; max_train_time
 			end
 		elseif time() - start_time > max_train_time # stop early if time is running out
 			model = deepcopy(tr_model)
-			@info "Stopped training after $((time() - start_time)/3600) hours."
+			@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
 			break
 		else # else stop if the model has not improved for `patience` iterations
 			_patience -= 1
@@ -114,7 +114,8 @@ function StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple; max_train_time
 		end
 		i += 1
 	end
-	(history=history, iterations=i, model=model)
+	# again, this is not optimal, the model should be passed by reference and only teh reference should be edited
+	(history=history, iterations=i, model=model, npars=sum(map(p->length(p), Flux.params(model))))
 end
 
 """

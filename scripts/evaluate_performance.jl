@@ -8,6 +8,7 @@ using EvalMetrics
 using FileIO
 using BSON
 using DataFrames
+using ValueHistories
 
 function compute_stats(f::String)
 	data = load(f)

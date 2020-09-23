@@ -52,26 +52,31 @@ Final parameters is a named tuple of names and parameter values that are used fo
 """
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
-
 	model = GenerativeAD.Models.vae_constructor(;idim=size(data[1][1],1), parameters...)
 
 	# fit train data
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; max_train_time=82800, 
-			patience=30, check_interval=10, parameters...)
+		global info, fit_t, _, _, _ = @timed fit!(model, data; max_train_time=82800, 
+			patience=200, check_interval=10, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
-		return (fit_t = NaN,), [] 
+		@info "Failed training due to \n$e"
+		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
 	end
 
 	# construct return information - put e.g. the model structure here for generative models
 	training_info = (
 		fit_t = fit_t,
-		model = nothing
+		history = info.history,
+		npars = info.npars,
+		model = info.model
 		)
 
 	# now return the different scoring functions
-	training_info, [(x -> knn_predict(model, x, v), merge(parameters, (distance = v,))) for v in [:gamma, :kappa, :delta]]
+	training_info, [
+		(x -> GenerativeAD.Models.reconstruction_score(model, x), merge(parameters, (score = "reconstruction",))),
+		(x -> GenerativeAD.Models.latent_score(model, x), merge(parameters, (score = "latent",))),
+		]
 end
 
 ####################################################################
@@ -97,6 +102,13 @@ while try_counter < max_tries
 		if GenerativeAD.check_params(savepath, data, edited_parameters)
 			# fit
 			training_info, results = fit(data, edited_parameters)
+
+			# save the model separately			
+			if training_info.model != nothing
+				tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+				training_info = merge(training_info, (model = nothing,))
+			end
+
 			# here define what additional info should be saved together with parameters, scores, labels and predict times
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
 
