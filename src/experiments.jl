@@ -52,6 +52,8 @@ function check_params(savepath, data, parameters)
 	end
 	# filter out duplicates created by tagsave
 	fs = filter(x->!(occursin("_#", x)), readdir(savepath))
+	# filter out model files
+	fs = filter(x->!(startswith(x, "model")), fs)
 	# if the first argument name contains a "_", than the savename is parsed wrongly
 	saved_params = map(x -> DrWatson.parse_savename("_"*x)[2], fs)
 	for params in saved_params

@@ -19,52 +19,42 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed = parsed_args
 
-modelname = "pidforest"
+modelname = "MAF"
 function sample_params()
-	par_vec = (6:2:10, 50:25:200, [50, 100, 250, 500, 1000, 5000], 3:6, [0.05, 0.1, 0.2], )
-	argnames = (:max_depth, :n_trees, :max_samples, :max_buckets, :epsilon, )
+	par_vec = ([2, 5, 10], 2 .^(4:10), 2:3, ["natural", "random"], [1f-4], [100], [30], [1f-6])
+	argnames = (:nflows, :hdim, :nlayers, :ordering, :lr, :batchsize, :patience, :wreg)
 
 	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
 
-function GenerativeAD.edit_params(data, parameters)
-	D, N = size(data[1][1])
-	if N < parameters.max_samples
-		# if there are not enough samples, choose closest multiple of 50
-		@info "Not enough samples in training, changing max_samples for each tree."
-		return merge(parameters, (;max_samples = max(25, N - mod(N, 50))))
-	else 
-		return parameters
-	end
-end
-
 function fit(data, parameters)
-	model = GenerativeAD.Models.PIDForest(Dict(pairs(parameters)))
+	idim = size(data[1][1], 1)
+
+	model = GenerativeAD.Models.MAF(
+				parameters.nflows,
+				idim,
+				parameters.hdim,
+				parameters.nlayers,
+				parameters.ordering)
 
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
-	catch e
+		global info, fit_t, _, _, _ = @timed fit!(model, data, parameters)
+ 	catch e
 		@info "Failed training due to \n$e"
-		return (fit_t = NaN,), []
+		return (fit_t = NaN, model = nothing,), []
 	end
 
 	training_info = (
 		fit_t = fit_t,
-		model = nothing
+		history = info.history,
+		niter = info.niter,
+		npars = info.npars,
+		model = info.model
 		)
 
-	training_info, [(x -> predict(model, x, pct=p), merge(parameters, Dict(:percentile => p))) for p in [10, 25, 50]]
+	training_info, [(x -> predict(info.model, x), parameters)]
 end
 
-function remove_constant_features(data)
-	X = data[1][1]
-	mask = (maximum(X, dims=2) .== minimum(X, dims=2))[:]
-	if any(mask)
-		@info "Removing $(sum(mask)) features with constant values."
-		return Tuple((data[i][1][.~mask,:], data[i][2]) for i in 1:3)
-	end
-	data
-end
 
 try_counter = 0
 max_tries = 10*max_seed
@@ -76,13 +66,19 @@ while try_counter < max_tries
 		mkpath(savepath)
 
 		data = GenerativeAD.load_data(dataset, seed=seed)
-		data = remove_constant_features(data)
 		edited_parameters = GenerativeAD.edit_params(data, parameters)
 
 		if GenerativeAD.check_params(savepath, data, edited_parameters)
-			@info "Started training PIDForest$(edited_parameters) on $(dataset):$(seed)"
+			@info "Started training $(modelname)$(edited_parameters) on $(dataset):$(seed)"
+			@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[2][1], 2))"
+			@info "Number of features: $(size(data[1][1], 1))"
 			
 			training_info, results = fit(data, edited_parameters)
+
+			if training_info.model != nothing
+				tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+				training_info = merge(training_info, (model = nothing,))
+			end
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
 
 			for result in results

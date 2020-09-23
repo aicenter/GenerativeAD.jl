@@ -10,11 +10,15 @@ using ImageTransformations
 using MLDataPattern
 using ProgressMeter: Progress, next!
 
+include("utils/losses.jl")
+include("utils/nn_builders.jl")
+
 include("knn.jl")
 include("pidforest.jl")
 include("GANomaly.jl")
 include("skmodels.jl")
 include("pyodmodels.jl")
+include("tabular_flows.jl")
 include("vae.jl")
 
 end
