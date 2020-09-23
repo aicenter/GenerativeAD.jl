@@ -70,14 +70,14 @@ function fit(data, parameters)
 		global info, fit_t, _, _, _ = @timed fit!(generator|>gpu, discriminator|>gpu, data, parameters)
 	catch e
 		println("Error caught.")
-		return (fit_t = NaN,), []
+		return (fit_t = NaN, model = nothing, history = nothing, n_parameters = NaN), []
 	end
 
 	training_info = (
 		fit_t = fit_t,
 		model = (info[2]|>cpu, info[3]|>cpu),
 		history = info[1], # losses through time
-        n_parameters = info[4] # number of parameters
+        npars = info[4] # number of parameters
 		)
 
 	return training_info, [(x -> GenerativeAD.Models.anomaly_score(generator|>cpu, x; dims=3), parameters)]
@@ -110,10 +110,11 @@ while try_counter < max_tries
 				#(X_train,_), (X_val, y_val), (X_test, y_test) = data
 				training_info, results = fit(data, parameters)
 				# saving model separately
-				tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
-				training_info.model = nothing
+                if training_info.model != nothing
+                    tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+                    training_info = merge(training_info, (model = nothing,))
+                end
 				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
-
 				# now loop over all anomaly score funs
 				for result in results
 					GenerativeAD.experiment(result..., data, savepath; save_entries...)

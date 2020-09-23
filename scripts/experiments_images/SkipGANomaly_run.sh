@@ -9,6 +9,6 @@ MAX_SEED=$1
 DATASET=$2
 ANOMALY_CLASSES=$3
 
-module load Julia/1.4.1-linux-x86_64
+module load Julia/1.5.1-linux-x86_64
 
 julia ./SkipGANomaly.jl ${MAX_SEED} $DATASET ${ANOMALY_CLASSES}
