@@ -81,7 +81,7 @@ function fit(data, parameters)
         iters = info[5] # optim iterations of model
 		)
 
-	return training_info, [(x -> GenerativeAD.Models.anomaly_score(generator|>cpu, x; dims=3), parameters)]
+	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(generator|>cpu, x; dims=3), parameters)]
 end
 
 #_________________________________________________________________________________________________

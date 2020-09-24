@@ -272,11 +272,21 @@ end
 
 computes unscaled anomaly score A(x) = || E1(x) - E2(D(E1(x))) ||_1
 """
-function anomaly_score(generator::Generator, real_input;dims=3)
+function anomaly_score(generator::Generator, real_input; dims=3)
 	_, latent_i, latent_o = generator(real_input)
 	return vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims)))'
 end
 
+function anomaly_score_gpu(generator::Generator, real_input; dims=3, batch_size=64)
+	real_input = Flux.Data.DataLoader(real_input, batchsize=batch_size)
+	generator = generator|>gpu
+	output = Array{Float32}([])
+	for X in real_input
+		_, latent_i, latent_o = generator(X|>gpu)
+		output = cat(output,vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims))) |> cpu, dims=1)
+	end
+	return output'
+end
 
 """
 	Model's training and inference

@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
-using GenerativeAD.Models: anomaly_score, generalized_anomaly_score
+using GenerativeAD.Models: anomaly_score, generalized_anomaly_score_gpu
 using BSON
 using StatsBase: fit!, predict, sample
 
@@ -80,7 +80,7 @@ function fit(data, parameters)
 		)
 
 
-	return training_info, [(x -> generalized_anomaly_score(model|>cpu, x, R=r, L=l, lambda=lam), parameters)
+	return training_info, [(x -> generalized_anomaly_score_gpu(model|>cpu, x, R=r, L=l, lambda=lam), parameters)
 							for r in ["mae", "mse"] for l in ["mae", "mse"] for lam = 0.1:0.1:0.9 ]
 end
 

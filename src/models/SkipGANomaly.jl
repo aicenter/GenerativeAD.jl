@@ -228,6 +228,26 @@ function generalized_anomaly_score(SkipGAN::SkipGANomaly, real_input; R="mae", L
 	lat_loss = L(feat_fake, feat_real, agg=x->Flux.mean(x, dims=dims)) # loss of latent representation
 	return lambda .* rec_loss .+ (1 - lambda) .* lat_loss |>cpu
 end
+
+function generalized_anomaly_score_gpu(SkipGAN::SkipGANomaly, real_input; R="mae", L="mae", lambda=0.9, dims=[1,2,3], batch_size=64)
+	real_input = Flux.Data.DataLoader(real_input, batchsize=batch_size)
+	SkipGAN = SkipGAN |> gpu
+	R = getfield(Flux, Symbol(R))
+	L = getfield(Flux, Symbol(L))
+	Rs = Array{Float32}([])
+	Ls = Array{Float32}([])
+	for X in real_input
+		fake = SkipGAN.generator(X|>gpu)
+		pred_real, feat_real = SkipGAN.discriminator(X|>gpu)
+		pred_fake, feat_fake = SkipGAN.discriminator(fake)
+
+		Rs = cat(Rs, vec(R(fake, X|>gpu, agg=x->Flux.mean(x, dims=dims))|>cpu), dims=1)
+		Ls = cat(Ls, vev(L(feat_fake, feat_real, agg=x->Flux.mean(x, dims=dims))|>cpu), dims=1)
+		#output = cat(output,vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims))) |> cpu, dims=1)
+	end
+	return lambda .* Rs .+ (1 - lambda) .* Ls
+end
+
 """
 	Model's training and inference
 """
