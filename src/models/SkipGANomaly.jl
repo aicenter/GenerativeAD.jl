@@ -315,13 +315,16 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 				patience -= 1
 				if patience == 0
 					@info "Stopped training after $(iter) iters"
-					iter = iter - params.check_every*params.patience
+					global iters = iter - params.check_every*params.patience
 					break
 				end
 			end
 		end
+		if iter == params.iters
+			global iters = params.iters
+		end
 	end
-	return history, best_model, sum(map(p->length(p), ps_g)) + sum(map(p->length(p), ps_d)), iter
+	return history, best_model, sum(map(p->length(p), ps_g)) + sum(map(p->length(p), ps_d)), iters
 end
 
 """
