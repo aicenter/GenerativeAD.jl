@@ -5,6 +5,7 @@ using ValueHistories
 using MLDataPattern: RandomBatches
 using Distributions
 using StatsBase
+using Random
 
 """
 	safe_softplus(x::T)
@@ -17,10 +18,13 @@ safe_softplus(x::T) where T  = softplus(x) + T(0.000001)
 """
 	vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers=3, kwargs...)
 """
-function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers=3, kwargs...)
+function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, init_seed::Int=nothing, kwargs...)
 	(nlayers < 2) ? error("Less than 3 layers are not supported") : nothing
 	# function from string
 	act = eval(Meta.parse(activation))
+
+	# if seed is given, set it
+	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
 	
 	# construct the model
 	# encoder - diagonal covariance
@@ -37,6 +41,9 @@ function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=12
 		ConditionalDists.SplitLayer(hdim, [idim, 1], [identity, safe_softplus])
 		)
 	decoder = ConditionalMvNormal(decoder_map)
+
+	# reset seed
+	(init_seed != nothing) ? Random.seed!() : nothing
 
 	# get the vanilla VAE
 	model = VAE(zdim, encoder, decoder)
