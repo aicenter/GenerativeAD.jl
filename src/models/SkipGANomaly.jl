@@ -242,7 +242,7 @@ function generalized_anomaly_score_gpu(SkipGAN::SkipGANomaly, real_input; R="mae
 		pred_fake, feat_fake = SkipGAN.discriminator(fake)
 
 		Rs = cat(Rs, vec(R(fake, X|>gpu, agg=x->Flux.mean(x, dims=dims))|>cpu), dims=1)
-		Ls = cat(Ls, vev(L(feat_fake, feat_real, agg=x->Flux.mean(x, dims=dims))|>cpu), dims=1)
+		Ls = cat(Ls, vec(L(feat_fake, feat_real, agg=x->Flux.mean(x, dims=dims))|>cpu), dims=1)
 		#output = cat(output,vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims))) |> cpu, dims=1)
 	end
 	return lambda .* Rs .+ (1 - lambda) .* Ls
