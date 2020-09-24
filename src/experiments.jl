@@ -12,7 +12,7 @@ function experiment(score_fun, parameters, data, savepath; verb=true, save_entri
 	tst_scores, tst_eval_t, _, _, _ = @timed score_fun(tst_data[1])
 
 	# now save the stuff
-	savef = joinpath(savepath, savename(parameters, "bson"))
+	savef = joinpath(savepath, savename(parameters, "bson", digits=5))
 	result = (
 		parameters = parameters,
 		tr_scores = tr_scores,
@@ -46,11 +46,18 @@ end
 
 This checks if the model with given parameters wasn't already trained and saved. 
 """
-function check_params(edit_params_f, savepath, data, parameters)
-	eparams = edit_params_f(data, parameters) 
-	saved_params = map(x->DrWatson.parse_savename(x)[2], readdir(savepath))
+function check_params(savepath, data, parameters)
+	if ~isdir(savepath)
+		return true
+	end
+	# filter out duplicates created by tagsave
+	fs = filter(x->!(occursin("_#", x)), readdir(savepath))
+	# filter out model files
+	fs = filter(x->!(startswith(x, "model")), fs)
+	# if the first argument name contains a "_", than the savename is parsed wrongly
+	saved_params = map(x -> DrWatson.parse_savename("_"*x)[2], fs)
 	for params in saved_params
-		all(map(k->params[String(k)] == eparams[k], collect(keys(eparams)))) ? (return false) : nothing
+		all(map(k->params[String(k)] == parameters[k], collect(keys(parameters)))) ? (return false) : nothing
 	end
 	true
 end

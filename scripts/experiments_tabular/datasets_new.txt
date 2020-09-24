@@ -1,0 +1,8 @@
+annthyroid
+arrhythmia
+htru2
+kdd99_small
+spambase
+mammography
+har
+seismic

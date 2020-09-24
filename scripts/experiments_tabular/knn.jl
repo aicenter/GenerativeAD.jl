@@ -1,14 +1,14 @@
+using DrWatson
+@quickactivate
 using ArgParse
 using GenerativeAD
 import StatsBase: fit!, predict
 using StatsBase
-using DrWatson
-@quickactivate
 using BSON
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-   "seed"
+   "max_seed"
         required = true
         arg_type = Int
         help = "seed"
@@ -18,7 +18,7 @@ s = ArgParseSettings()
         help = "dataset"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, seed = parsed_args
+@unpack dataset, max_seed = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -27,7 +27,7 @@ modelname = "knn"
 """
 	sample_params()
 
-Should return a Dict that contains a sample of model parameters.
+Should return a named tuple that contains a sample of model parameters.
 """
 function sample_params()
 	par_vec = (1:2:101,)
@@ -40,12 +40,9 @@ end
 This is the most important function - returns `training_info` and a tuple or a vector of tuples `(score_fun, final_parameters)`.
 `training_info` contains additional information on the training process that should be saved, the same for all anomaly score functions.
 Each element of the return vector contains a specific anomaly score function - there can be multiple for each trained model.
-Final parameters is a Dict of names and parameter values that are used for creation of the savefile name.
+Final parameters is a named tuple of names and parameter values that are used for creation of the savefile name.
 """
 function fit(data, parameters)
-	# edit params if needed
-	parameters = GenerativeAD.edit_params(data, parameters)
-
 	# construct model - constructor should only accept kwargs
 	model = GenerativeAD.Models.knn_constructor(;v=:kappa, parameters...)
 
@@ -75,38 +72,45 @@ function fit(data, parameters)
 			end
 		end
 	end
-	training_info, [(x -> knn_predict(model, x, v), merge(parameters, Dict(:distance => v))) for v in [:gamma, :kappa, :delta]]
+	training_info, [(x -> knn_predict(model, x, v), merge(parameters, (distance = v,))) for v in [:gamma, :kappa, :delta]]
 end
 
 ####################################################################
 ################ THIS PART IS COMMON FOR ALL MODELS ################
-# paths
-savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)") 
-mkpath(savepath)
-
-# get params, initialize the model, train it, predict scores and save everything
-data = GenerativeAD.load_data(dataset, seed=seed)
-
 # set a maximum for parameter sampling retries
 try_counter = 0
-max_tries = 10
-while try_counter < max_tries 
-	parameters = sample_params()
-	# here, check if a model with the same parameters was already tested
-	if GenerativeAD.check_params(GenerativeAD.edit_params, savepath, data, parameters)
-		# fit
-		training_info, results = fit(data, parameters)
-		# here define what additional info should be saved together with parameters, scores, labels and predict times
-		save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+max_tries = 10*max_seed
+while try_counter < max_tries
+    parameters = sample_params()
+
+    for seed in 1:max_seed
+		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
+		mkpath(savepath)
+
+		# get data
+		data = GenerativeAD.load_data(dataset, seed=seed)
 		
-		# now loop over all anomaly score funs
-		for result in results
-			GenerativeAD.experiment(result..., data, savepath; save_entries...)
+		# edit parameters
+		edited_parameters = GenerativeAD.edit_params(data, parameters)
+		
+		@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
+		# check if a combination of parameters and seed alread exists
+		if GenerativeAD.check_params(savepath, data, edited_parameters)
+			# fit
+			training_info, results = fit(data, edited_parameters)
+			# here define what additional info should be saved together with parameters, scores, labels and predict times
+			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+
+			# now loop over all anomaly score funs
+			for result in results
+				GenerativeAD.experiment(result..., data, savepath; save_entries...)
+			end
+			global try_counter = max_tries + 1
+		else
+			@info "Model already present, trying new hyperparameters..."
+			global try_counter += 1
 		end
-		break
-	else
-		@info "Model already present, sampling new hyperparameters..."
-		global try_counter += 1
-	end 
+	end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
+

@@ -2,7 +2,8 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
-using StatsBase: fit!, predict, sample
+import StatsBase: fit!, predict
+using StatsBase
 using BSON
 
 s = ArgParseSettings()
@@ -19,53 +20,41 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed = parsed_args
 
-modelname = "pidforest"
-function sample_params()
-	par_vec = (6:2:10, 50:25:200, [50, 100, 250, 500, 1000, 5000], 3:6, [0.05, 0.1, 0.2], )
-	argnames = (:max_depth, :n_trees, :max_samples, :max_buckets, :epsilon, )
+#######################################################################################
+################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
+modelname = "hbos"
+# sample parameters, should return a Dict of model kwargs 
 
+function sample_params()
+	par_vec = (2:2:100,0.05:0.05:1,0:0.05:1)
+	argnames = (:n_bins, :alpha, :tol)
 	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
-
-function GenerativeAD.edit_params(data, parameters)
-	D, N = size(data[1][1])
-	if N < parameters.max_samples
-		# if there are not enough samples, choose closest multiple of 50
-		@info "Not enough samples in training, changing max_samples for each tree."
-		return merge(parameters, (;max_samples = max(25, N - mod(N, 50))))
-	else 
-		return parameters
-	end
-end
-
 function fit(data, parameters)
-	model = GenerativeAD.Models.PIDForest(Dict(pairs(parameters)))
+	# construct model - constructor should only accept kwargs
+	model = GenerativeAD.Models.HBOS(;parameters...)
 
+	# fit train data
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
 	catch e
-		@info "Failed training due to \n$e"
-		return (fit_t = NaN,), []
+		# return an empty array if fit fails so nothing is computed
+		return (fit_t = NaN,), [] 
 	end
 
+	# construct return information - put e.g. the model structure here for generative models
 	training_info = (
 		fit_t = fit_t,
 		model = nothing
 		)
 
-	training_info, [(x -> predict(model, x, pct=p), merge(parameters, Dict(:percentile => p))) for p in [10, 25, 50]]
+	# now return the different scoring functions
+	training_info, [(x->predict(model, x), parameters)]
 end
 
-function remove_constant_features(data)
-	X = data[1][1]
-	mask = (maximum(X, dims=2) .== minimum(X, dims=2))[:]
-	if any(mask)
-		@info "Removing $(sum(mask)) features with constant values."
-		return Tuple((data[i][1][.~mask,:], data[i][2]) for i in 1:3)
-	end
-	data
-end
-
+####################################################################
+################ THIS PART IS COMMON FOR ALL MODELS ################
+# set a maximum for parameter sampling retries
 try_counter = 0
 max_tries = 10*max_seed
 while try_counter < max_tries
@@ -75,16 +64,21 @@ while try_counter < max_tries
 		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
 		mkpath(savepath)
 
+		# get data
 		data = GenerativeAD.load_data(dataset, seed=seed)
-		data = remove_constant_features(data)
+		
+		# edit parameters
 		edited_parameters = GenerativeAD.edit_params(data, parameters)
 
+		@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
+		# check if a combination of parameters and seed alread exists
 		if GenerativeAD.check_params(savepath, data, edited_parameters)
-			@info "Started training PIDForest$(edited_parameters) on $(dataset):$(seed)"
-			
+			# fit
 			training_info, results = fit(data, edited_parameters)
+			# here define what additional info should be saved together with parameters, scores, labels and predict times
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
 
+			# now loop over all anomaly score funs
 			for result in results
 				GenerativeAD.experiment(result..., data, savepath; save_entries...)
 			end
@@ -96,3 +90,4 @@ while try_counter < max_tries
 	end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
+
