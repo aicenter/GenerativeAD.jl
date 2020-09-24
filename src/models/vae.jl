@@ -121,7 +121,7 @@ function StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple; max_train_time
 		end
 		i += 1
 	end
-	# again, this is not optimal, the model should be passed by reference and only teh reference should be edited
+	# again, this is not optimal, the model should be passed by reference and only the reference should be edited
 	(history=history, iterations=i, model=model, npars=sum(map(p->length(p), Flux.params(model))))
 end
 
@@ -135,7 +135,7 @@ reconstruct(model::GenerativeModels.VAE, x) = mean(model.decoder, rand(model.enc
 """
 	reconstruction_score(model::GenerativeModels.VAE, x)
 
-Anomaly score based on 
+Anomaly score based on the reconstruction probability of the data.
 """
 function reconstruction_score(model::GenerativeModels.VAE, x) 
 	p = condition(model.decoder, rand(model.encoder, x))
@@ -143,6 +143,8 @@ function reconstruction_score(model::GenerativeModels.VAE, x)
 end
 """
 	latent_score(model::GenerativeModels.VAE, x) 
+
+Anomaly score based on the similarity of the encoded data and the prior.
 """
 function latent_score(model::GenerativeModels.VAE, x) 
 	z = rand(model.encoder, x)

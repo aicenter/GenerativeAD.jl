@@ -59,7 +59,7 @@ function fit(data, parameters)
 
 	# fit train data
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data; max_train_time=82800, 
+		global info, fit_t, _, _, _ = @timed fit!(model, data; max_train_time=82800/max_seed, 
 			patience=200, check_interval=10, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
