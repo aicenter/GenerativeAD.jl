@@ -70,7 +70,7 @@ function StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple; max_train_time
 	val_N = size(val_x,2)
 
 	# on large datasets, batching loss is faster
-	best_val_loss = (val_N > 5000) ? loss(tr_model, val_x, 256) : loss(tr_model, val_x)
+	best_val_loss = Inf
 	i = 1
 	start_time = time() # end the training loop after 23hrs
 	for batch in RandomBatches(tr_x, batchsize)
