@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
-using GenerativeAD.Models: anomaly_score
+using GenerativeAD.Models: anomaly_score, generalized_anomaly_score_gpu
 using BSON
 using StatsBase: fit!, predict, sample
 
@@ -27,32 +27,31 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes = parsed_args
 
-modelname = "Conv-GANomaly"
-
+modelname = "Conv-SkipGANomaly"
 
 function sample_params()
-	argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :batch_size,
-				:iters, :check_every, :patience, )
+	argnames = (:num_filters, :extra_layers, :lr, :batch_size,
+				:iters, :check_every, :patience, :lambda,)
 	options = (
-			[10:10:200...],
-			[2^x for x=2:8],
-			[0:3...],
-			[0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
-			[2^x for x=2:8],
-			[10000],
-			[30],
-			[10],
-			)
-	return NamedTuple{argnames}(map(x->sample(x,1)[1], options))
+			   [2^x for x=2:6],
+			   [0:3 ...],
+			   [0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
+			   [2^x for x=2:8],
+			   [10000],
+			   [30],
+			   [10],
+			   [0.9],
+			   )
+	w = (weights= sample([1,10:10:90...],3),)
+	return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], options)), w)
 end
 
 """
 	function fit(data, parameters)
 
 parameters => type named tuple with keys
-	latent_dim    - dimension of latent space on the encoder's end
 	num_filters   - number of kernels/masks in convolutional layers
-	extra_layers  - number of additional conv layers
+	extra_layers  - number of additional conv layers in discriminator
 	lr            - learning rate for optimiser
 	iters         - number of optimisation steps (iterations) during training
 	batch_size    - batch/minibatch size
@@ -63,11 +62,10 @@ Note:
 """
 function fit(data, parameters)
 	# define models (Generator, Discriminator)
-	generator, discriminator, _, _ = GenerativeAD.Models.ganomaly_constructor(parameters)
+	model, _ = GenerativeAD.Models.SkipGANomaly_constructor(parameters)
 
-	# define optimiser
 	try
-		global info, fit_t, _, _, _ = @timed fit!(generator|>gpu, discriminator|>gpu, data, parameters)
+		global info, fit_t, _, _, _ = @timed fit!(model |>gpu , data, parameters)
 	catch e
 		println("Error caught.")
 		return (fit_t = NaN, model = nothing, history = nothing, n_parameters = NaN), []
@@ -75,13 +73,15 @@ function fit(data, parameters)
 
 	training_info = (
 		fit_t = fit_t,
-		model = (info[2]|>cpu, info[3]|>cpu),
+		model = (info[2] |> cpu),
 		history = info[1], # losses through time
-        npars = info[4], # number of parameters
-        iters = info[5] # optim iterations of model
+        npars = info[3], # number of parameters
+        iters = info[4] # optim iterations of model
 		)
 
-	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(generator|>cpu, x; dims=3), parameters)]
+
+	return training_info, [(x -> generalized_anomaly_score_gpu(model|>cpu, x, R=r, L=l, lambda=lam), parameters)
+							for r in ["mae", "mse"] for l in ["mae", "mse"] for lam = 0.1:0.1:0.9 ]
 end
 
 #_________________________________________________________________________________________________
@@ -101,13 +101,13 @@ while try_counter < max_tries
 			in_ch = size(data[1][1],3)
 			isize = maximum([size(data[1][1],1),size(data[1][1],2)])
 
-			isize = isize + 16 - isize % 16
+			isize = isize + 32 - isize % 32
 			# update parameter
 			parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
 			# here, check if a model with the same parameters was already tested
 			if GenerativeAD.check_params(savepath, parameters, data)
 
-				data = GenerativeAD.Models.preprocess_images(data, parameters)
+				data = GenerativeAD.Models.preprocess_images(data, parameters, denominator=32)
 				#(X_train,_), (X_val, y_val), (X_test, y_test) = data
 				training_info, results = fit(data, parameters)
 				# saving model separately
