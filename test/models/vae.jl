@@ -14,7 +14,7 @@
 	X = vcat(randn(Float32, Int(M/2), N1), ones(Float32, Int(M/2), N1))
 	Y = vcat(randn(Float32, Int(M/2), N2), ones(Float32, Int(M/2), N2))
 	Z = vcat(ones(Float32, Int(M/2), N2), randn(Float32, Int(M/2), N2))
-	data = ((X,),(Y,))
+	data = ((X,),(Y,zeros(size(Y,2))))
 	parameters = (zdim=8, hdim=32, lr=0.001, batchsize=8, activation="swish", nlayers=3, idim=M)
 	model = GenerativeAD.Models.vae_constructor(;parameters...)
 	history, iterations, model = fit!(model, data; patience = 100, max_train_time=600, parameters...)
@@ -36,10 +36,4 @@
 		println("validation auc = ", au_roccurve(result[:val_labels], result[:val_scores]))
 		println("test auc = ", au_roccurve(result[:tst_labels], result[:tst_scores]))
 	end
-
-
-	m = training_info.model
-	p = condition(model.decoder, rand(model.encoder, data[2][1]))
-	-logpdf(p, x)
-
 end

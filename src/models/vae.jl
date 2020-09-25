@@ -18,26 +18,23 @@ safe_softplus(x::T) where T  = softplus(x) + T(0.000001)
 """
 	vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers=3, kwargs...)
 """
-function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, init_seed::Int=nothing, kwargs...)
+function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, init_seed=nothing, kwargs...)
 	(nlayers < 2) ? error("Less than 3 layers are not supported") : nothing
-	# function from string
-	act = eval(Meta.parse(activation))
-
+	
 	# if seed is given, set it
 	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
 	
 	# construct the model
 	# encoder - diagonal covariance
 	encoder_map = Chain(
-		Dense(idim,hdim,act),
-		[Dense(hdim, hdim, act) for _ in 1:nlayers-2]...,
+		build_mlp(idim, hdim, hdim, nlayers-1, activation=activation)...,
 		ConditionalDists.SplitLayer(hdim, [zdim, zdim], [identity, safe_softplus])
 		)
 	encoder = ConditionalMvNormal(encoder_map)
+	
 	# decoder - we will optimize only a shared scalar variance for all dimensions
 	decoder_map = Chain(
-		Dense(zdim,hdim,act),
-		Dense(hdim,hdim,act),
+		build_mlp(zdim, hdim, hdim, nlayers-1, activation=activation)...,
 		ConditionalDists.SplitLayer(hdim, [idim, 1], [identity, safe_softplus])
 		)
 	decoder = ConditionalMvNormal(decoder_map)
