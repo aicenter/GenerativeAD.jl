@@ -139,11 +139,30 @@ function reconstruction_score(model::GenerativeModels.VAE, x)
 	-logpdf(p, x)
 end
 """
+	reconstruction_score_mean(model::GenerativeModels.VAE, x)
+
+Anomaly score based on the reconstruction probability of the data. Uses mean of encoding.
+"""
+function reconstruction_score_mean(model::GenerativeModels.VAE, x) 
+	p = condition(model.decoder, mean(model.encoder, x))
+	-logpdf(p, x)
+end
+"""
 	latent_score(model::GenerativeModels.VAE, x) 
 
 Anomaly score based on the similarity of the encoded data and the prior.
 """
 function latent_score(model::GenerativeModels.VAE, x) 
 	z = rand(model.encoder, x)
+	-logpdf(model.prior, z)
+end
+
+"""
+	latent_score_mean(model::GenerativeModels.VAE, x) 
+
+Anomaly score based on the similarity of the encoded data and the prior. Uses mean of encoding.
+"""
+function latent_score_mean(model::GenerativeModels.VAE, x) 
+	z = mean(model.encoder, x)
 	-logpdf(model.prior, z)
 end
