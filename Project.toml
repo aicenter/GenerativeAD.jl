@@ -1,7 +1,7 @@
 name = "GenerativeAD"
 uuid = "a83054f2-ddd1-11e8-0102-5779cc6302e6"
 authors = ["vitskvara"]
-version = "0.2.4"
+version = "0.2.5"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
