@@ -46,6 +46,15 @@ function sample_params()
 	return parameters
 end
 """
+	loss(model::GenerativeModels.VAE, x[, batchsize])
+
+Negative ELBO for training of a VAE model.
+"""
+loss(model::GenerativeModels.VAE, x) = -elbo(model, x)
+# version of loss for large datasets
+loss(model::GenerativeModels.VAE, x, batchsize::Int) = 
+	mean(map(y->loss(model,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
+"""
 	fit(data, parameters)
 
 This is the most important function - returns `training_info` and a tuple or a vector of tuples `(score_fun, final_parameters)`.
@@ -59,7 +68,7 @@ function fit(data, parameters)
 
 	# fit train data
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data; max_train_time=82800/max_seed, 
+		global info, fit_t, _, _, _ = @timed fit!(model, data, loss; max_train_time=82800/max_seed, 
 			patience=200, check_interval=10, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
@@ -115,6 +124,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
 			edited_parameters = GenerativeAD.edit_params(data, parameters)
 			
 			@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
+			@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[3][1], 2))"
+			@info "Number of features: $(size(data[1][1], 1))"
+
 			# check if a combination of parameters and seed alread exists
 			if GenerativeAD.check_params(savepath, edited_parameters)
 				# fit

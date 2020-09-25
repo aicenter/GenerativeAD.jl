@@ -49,20 +49,10 @@ function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=12
 end
 
 """
-	loss(model::GenerativeModels.VAE, x[, batchsize])
-
-Negative ELBO for training of a VAE model.
-"""
-loss(model::GenerativeModels.VAE, x) = -elbo(model, x)
-# version of loss for large datasets where
-loss(model::GenerativeModels.VAE, x, batchsize::Int) = 
-	mean(map(y->loss(model,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
-
-"""
-	StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple; max_train_time=82800, lr=0.001, 
+	StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple, loss::Function; max_train_time=82800, lr=0.001, 
 		batchsize=64, patience=30, check_interval::Int=10, kwargs...)
 """
-function StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple; max_train_time=82800, lr=0.001, 
+function StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple, loss::Function; max_train_time=82800, lr=0.001, 
 	batchsize=64, patience=30, check_interval::Int=10, kwargs...)
 	history = MVHistory()
 	opt = ADAM(lr)
