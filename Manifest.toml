@@ -157,6 +157,12 @@ git-tree-sha1 = "7a58bb32ce5d85f8bf7559aa7c2842f9aecf52fc"
 uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
 version = "1.4.1"
 
+[[ConditionalDists]]
+deps = ["ChainRulesCore", "Distributions", "DistributionsAD", "Flux", "LinearAlgebra", "Random"]
+git-tree-sha1 = "23b2581e7dae1cc145b5998be54d5d2d5ee649e3"
+uuid = "c648c4dd-c1e0-49a6-84b9-144ae7fd2468"
+version = "0.4.2"
+
 [[ContinuousFlows]]
 deps = ["Flux", "Random"]
 git-tree-sha1 = "14b301a57250d5a68b41b0b15296e30a15d4b255"
@@ -236,10 +242,10 @@ deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[Distributions]]
-deps = ["FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns"]
-git-tree-sha1 = "3676697fd903ba314aaaa0ec8d6813b354edb875"
+deps = ["FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "StatsBase", "StatsFuns"]
+git-tree-sha1 = "501c11d708917ca09ce357bed163dbaf0f30229f"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.23.11"
+version = "0.23.12"
 
 [[DistributionsAD]]
 deps = ["ChainRules", "ChainRulesCore", "Compat", "DiffRules", "Distributions", "FillArrays", "ForwardDiff", "LinearAlgebra", "NaNMath", "PDMats", "Random", "Requires", "SpecialFunctions", "StaticArrays", "StatsBase", "StatsFuns", "ZygoteRules"]
@@ -330,6 +336,12 @@ git-tree-sha1 = "039be665faf0b8ae36e089cd694233f5dee3f7d6"
 uuid = "92fee26a-97fe-5a0c-ad85-20a5f3185b63"
 version = "0.5.1"
 
+[[GenerativeModels]]
+deps = ["ConditionalDists", "Distances", "Distributions", "DistributionsAD", "Flux", "IPMeasures", "Random", "Reexport", "Statistics"]
+git-tree-sha1 = "a7a8c706dcec67b19d9804ffddd9cd7e933a9be1"
+uuid = "6ac2c632-c4cd-11e9-0501-33c4b9b2f9c9"
+version = "0.2.0"
+
 [[Graphics]]
 deps = ["Colors", "LinearAlgebra", "NaNMath"]
 git-tree-sha1 = "45d684ead5b65c043ad46bd5be750d61c39d7ef8"
@@ -353,6 +365,12 @@ deps = ["Base64", "Dates", "IniFile", "MbedTLS", "Sockets"]
 git-tree-sha1 = "2ac03263ce44be4222342bca1c51c36ce7566161"
 uuid = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 version = "0.8.17"
+
+[[IPMeasures]]
+deps = ["CUDA", "ConditionalDists", "Distances", "Distributions", "DistributionsAD", "LinearAlgebra", "StatsBase"]
+git-tree-sha1 = "6e72e420153827b9b2bc396a96bb9393336364fa"
+uuid = "d7dc6e0c-a753-11e8-227e-b362679e0b17"
+version = "0.2.0"
 
 [[IRTools]]
 deps = ["InteractiveUtils", "MacroTools", "Test"]

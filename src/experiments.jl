@@ -3,7 +3,7 @@
 
 Eval score function on test/val/train data and save.
 """
-function experiment(score_fun, parameters, data, savepath; verb=true, save_entries...)
+function experiment(score_fun, parameters, data, savepath; verb=true, save_result=true, save_entries...)
 	tr_data, val_data, tst_data = data
 
 	# extract scores
@@ -26,8 +26,10 @@ function experiment(score_fun, parameters, data, savepath; verb=true, save_entri
 		tst_eval_t = tst_eval_t
 		)
 	result = Dict{Symbol, Any}([sym=>val for (sym,val) in pairs(merge(result, save_entries))]) # this has to be a Dict 
-	tagsave(savef, result, safe = true)
-	verb ? (@info "Results saved to $savef") : nothing
+	if save_result
+		tagsave(savef, result, safe = true)
+		verb ? (@info "Results saved to $savef") : nothing
+	end
 	result
 end
 

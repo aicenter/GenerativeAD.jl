@@ -8,6 +8,7 @@ using EvalMetrics
 using FileIO
 using BSON
 using DataFrames
+using ValueHistories
 
 function compute_stats(f::String)
 	data = load(f)
@@ -42,7 +43,7 @@ function query_stats(target::String)
 			@info "$target not compatible"
 		end
 	else
-		query_stats.(joinpath.(target, readdir(target)))
+		query_stats.(joinpath.(target, filter(x->!(occursin("model_", string(x))), readdir(target))))
 	end
 end
 
