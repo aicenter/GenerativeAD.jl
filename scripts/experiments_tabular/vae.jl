@@ -78,7 +78,9 @@ function fit(data, parameters)
 	# now return the different scoring functions
 	training_info, [
 		(x -> GenerativeAD.Models.reconstruction_score(info.model, x), merge(parameters, (score = "reconstruction",))),
+		(x -> GenerativeAD.Models.reconstruction_score_mean(info.model, x), merge(parameters, (score = "reconstruction-mean",))),
 		(x -> GenerativeAD.Models.latent_score(info.model, x), merge(parameters, (score = "latent",))),
+		(x -> GenerativeAD.Models.latent_score_mean(info.model, x), merge(parameters, (score = "latent-mean",))),
 		]
 end
 function GenerativeAD.edit_params(data, parameters)
