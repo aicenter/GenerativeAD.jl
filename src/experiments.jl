@@ -44,11 +44,11 @@ function edit_params(data, parameters)
 end
 
 """
-	check_params(edit_params_f, savepath, data, parameters)
+	check_params(savepath, parameters)
 
-This checks if the model with given parameters wasn't already trained and saved. 
+Returns `true` if the model with given parameters wasn't already trained and saved. 
 """
-function check_params(savepath, data, parameters)
+function check_params(savepath, parameters)
 	if ~isdir(savepath)
 		return true
 	end
@@ -58,8 +58,11 @@ function check_params(savepath, data, parameters)
 	fs = filter(x->!(startswith(x, "model")), fs)
 	# if the first argument name contains a "_", than the savename is parsed wrongly
 	saved_params = map(x -> DrWatson.parse_savename("_"*x)[2], fs)
+	# now filter out saved models where parameter names are different or missing
+	pkeys = collect(keys(parameters))
+	filter!(ps->intersect(pkeys, Symbol.(collect(keys(ps))))==pkeys, saved_params)
 	for params in saved_params
-		all(map(k->params[String(k)] == parameters[k], collect(keys(parameters)))) ? (return false) : nothing
+		all(map(k->params[String(k)] == parameters[k], pkeys)) ? (return false) : nothing
 	end
 	true
 end

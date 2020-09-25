@@ -15,4 +15,5 @@ parsed_args = parse_args(ARGS, s)
 @unpack complete = parsed_args
 
 include("data.jl")
+include("experiments.jl")
 include("models/runtests.jl")

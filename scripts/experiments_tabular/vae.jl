@@ -114,7 +114,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 			
 			@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
 			# check if a combination of parameters and seed alread exists
-			if GenerativeAD.check_params(savepath, data, edited_parameters)
+			if GenerativeAD.check_params(savepath, edited_parameters)
 				# fit
 				training_info, results = fit(data, edited_parameters)
 
