@@ -17,6 +17,8 @@ safe_softplus(x::T) where T  = softplus(x) + T(0.000001)
 
 """
 	vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers=3, kwargs...)
+
+Constructs a classical variational autoencoder with the ELBO loss and N(O,1) prior.
 """
 function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, init_seed=nothing, kwargs...)
 	(nlayers < 2) ? error("Less than 3 layers are not supported") : nothing
