@@ -79,7 +79,7 @@ while try_counter < max_tries
 		data = remove_constant_features(data)
 		edited_parameters = GenerativeAD.edit_params(data, parameters)
 
-		if GenerativeAD.check_params(savepath, data, edited_parameters)
+		if GenerativeAD.check_params(savepath, edited_parameters)
 			@info "Started training PIDForest$(edited_parameters) on $(dataset):$(seed)"
 			
 			training_info, results = fit(data, edited_parameters)

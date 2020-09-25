@@ -67,7 +67,7 @@ while try_counter < max_tries
 		data = GenerativeAD.load_data(dataset, seed=seed)
 		edited_parameters = GenerativeAD.edit_params(data, parameters)
 
-		if GenerativeAD.check_params(savepath, data, edited_parameters)
+		if GenerativeAD.check_params(savepath, edited_parameters)
 			@info "Started training $(modelname)$(edited_parameters) on $(dataset):$(seed)"
 			@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[2][1], 2))"
 			@info "Number of features: $(size(data[1][1], 1))"
