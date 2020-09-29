@@ -33,10 +33,10 @@ function sample_params()
 	argnames = (:num_filters, :extra_layers, :lr, :batch_size,
 				:iters, :check_every, :patience, :lambda,)
 	options = (
-			   [2^x for x=2:6],
+			   2 .^ (3:8),
 			   [0:3 ...],
-			   [0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
-			   [2^x for x=2:8],
+			   [0.0001:0.0001:0.001...],
+			   2 .^ (5:7),
 			   [10000],
 			   [30],
 			   [10],
