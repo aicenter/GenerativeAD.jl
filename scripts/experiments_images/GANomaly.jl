@@ -37,13 +37,13 @@ function sample_params()
 			2 .^(3:8),
 			2 .^(2:8)],
 			[0:3...],
-			[0.0001:0.0001:0.001...],
+			10f0 .^ (-4:-3),
 			 2 .^ (5:7),
 			[10000],
 			[30],
 			[10],
 			)
-	return NamedTuple{argnames}(map(x->sample(x,1)[1], options))
+	return NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec))
 end
 
 """
