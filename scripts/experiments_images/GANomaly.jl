@@ -31,7 +31,7 @@ modelname = "Conv-GANomaly"
 
 
 function sample_params()
-	argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :batch_size,
+	argnames = (:hdim, :num_filters, :extra_layers, :lr, :batch_size,
 				:iters, :check_every, :patience, )
 	par_vec = (
 			2 .^(3:8),

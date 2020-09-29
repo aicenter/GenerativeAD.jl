@@ -381,7 +381,7 @@ end
 """
 function ganomaly_constructor(kwargs)
 	generator_params = (isize=kwargs.isize,
-						latent_dim=kwargs.latent_dim,
+						latent_dim=kwargs.hdim,
 						in_ch = kwargs.in_ch,
 						nf = kwargs.num_filters,
 						extra_layers = kwargs.extra_layers)
