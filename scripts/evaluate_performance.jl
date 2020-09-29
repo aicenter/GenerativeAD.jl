@@ -7,6 +7,7 @@ using DataFrames
 using PrettyTables
 using PrettyTables.Crayons
 using Statistics
+using Base.Threads: @threads
 
 # pkgs which come from BSONs
 using ValueHistories
@@ -103,7 +104,7 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 	@info "Collected $(length(files)) files from $source folder."
 
 	# run multithread map here
-	for f in files
+	@threads for f in files
 		try
 			target_dir = dirname(replace(f, source_prefix => target_prefix))
 			target = joinpath(target_dir, "eval_$(basename(f))")
@@ -206,6 +207,6 @@ end
 source_prefix, target_prefix = "experiments/tabular/", "evaluation/tabular/"
 generate_stats(source_prefix, target_prefix, force=true)
 
-# df = collect_stats(target_prefix)
-# df_agg = aggregate_stats(df)
-# print_table(df_agg)
+df = collect_stats(target_prefix)
+df_agg = aggregate_stats(df)
+print_table(df_agg)
