@@ -33,7 +33,7 @@ function compute_stats(f::String)
 		modelname = r[:modelname],
 		dataset = r[:dataset],
 		phash = hash(r[:parameters]),
-		parameters = r[:parameters], 
+		parameters = savename(r[:parameters]), 
 		seed = r[:seed])
 	
 	if Symbol("anomaly_class") in keys(r)
@@ -100,16 +100,18 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 	files = collect_files(source)
 	# filter out model files
 	filter!(x -> !startswith(basename(x), "model"), files)
-	@info "Collected $(lenght(files)) files from $source folder."
+	@info "Collected $(length(files)) files from $source folder."
 
 	# run multithread map here
 	for f in files
 		try
-			df = compute_stats(f)
 			target_dir = dirname(replace(f, source_prefix => target_prefix))
 			target = joinpath(target_dir, "eval_$(basename(f))")
-			tagsave(target, Dict(:df => df), safe=false, force=force)
-			@info "Saving evaluation results at $(target)"
+			if (isfile(target) && force) || ~isfile(target)
+				df = compute_stats(f)
+				wsave(target, Dict(:df => df))
+				@info "Saving evaluation results at $(target)"
+			end
 		catch e
 			@warn "Processing of $f failed due to \n$e"
 		end
@@ -124,12 +126,14 @@ Collects evaluation DataFrames from a given data folder prefix `source_prefix`.
 """
 function collect_stats(source_prefix::String)
 	source = datadir(source_prefix)
+	@info "Collecting files from $source folder."
 	files = collect_files(source)
+	@info "Collected $(length(files)) files from $source folder."
 
 	frames = []
 	# run multithread reduction with vcat here
 	for f in files
-		df = load(target)[:df]
+		df = load(f)[:df]
 		push!(frames, df)
 	end
 	vcat(frames...)
@@ -153,10 +157,10 @@ function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:ts
 			@info "\t$(mkey.modelname) with $(nrow(mg)) experiments."
 			pg = groupby(mg, :phash)
 			pg_agg = combine(pg, nrow, agg_cols .=> mean .=> agg_cols)
-			best = first(sort!(pg_agg, order(criterion, rev=true)))
+			best = first(sort!(pg_agg, order(criterion_col, rev=true)))
 			row = merge(
 				(dataset = dkey.dataset, modelname = mkey.modelname), 
-				(;zip(out_cols, [best[oc] for oc in out_cols])...))
+				(;zip(output_cols, [best[oc] for oc in output_cols])...))
 			push!(results, DataFrame([row]))
 		end
 	end
@@ -167,14 +171,14 @@ end
 	print_table(df::DataFrame)
 
 Prints dataframe with columns [:modelname, :dataset] and one scalar variable column.
-
+By default highlights maximum value in each row.
 """
 function print_table(df::DataFrame)
 	# check number of columns 
-	metric_col = setdiff(names(df), [:modelname, :dataset])
-	(lenght(metric_col) != 1) && error("Only one metric can be printed in the summary table.")
+	metric_col = setdiff(names(df), ["modelname", "dataset"])
+	(length(metric_col) != 1) && error("Only one metric can be printed in the summary table.")
 
-	### transposing the dataframe
+	# transposing the dataframe
 	results = []
 	for (dkey, dg) in pairs(groupby(df, :dataset))
 		models = dg[:modelname]
@@ -198,5 +202,10 @@ function print_table(df::DataFrame)
 	)
 end
 
+### test code
+source_prefix, target_prefix = "experiments/tabular/", "evaluation/tabular/"
+generate_stats(source_prefix, target_prefix, force=true)
 
-# generate_stats("experiments/tabular/", "evaluation/tabular/", force=true)
+# df = collect_stats(target_prefix)
+# df_agg = aggregate_stats(df)
+# print_table(df_agg)
