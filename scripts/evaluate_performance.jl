@@ -103,7 +103,6 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 	filter!(x -> !startswith(basename(x), "model"), files)
 	@info "Collected $(length(files)) files from $source folder."
 
-	# run multithread map here
 	@threads for f in files
 		try
 			target_dir = dirname(replace(f, source_prefix => target_prefix))
@@ -157,7 +156,7 @@ function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:ts
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
 			@info "\t$(mkey.modelname) with $(nrow(mg)) experiments."
 			pg = groupby(mg, :phash)
-			pg_agg = combine(pg, nrow, agg_cols .=> mean .=> agg_cols)
+			pg_agg = combine(pg, agg_cols .=> mean .=> agg_cols)
 			best = first(sort!(pg_agg, order(criterion_col, rev=true)))
 			row = merge(
 				(dataset = dkey.dataset, modelname = mkey.modelname), 
@@ -179,6 +178,8 @@ function print_table(df::DataFrame)
 	metric_col = setdiff(names(df), ["modelname", "dataset"])
 	(length(metric_col) != 1) && error("Only one metric can be printed in the summary table.")
 
+	all_models = unique(df.modelname)
+
 	# transposing the dataframe
 	results = []
 	for (dkey, dg) in pairs(groupby(df, :dataset))
@@ -187,6 +188,12 @@ function print_table(df::DataFrame)
 		row = merge(
 			(dataset = dkey.dataset,),
 			(;zip(Symbol.(models), metric)...))
+		
+		# when there are no evaluation files for some models on particular dataset
+		if nrow(dg) < length(all_models)
+			mm = setdiff(all_models, models)
+			row = merge(row, (;zip(Symbol.(mm), fill(NaN, length(mm)))...))
+		end
 		push!(results, DataFrame([row]))
 	end
 
