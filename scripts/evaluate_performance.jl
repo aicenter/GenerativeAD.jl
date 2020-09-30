@@ -143,7 +143,9 @@ end
 	aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc])
 
 Chooses agregates eval metrics by seed over a given hyperparameter and then chooses best
-model based on `criterion_col`. output_cols 
+model based on `criterion_col`. By default the output contains `dataset`, `modelname` and
+`samples` columns, where the last represents the number of hyperparameter combinations
+over which the maximum is computed. Addional comlumns can be specified using `output_cols`.
 """
 function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc])
 	metrics = ["auc", "auprc", "tpr@5", "f1@5"]
@@ -154,12 +156,12 @@ function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:ts
 	for (dkey, dg) in pairs(groupby(df, :dataset))
 		@info "Processing $(dkey.dataset) with $(nrow(dg)) trained models."
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
-			@info "\t$(mkey.modelname) with $(nrow(mg)) experiments."
 			pg = groupby(mg, :phash)
-			pg_agg = combine(pg, agg_cols .=> mean .=> agg_cols)
+			pg_agg = combine(pg, :parameters => unique => :parameters, agg_cols .=> mean .=> agg_cols)
+			@info "\t$(mkey.modelname) with $(nrow(pg_agg)) experiments."
 			best = first(sort!(pg_agg, order(criterion_col, rev=true)))
 			row = merge(
-				(dataset = dkey.dataset, modelname = mkey.modelname), 
+				(dataset = dkey.dataset, modelname = mkey.modelname, samples=nrow(pg_agg)), 
 				(;zip(output_cols, [best[oc] for oc in output_cols])...))
 			push!(results, DataFrame([row]))
 		end
@@ -170,21 +172,21 @@ end
 """
 	print_table(df::DataFrame)
 
-Prints dataframe with columns [:modelname, :dataset] and one scalar variable column.
-By default highlights maximum value in each row.
+Prints dataframe with columns [:modelname, :dataset] and one scalar variable column
+given by `metric_col` argument. By default highlights maximum value in each row.
 """
-function print_table(df::DataFrame)
-	# check number of columns 
-	metric_col = setdiff(names(df), ["modelname", "dataset"])
-	(length(metric_col) != 1) && error("Only one metric can be printed in the summary table.")
+function print_table(df::DataFrame, metric_col=:tst_auc)
+	# check if column names are present
+	(!(String(metric_col) in names(df)) || !("modelname" in names(df)) || !("dataset" in names(df))) && error("Incorrect column names.")
 
+	# get all the models that are present in the dataframe
 	all_models = unique(df.modelname)
 
 	# transposing the dataframe
 	results = []
 	for (dkey, dg) in pairs(groupby(df, :dataset))
 		models = dg[:modelname]
-		metric = dg[metric_col[1]]
+		metric = dg[metric_col]
 		row = merge(
 			(dataset = dkey.dataset,),
 			(;zip(Symbol.(models), metric)...))
@@ -211,9 +213,10 @@ function print_table(df::DataFrame)
 end
 
 ### test code
-source_prefix, target_prefix = "experiments/tabular/", "evaluation/tabular/"
+DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
+source_prefix, target_prefix = "experiments/tabular/", "evaluation-nf/tabular/"
 generate_stats(source_prefix, target_prefix, force=true)
 
 df = collect_stats(target_prefix)
-df_agg = aggregate_stats(df)
-print_table(df_agg)
+df_agg = aggregate_stats(df, :val_auc, [:tst_auc, :parameters])
+print_table(df_agg, :tst_auc)
