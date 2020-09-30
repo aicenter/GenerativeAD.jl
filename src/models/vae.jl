@@ -16,11 +16,13 @@ safe_softplus(x::T) where T  = softplus(x) + T(0.000001)
 
 
 """
-	vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers=3, kwargs...)
+	vae_constructor(;;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, 
+		init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
 
-Constructs a classical variational autoencoder with the ELBO loss and N(O,1) prior.
+Constructs a classical variational autoencoder.
 """
-function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, init_seed=nothing, kwargs...)
+function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, 
+	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
 	(nlayers < 2) ? error("Less than 3 layers are not supported") : nothing
 	
 	# if seed is given, set it
@@ -41,11 +43,21 @@ function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=12
 		)
 	decoder = ConditionalMvNormal(decoder_map)
 
+	# prior
+	if prior == "normal"
+		prior_arg = zdim
+	elseif prior == "vamp"
+		(pseudoinput_mean == nothing) ? error("if `prior=vamp`, supply pseudoinput array") : nothing
+		T = eltype(pseudoinput_mean)
+		pseudoinputs = T(1) .* randn(T, size(pseudoinput_mean)[1:end-1]..., k) .+ pseudoinput_mean
+		prior_arg = VAMP(pseudoinputs)
+	end
+
 	# reset seed
 	(init_seed != nothing) ? Random.seed!() : nothing
 
 	# get the vanilla VAE
-	model = VAE(zdim, encoder, decoder)
+	model = VAE(prior_arg, encoder, decoder)
 end
 
 """
