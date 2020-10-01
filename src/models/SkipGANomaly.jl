@@ -337,6 +337,9 @@ function SkipGANomaly_constructor(kwargs)
 			  nf = kwargs.num_filters,
 			  extra_layers = kwargs.extra_layers)
 
+	# little control to random initialization
+  	(kwargs.init_seed != nothing) ? Random.seed!(kwargs.init_seed) : nothing
 	SkipGAN = SkipGANomaly(params...)
+	(kwargs.init_seed != nothing) ? Random.seed!() : nothing
 	return SkipGAN, params
 end

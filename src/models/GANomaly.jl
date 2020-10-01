@@ -392,7 +392,11 @@ function ganomaly_constructor(kwargs)
 							nf = kwargs.num_filters,
 							extra_layers = kwargs.extra_layers)
 
+	# little control to random initialization
+	(kwargs.init_seed != nothing) ? Random.seed!(kwargs.init_seed) : nothing
 	generator = ConvGenerator(generator_params...)
 	discriminator = ConvDiscriminator(discriminator_params...)
+	(kwargs.init_seed != nothing) ? Random.seed!() : nothing
+	
 	return generator, discriminator, generator_params, discriminator_params
 end

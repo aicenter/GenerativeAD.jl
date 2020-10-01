@@ -31,9 +31,9 @@ modelname = "Conv-SkipGANomaly"
 
 function sample_params()
 	argnames = (:num_filters, :extra_layers, :lr, :batch_size,
-				:iters, :check_every, :patience, :lambda,)
+				:iters, :check_every, :patience, :lambda, :init_seed, )
 	par_vec = (
-			   2 .^ (3:8),
+			   2 .^ (3:6),
 			   [0:3 ...],
 			   10f0 .^ (-4:-3),
 			   2 .^ (5:7),
@@ -41,6 +41,7 @@ function sample_params()
 			   [30],
 			   [10],
 			   [0.9],
+               1:Int(1e8),
 			   )
 	w = (weights= sample([1,10:10:90...],3),)
 	return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec)), w)
