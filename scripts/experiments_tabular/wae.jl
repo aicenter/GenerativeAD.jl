@@ -71,7 +71,9 @@ function fit(data, parameters)
 	else
 		error("given kernel not known")
 	end
-	loss(m,x) = parameters.lambda*mmd_mean(m, x, k) .- mean(logpdf(m.decoder, x, rand(m.encoder, x)))
+	loss(m::GenerativeModels.VAE,x) = parameters.lambda*mmd_mean(m, x, k) .- mean(logpdf(m.decoder, x, rand(m.encoder, x)))
+	loss(m::GenerativeModels.VAE, x, batchsize::Int) = 
+		mean(map(y->loss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 
 	# fit train data
 	try
@@ -79,7 +81,6 @@ function fit(data, parameters)
 			patience=200, check_interval=10, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
-		rethrow(e)
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
 	end
