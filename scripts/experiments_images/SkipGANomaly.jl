@@ -41,7 +41,7 @@ function sample_params()
 			   [30],
 			   [10],
 			   [0.9],
-               1:Int(1e8),
+			   1:Int(1e8),
 			   )
 	w = (weights= sample([1,10:10:90...],3),)
 	return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec)), w)
@@ -76,8 +76,8 @@ function fit(data, parameters)
 		fit_t = fit_t,
 		model = (info[2] |> cpu),
 		history = info[1], # losses through time
-        npars = info[3], # number of parameters
-        iters = info[4] # optim iterations of model
+		npars = info[3], # number of parameters
+		iters = info[4] # optim iterations of model
 		)
 
 
@@ -112,10 +112,10 @@ while try_counter < max_tries
 				#(X_train,_), (X_val, y_val), (X_test, y_test) = data
 				training_info, results = fit(data, parameters)
 				# saving model separately
-                if training_info.model != nothing
-                    tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
-                    training_info = merge(training_info, (model = nothing,))
-                end
+				if training_info.model != nothing
+					tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+					training_info = merge(training_info, (model = nothing,))
+				end
 				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
 				# now loop over all anomaly score funs
 				for result in results
