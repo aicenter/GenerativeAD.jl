@@ -4,6 +4,7 @@ using GenerativeModels
 using ValueHistories
 using MLDataPattern: RandomBatches
 using Distributions
+using DistributionsAD
 using StatsBase
 using Random
 
