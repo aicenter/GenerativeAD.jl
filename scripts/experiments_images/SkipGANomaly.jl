@@ -102,7 +102,7 @@ while try_counter < max_tries
 			in_ch = size(data[1][1],3)
 			isize = maximum([size(data[1][1],1),size(data[1][1],2)])
 
-			isize = isize + 32 - isize % 32
+			isize = (isize % 32 != 0) ? isize + 32 - isize % 32 : isize
 			# update parameter
 			parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
 			# here, check if a model with the same parameters was already tested

@@ -387,8 +387,8 @@ function ganomaly_constructor(kwargs)
 						extra_layers = kwargs.extra_layers)
 
 	discriminator_params = (isize=kwargs.isize,
-							out_ch = 1,
 							in_ch = kwargs.in_ch,
+							out_ch = 1,
 							nf = kwargs.num_filters,
 							extra_layers = kwargs.extra_layers)
 
