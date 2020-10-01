@@ -35,7 +35,7 @@ function sample_params()
 				:iters, :check_every, :patience, :init_seed, )
 	par_vec = (
 			2 .^(3:8),
-			2 .^(2:7)],
+			2 .^(2:7),
 			[0:3 ...],
 			10f0 .^ (-4:-3),
 			 2 .^ (5:7),
