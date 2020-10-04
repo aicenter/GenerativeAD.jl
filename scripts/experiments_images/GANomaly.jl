@@ -38,7 +38,7 @@ function sample_params()
 			2 .^(2:7),
 			[0:3 ...],
 			10f0 .^ (-4:-3),
-			 2 .^ (5:7),
+			2 .^ (5:7),
 			[10000],
 			[30],
 			[10],
@@ -82,7 +82,7 @@ function fit(data, parameters)
 		iters = info[5] # optim iterations of model
 		)
 
-	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(generator|>cpu, x; dims=3), parameters)]
+	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(generator|>cpu, x; dims=3)[:], parameters)]
 end
 
 #_________________________________________________________________________________________________
