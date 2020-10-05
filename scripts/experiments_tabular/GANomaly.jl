@@ -92,7 +92,7 @@ while try_counter < max_tries
         # update parameter
         parameters = merge(parameters, (idim=size(data[1][1],1), ))
         # here, check if a model with the same parameters was already tested
-        if GenerativeAD.check_params(savepath, parameters, data)
+        if GenerativeAD.check_params(savepath, parameters)
             #(X_train,_), (X_val, y_val), (X_test, y_test) = data
             training_info, results = fit(data, parameters)
             # saving model separately
