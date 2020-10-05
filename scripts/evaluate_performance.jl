@@ -7,10 +7,12 @@ using DataFrames
 using PrettyTables
 using PrettyTables.Crayons
 using Statistics
+using StatsBase
 using Base.Threads: @threads
 
 # pkgs which come from BSONs
 using ValueHistories
+using LinearAlgebra
 
 
 """
@@ -34,32 +36,51 @@ function compute_stats(f::String)
 		modelname = r[:modelname],
 		dataset = r[:dataset],
 		phash = hash(r[:parameters]),
-		parameters = savename(r[:parameters]), 
+		parameters = savename(r[:parameters], digits=6), 
 		seed = r[:seed])
 	
 	if Symbol("anomaly_class") in keys(r)
-		row = merge(row, (anomaly_class = r[:anomaly_class]))
+		row = merge(row, (anomaly_class = r[:anomaly_class],))
 	end
 
 	for splt in ["val", "tst"]
 		scores = r[_prefix_symbol(splt, :scores)]
 		labels = r[_prefix_symbol(splt, :labels)]
 
-		any(isnan.(scores)) && error("$(splt)_scores contain NaN")
-	
-		roc = EvalMetrics.roccurve(labels, scores)
-		auc = EvalMetrics.auc_trapezoidal(roc...)
-		prc = EvalMetrics.prcurve(labels, scores)
-		auprc = EvalMetrics.auc_trapezoidal(prc...)
+		if length(scores) > 1
+			invalid = isnan.(scores)
+			ninvalid = sum(invalid)
 
-		t5 = EvalMetrics.threshold_at_fpr(labels, scores, 0.05)
-		cm5 = ConfusionMatrix(labels, scores, t5)
-		tpr5 = EvalMetrics.true_positive_rate(cm5)
-		f5 = EvalMetrics.f1_score(cm5)
+			if ninvalid > 0
+				invrat = ninvalid/length(scores)
+				invlab = labels[invalid]
+				cml = countmap(invlab)
+				@warn "Invalid stats for $(f) \t $(ninvalid) | $(invrat) | $(length(scores)) | $(get(cml, 1.0, 0)) | $(get(cml, 0.0, 0))"
 
-		row = merge(row, (;zip(_prefix_symbol.(splt, 
-				["auc", "auprc", "tpr@5", "f1@5"]), 
-				[auc, auprc, tpr5, f5])...))
+				scores = scores[.~invalid]
+				labels = labels[.~invalid]
+				(invrat > 0.5) && error("$(splt)_scores contain too many NaN")
+			end
+			
+			# in cases where the score is not 1D array
+			scores = scores[:]
+
+			roc = EvalMetrics.roccurve(labels, scores)
+			auc = EvalMetrics.auc_trapezoidal(roc...)
+			prc = EvalMetrics.prcurve(labels, scores)
+			auprc = EvalMetrics.auc_trapezoidal(prc...)
+
+			t5 = EvalMetrics.threshold_at_fpr(labels, scores, 0.05)
+			cm5 = ConfusionMatrix(labels, scores, t5)
+			tpr5 = EvalMetrics.true_positive_rate(cm5)
+			f5 = EvalMetrics.f1_score(cm5)
+
+			row = merge(row, (;zip(_prefix_symbol.(splt, 
+					["auc", "auprc", "tpr@5", "f1@5"]), 
+					[auc, auprc, tpr5, f5])...))
+		else
+			error("$(splt)_scores contain only one value")
+		end
 	end
 
 	DataFrame([row])
