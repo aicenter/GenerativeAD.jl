@@ -31,19 +31,20 @@ modelname = "Conv-GANomaly"
 
 
 function sample_params()
-	argnames = (:latent_dim, :num_filters, :extra_layers, :lr, :batch_size,
-				:iters, :check_every, :patience, )
-	options = (
-			[10:10:200...],
-			[2^x for x=2:8],
-			[0:3...],
-			[0.0001:0.0001:0.001..., 0.002:0.001:0.01...],
-			[2^x for x=2:8],
+	argnames = (:hdim, :num_filters, :extra_layers, :lr, :batch_size,
+				:iters, :check_every, :patience, :init_seed, )
+	par_vec = (
+			2 .^(3:8),
+			2 .^(2:7),
+			[0:3 ...],
+			10f0 .^ (-4:-3),
+			2 .^ (5:7),
 			[10000],
 			[30],
 			[10],
+			1:Int(1e8),
 			)
-	return NamedTuple{argnames}(map(x->sample(x,1)[1], options))
+	return NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec))
 end
 
 """
@@ -77,11 +78,11 @@ function fit(data, parameters)
 		fit_t = fit_t,
 		model = (info[2]|>cpu, info[3]|>cpu),
 		history = info[1], # losses through time
-        npars = info[4], # number of parameters
-        iters = info[5] # optim iterations of model
+		npars = info[4], # number of parameters
+		iters = info[5] # optim iterations of model
 		)
 
-	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(generator|>cpu, x; dims=3), parameters)]
+	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(generator|>cpu, x; dims=3)[:], parameters)]
 end
 
 #_________________________________________________________________________________________________
@@ -101,7 +102,7 @@ while try_counter < max_tries
 			in_ch = size(data[1][1],3)
 			isize = maximum([size(data[1][1],1),size(data[1][1],2)])
 
-			isize = isize + 16 - isize % 16
+			isize = (isize % 16 != 0) ? isize + 16 - isize % 16 : isize
 			# update parameter
 			parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
 			# here, check if a model with the same parameters was already tested
@@ -111,10 +112,10 @@ while try_counter < max_tries
 				#(X_train,_), (X_val, y_val), (X_test, y_test) = data
 				training_info, results = fit(data, parameters)
 				# saving model separately
-                if training_info.model != nothing
-                    tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
-                    training_info = merge(training_info, (model = nothing,))
-                end
+				if training_info.model != nothing
+					tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+					training_info = merge(training_info, (model = nothing,))
+				end
 				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
 				# now loop over all anomaly score funs
 				for result in results

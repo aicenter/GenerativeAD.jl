@@ -381,18 +381,64 @@ end
 """
 function ganomaly_constructor(kwargs)
 	generator_params = (isize=kwargs.isize,
-						latent_dim=kwargs.latent_dim,
+						latent_dim=kwargs.hdim,
 						in_ch = kwargs.in_ch,
 						nf = kwargs.num_filters,
 						extra_layers = kwargs.extra_layers)
 
 	discriminator_params = (isize=kwargs.isize,
-							out_ch = 1,
 							in_ch = kwargs.in_ch,
+							out_ch = 1,
 							nf = kwargs.num_filters,
 							extra_layers = kwargs.extra_layers)
 
+	# little control to random initialization
+	(kwargs.init_seed !== nothing) ? Random.seed!(kwargs.init_seed) : nothing
 	generator = ConvGenerator(generator_params...)
 	discriminator = ConvDiscriminator(discriminator_params...)
+	(kwargs.init_seed !== nothing) ? Random.seed!() : nothing
+	
 	return generator, discriminator, generator_params, discriminator_params
+end
+
+function tabular_ganomaly_constructor(kwargs)
+	encoder1 = build_mlp(
+		kwargs.idim, 
+		kwargs.hdim, 
+		kwargs.zdim, 
+		kwargs.nlayers, 
+		activation=kwargs.activation, 
+		lastlayer="linear"
+	)
+	encoder2 = build_mlp(
+		kwargs.idim, 
+		kwargs.hdim, 
+		kwargs.zdim, 
+		kwargs.nlayers, 
+		activation=kwargs.activation, 
+		lastlayer="linear"
+	)
+	decoder = build_mlp(
+		kwargs.zdim, 
+		kwargs.hdim, 
+		kwargs.idim,
+		kwargs.nlayers,
+		activation=kwargs.activation,
+		lastlayer="tanh"
+	)
+
+	features = build_mlp(
+		kwargs.idim, 
+		kwargs.hdim, 
+		kwargs.hdim, 
+		Int(kwargs.nlayers - 1), 
+		activation=kwargs.activation
+	)
+
+	classsifier = Flux.Dense(kwargs.hdim, 1, σ) 
+
+	generator = Generator(encoder1, decoder, encoder2)
+	discriminator = Discriminator(features, classsifier)
+
+	return generator, discriminator
 end
