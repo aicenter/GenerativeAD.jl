@@ -3,7 +3,7 @@
 
 Eval score function on test/val/train data and save.
 """
-function experiment(score_fun, parameters, data, savepath; verb=true, save_entries...)
+function experiment(score_fun, parameters, data, savepath; verb=true, save_result=true, save_entries...)
 	tr_data, val_data, tst_data = data
 
 	# extract scores
@@ -26,8 +26,10 @@ function experiment(score_fun, parameters, data, savepath; verb=true, save_entri
 		tst_eval_t = tst_eval_t
 		)
 	result = Dict{Symbol, Any}([sym=>val for (sym,val) in pairs(merge(result, save_entries))]) # this has to be a Dict 
-	tagsave(savef, result, safe = true)
-	verb ? (@info "Results saved to $savef") : nothing
+	if save_result
+		tagsave(savef, result, safe = true)
+		verb ? (@info "Results saved to $savef") : nothing
+	end
 	result
 end
 
@@ -42,11 +44,11 @@ function edit_params(data, parameters)
 end
 
 """
-	check_params(edit_params_f, savepath, data, parameters)
+	check_params(savepath, parameters)
 
-This checks if the model with given parameters wasn't already trained and saved. 
+Returns `true` if the model with given parameters wasn't already trained and saved. 
 """
-function check_params(savepath, data, parameters)
+function check_params(savepath, parameters)
 	if ~isdir(savepath)
 		return true
 	end
@@ -56,8 +58,11 @@ function check_params(savepath, data, parameters)
 	fs = filter(x->!(startswith(x, "model")), fs)
 	# if the first argument name contains a "_", than the savename is parsed wrongly
 	saved_params = map(x -> DrWatson.parse_savename("_"*x)[2], fs)
+	# now filter out saved models where parameter names are different or missing
+	pkeys = collect(keys(parameters))
+	filter!(ps->intersect(pkeys, Symbol.(collect(keys(ps))))==pkeys, saved_params)
 	for params in saved_params
-		all(map(k->params[String(k)] == parameters[k], collect(keys(parameters)))) ? (return false) : nothing
+		all(map(k->params[String(k)] == parameters[k], pkeys)) ? (return false) : nothing
 	end
 	true
 end

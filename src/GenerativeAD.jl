@@ -12,7 +12,6 @@ include("datasets/Datasets.jl")
 using .Datasets: load_data
 
 include("experiments.jl")
-#include("evaluation.jl")
 include("models/Models.jl")
 
 end #module

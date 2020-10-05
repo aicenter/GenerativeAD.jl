@@ -1,8 +1,9 @@
+using DrWatson
+@quickactivate
 using Test
 using GenerativeAD
 using UCI
 using ArgParse
-using DrWatson
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -14,4 +15,5 @@ parsed_args = parse_args(ARGS, s)
 @unpack complete = parsed_args
 
 include("data.jl")
+include("experiments.jl")
 include("models/runtests.jl")
