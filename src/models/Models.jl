@@ -5,6 +5,7 @@ using StatsBase
 using Statistics
 using LinearAlgebra
 
+using Random
 using Flux
 using ImageTransformations
 using MLDataPattern

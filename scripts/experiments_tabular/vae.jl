@@ -6,6 +6,7 @@ import StatsBase: fit!, predict
 using StatsBase
 using BSON
 using Flux
+using GenerativeModels
 
 s = ArgParseSettings()
 @add_arg_table! s begin
