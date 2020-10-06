@@ -305,7 +305,8 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 	best_val_loss = 1e10
 	val_batches = length(val_loader)
 
-	opt = Flux.Optimise.ADAM(params.lr)
+	# ADAMW(η = 0.001, β = (0.9, 0.999), decay = 0) = Optimiser(ADAM(η, β), WeightDecay(decay))
+	opt = (params.decay !== nothing) ? ADAMW(params.lr, (0.9, 0.999), params.decay) : ADAM(params.lr)
 
 	ps_g = Flux.params(generator)
 	ps_d = Flux.params(discriminator)
