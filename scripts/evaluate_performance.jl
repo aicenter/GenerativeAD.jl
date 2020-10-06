@@ -20,7 +20,24 @@ using LinearAlgebra
 
 Modifies symbol `s` by adding `prefix` with underscore.
 """
-_prefix_symbol(prefix, s) = Symbol("$(prefix)_$(String(s))")
+_prefix_symbol(prefix, s) = Symbol("$(prefix)_$(s)")
+
+
+"""
+	_precision_at(p, scores, labels)
+
+Computes precision on portion `p` samples with highest score.
+"""
+function _precision_at(p, labels, scores)
+	pN = Int(round(floor(p*length(labels)))) # round is more forgiving
+	if pN > 0
+		sp = sortperm(scores, rev=true)[1:pN]
+		# @info sp scores[sp] labels[sp]
+		return EvalMetrics.precision(labels[sp], ones(eltype(labels), pN))
+	else
+		return NaN
+	end
+end
 
 
 """
@@ -78,6 +95,13 @@ function compute_stats(f::String)
 			row = merge(row, (;zip(_prefix_symbol.(splt, 
 					["auc", "auprc", "tpr@5", "f1@5"]), 
 					[auc, auprc, tpr5, f5])...))
+
+			# compute precision on most anomalous samples
+			if splt == "val"
+				percentiles = [0.01, 0.05, 0.1]
+				pat = [_precision_at(p, labels, scores) for p in percentiles]
+				row = merge(row, (;zip(_prefix_symbol.("pat", Int.(100*percentiles)), pat)...))
+			end
 		else
 			error("$(splt)_scores contain only one value")
 		end
@@ -249,7 +273,7 @@ end
 
 ### test code
 DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
-source_prefix, target_prefix = "experiments/tabular/", "evaluation-nf/tabular/"
+source_prefix, target_prefix = "experiments/tabular", "evaluation-pat/tabular"
 generate_stats(source_prefix, target_prefix, force=true)
 
 df = collect_stats(target_prefix)
