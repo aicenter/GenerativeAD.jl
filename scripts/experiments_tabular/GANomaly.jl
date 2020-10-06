@@ -50,7 +50,8 @@ function sample_params()
         [10],
         1:Int(1e8),
     )
-    return NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec))
+    w = (weights = sample([1,10:10:90 ...],3),)
+	return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec)), w)
 end
 
 

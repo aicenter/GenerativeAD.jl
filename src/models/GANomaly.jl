@@ -206,7 +206,7 @@ will perform forward pass of generator and returns NTuple{4, Float32} of losses.
 	Encoder loss:       L_enc = || E1(x) - E2(D(E1(x))) ||_2
 
 """
-function generator_loss(g::Generator, d::Discriminator, real_input, weights=[1,50,1])
+function generator_loss(g::Generator, d::Discriminator, real_input; weights=[1,50,1])
 	fake, latent_i, latent_o = g(real_input)
 	pred_real, feat_real = d(real_input)
 	pred_fake, feat_fake = d(fake)
@@ -310,11 +310,13 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 	ps_g = Flux.params(generator)
 	ps_d = Flux.params(discriminator)
 
+	loss_weights = (params.weights !== nothing) ? params.weights : [1, 50, 1]
+
 	progress = Progress(length(train_loader))
 	for (iter, X) in enumerate(train_loader)
 		#generator update
 		loss1, back = Flux.pullback(ps_g) do
-			generator_loss(generator, discriminator, getobs(X)|>gpu)
+			generator_loss(generator, discriminator, getobs(X)|>gpu, weights=loss_weights)
 		end
 		grad = back((1f0, 0f0, 0f0, 0f0))
 		Flux.Optimise.update!(opt, ps_g, grad)
