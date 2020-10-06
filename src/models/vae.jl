@@ -1,6 +1,7 @@
 using Flux
 using ConditionalDists
 using GenerativeModels
+import GenerativeModels: VAE
 using ValueHistories
 using MLDataPattern: RandomBatches
 using Distributions
@@ -15,6 +16,16 @@ Safe version of softplus.
 """
 safe_softplus(x::T) where T  = softplus(x) + T(0.000001)
 
+"""
+	init_vamp(pseudoinput_mean,k::Int)
+
+Initializes the VAMP prior from a mean vector and number of components.
+"""
+function init_vamp(pseudoinput_mean, k::Int)
+	T = eltype(pseudoinput_mean)
+	pseudoinputs = T(1) .* randn(T, size(pseudoinput_mean)[1:end-1]..., k) .+ pseudoinput_mean
+	VAMP(pseudoinputs)
+end
 
 """
 	vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, 
@@ -60,9 +71,7 @@ function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=12
 		prior_arg = zdim
 	elseif prior == "vamp"
 		(pseudoinput_mean == nothing) ? error("if `prior=vamp`, supply pseudoinput array") : nothing
-		T = eltype(pseudoinput_mean)
-		pseudoinputs = T(1) .* randn(T, size(pseudoinput_mean)[1:end-1]..., k) .+ pseudoinput_mean
-		prior_arg = VAMP(pseudoinputs)
+		prior_arg = init_vamp(pseudoinput_mean, k)
 	end
 
 	# reset seed
@@ -73,10 +82,10 @@ function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=12
 end
 
 """
-	StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple, loss::Function; max_train_time=82800, lr=0.001, 
+	StatsBase.fit!(model::VAE, data::Tuple, loss::Function; max_train_time=82800, lr=0.001, 
 		batchsize=64, patience=30, check_interval::Int=10, kwargs...)
 """
-function StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple, loss::Function; max_train_time=82800, lr=0.001, 
+function StatsBase.fit!(model::VAE, data::Tuple, loss::Function; max_train_time=82800, lr=0.001, 
 	batchsize=64, patience=30, check_interval::Int=10, kwargs...)
 	history = MVHistory()
 	opt = ADAM(lr)
@@ -136,49 +145,4 @@ function StatsBase.fit!(model::GenerativeModels.VAE, data::Tuple, loss::Function
 	end
 	# again, this is not optimal, the model should be passed by reference and only the reference should be edited
 	(history=history, iterations=i, model=model, npars=sum(map(p->length(p), Flux.params(model))))
-end
-
-"""
-	reconstruct(model::GenerativeModels.VAE, x)
-
-Data reconstruction.
-"""
-reconstruct(model::GenerativeModels.VAE, x) = mean(model.decoder, rand(model.encoder, x))
-
-"""
-	reconstruction_score(model::GenerativeModels.VAE, x)
-
-Anomaly score based on the reconstruction probability of the data.
-"""
-function reconstruction_score(model::GenerativeModels.VAE, x) 
-	p = condition(model.decoder, rand(model.encoder, x))
-	-logpdf(p, x)
-end
-"""
-	reconstruction_score_mean(model::GenerativeModels.VAE, x)
-
-Anomaly score based on the reconstruction probability of the data. Uses mean of encoding.
-"""
-function reconstruction_score_mean(model::GenerativeModels.VAE, x) 
-	p = condition(model.decoder, mean(model.encoder, x))
-	-logpdf(p, x)
-end
-"""
-	latent_score(model::GenerativeModels.VAE, x) 
-
-Anomaly score based on the similarity of the encoded data and the prior.
-"""
-function latent_score(model::GenerativeModels.VAE, x) 
-	z = rand(model.encoder, x)
-	-logpdf(model.prior, z)
-end
-
-"""
-	latent_score_mean(model::GenerativeModels.VAE, x) 
-
-Anomaly score based on the similarity of the encoded data and the prior. Uses mean of encoding.
-"""
-function latent_score_mean(model::GenerativeModels.VAE, x) 
-	z = mean(model.encoder, x)
-	-logpdf(model.prior, z)
 end
