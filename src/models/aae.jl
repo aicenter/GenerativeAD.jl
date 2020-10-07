@@ -131,10 +131,12 @@ gloss(m::AAE,x,batchsize::Int) =
 """
 	loss(m::AAE, x)
 
-A sum of all losses for AAE.
+A loss that is used for stopping the training.
 """
-loss(m::AAE,x) = aeloss(m,x) # dloss(m,x) + gloss(m,x) # + aeloss(m,x)
-loss(m::AAE,x,batchsize::Int) = aeloss(m,x,batchsize) # dloss(m,x,batchsize) + gloss(m,x,batchsize) # + aeloss(m,x,batchsize)
+loss(m::AAE,x) = aeloss(m,x)
+loss(m::AAE,x,batchsize::Int) = aeloss(m,x,batchsize)
+#loss(m::AAE,x) = aeloss(m,x) + dloss(m,x) + gloss(m,x)
+#loss(m::AAE,x,batchsize::Int) = aeloss(m,x,batchsize) + dloss(m,x,batchsize) + gloss(m,x,batchsize)
 
 """
 	StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, 
@@ -143,7 +145,9 @@ loss(m::AAE,x,batchsize::Int) = aeloss(m,x,batchsize) # dloss(m,x,batchsize) + g
 function StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, lr=0.001, 
 	batchsize=64, patience=30, check_interval::Int=10, kwargs...)
 	history = MVHistory()
-	opt = ADAM(lr)
+	aeopt = ADAM(lr)
+	dopt = ADAM(lr)
+	gopt = ADAM(lr)
 
 	tr_model = deepcopy(model)
 	aeps = (typeof(tr_model.prior) <: GenerativeModels.VAMP) ? 
@@ -167,21 +171,21 @@ function StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, lr=0.001,
 		gs = gradient(() -> begin 
 			batch_aeloss = aeloss(tr_model,batch)
 		end, aeps)
-	 	Flux.update!(opt, aeps, gs)
+	 	Flux.update!(aeopt, aeps, gs)
 
 	 	# disc loss
 		batch_dloss = 0f0
 		gs = gradient(() -> begin 
 			batch_dloss = dloss(tr_model,batch)
 		end, dps)
-	 	Flux.update!(opt, dps, gs)
+	 	Flux.update!(dopt, dps, gs)
 
 	 	# gen loss
 		batch_gloss = 0f0
 		gs = gradient(() -> begin 
 			batch_gloss = gloss(tr_model,batch)
 		end, gps)
-	 	Flux.update!(opt, gps, gs)
+	 	Flux.update!(gopt, gps, gs)
 
 		# validation
 		val_loss = (val_N > 5000) ? loss(tr_model, val_x, 256) : loss(tr_model, val_x)
