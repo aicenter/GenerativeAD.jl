@@ -249,15 +249,16 @@ function print_table(df::DataFrame, metric_col=:tst_auc)
 	sort!(ultimate, :dataset)
 
 	# average rank
+	mask_nan_max = (x) -> (isnan(x) ? -Inf : x)
 	rs = zeros(size(ultimate, 2) - 1)
 	for row in eachrow(ultimate)
-		rs .+= StatsBase.competerank(Vector(row[2:end]), rev = true)
+		rs .+= StatsBase.competerank(mask_nan_max.(Vector(row[2:end])), rev = true)
 	end
 	rs ./= size(ultimate, 1)
 	push!(ultimate, ["--- RANK ---", rs...])
 
 
-	hl_best = Highlighter(f = (data, i, j) -> (i < size(ultimate, 1)) && (data[i,j]  == maximum(ultimate[i, 2:end])),
+	hl_best = Highlighter(f = (data, i, j) -> (i < size(ultimate, 1)) && (data[i,j]  == maximum(mask_nan_max, ultimate[i, 2:end])),
 	                        crayon = crayon"yellow bold")
 	hl_best_rank = Highlighter(
 			f = (data, i, j) -> i == size(ultimate, 1) && (data[i,j] == minimum(ultimate[i, 2:end])),
