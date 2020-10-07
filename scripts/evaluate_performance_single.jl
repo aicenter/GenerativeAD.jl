@@ -1,4 +1,4 @@
-# run this script as `julia evaluate_performance_single.jl res.bson` or `julia evaluate_performance.jl dir`
+# run this script as `julia evaluate_performance_single.jl res.bson` or `julia evaluate_performance_single.jl dir`
 # in the second case, it will recursively search for all compatible files in subdirectories
 target = ARGS[1]
 

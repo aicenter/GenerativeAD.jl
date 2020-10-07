@@ -14,6 +14,9 @@ using Base.Threads: @threads
 using ValueHistories
 using LinearAlgebra
 
+# metric names and settings 
+const BASE_METRICS = ["auc", "auprc", "tpr_5", "f1_5"]
+const PAT_METRICS = ["pat_1", "pat_5", "pat_10", "pat_20"]
 
 """
 	_prefix_symbol(prefix, s)
@@ -93,15 +96,12 @@ function compute_stats(f::String)
 			f5 = EvalMetrics.f1_score(cm5)
 
 			row = merge(row, (;zip(_prefix_symbol.(splt, 
-					["auc", "auprc", "tpr@5", "f1@5"]), 
+					BASE_METRICS), 
 					[auc, auprc, tpr5, f5])...))
 
 			# compute precision on most anomalous samples
-			if splt == "val"
-				percentiles = [0.01, 0.05, 0.1]
-				pat = [_precision_at(p, labels, scores) for p in percentiles]
-				row = merge(row, (;zip(_prefix_symbol.("pat", Int.(100*percentiles)), pat)...))
-			end
+			pat = [_precision_at(p/100, labels, scores) for p in [1, 5, 10, 20]]
+			row = merge(row, (;zip(_prefix_symbol.(splt, PAT_METRICS), pat)...))
 		else
 			error("$(splt)_scores contain only one value")
 		end
@@ -193,8 +193,8 @@ model based on `criterion_col`. By default the output contains `dataset`, `model
 over which the maximum is computed. Addional comlumns can be specified using `output_cols`.
 """
 function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc])
-	metrics = ["auc", "auprc", "tpr@5", "f1@5"]
-	agg_cols = vcat(_prefix_symbol.("val", metrics), _prefix_symbol.("tst", metrics))
+	agg_cols = vcat(_prefix_symbol.("val", METRICS), _prefix_symbol.("tst", METRICS))
+	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 
 	# agregate by seed over given hyperparameter and then choose best
 	results = []
@@ -278,5 +278,6 @@ source_prefix, target_prefix = "experiments/tabular", "evaluation-pat/tabular"
 generate_stats(source_prefix, target_prefix, force=true)
 
 df = collect_stats(target_prefix)
-df_agg = aggregate_stats(df, :val_auc, [:tst_auc, :parameters])
-print_table(df_agg, :tst_auc)
+df_agg = aggregate_stats(df, :pat_10, [:pat_10, :parameters])
+df_agg[:, :pat_10] = round.(df_agg[:, :pat_10], digits=2)
+print_table(df_agg, :pat_10)
