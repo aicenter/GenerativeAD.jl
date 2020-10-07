@@ -306,12 +306,12 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 	val_batches = length(val_loader)
 
 	# ADAMW(η = 0.001, β = (0.9, 0.999), decay = 0) = Optimiser(ADAM(η, β), WeightDecay(decay))
-	opt = (params.decay !== nothing) ? ADAMW(params.lr, (0.9, 0.999), params.decay) : ADAM(params.lr)
+	opt = haskey(params, :decay) ? ADAMW(params.lr, (0.9, 0.999), params.decay) : ADAM(params.lr)
 
 	ps_g = Flux.params(generator)
 	ps_d = Flux.params(discriminator)
 
-	loss_weights = (params.weights !== nothing) ? params.weights : [1, 50, 1]
+	loss_weights = haskey(params, :weights)  ? params.weights : [1, 50, 1]
 
 	progress = Progress(length(train_loader))
 	for (iter, X) in enumerate(train_loader)
