@@ -47,7 +47,7 @@ end
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
 	model = GenerativeAD.Models.MO_GAAL(;parameters...)
-
+ 
 	# fit train data
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
@@ -59,7 +59,10 @@ function fit(data, parameters)
 	# construct return information - put e.g. the model structure here for generative models
 	training_info = (
 		fit_t = fit_t,
-		model = nothing
+		model = nothing,
+		npars = parameters.ngenerators * 2 * (size(data[1][1],0)^2) 
+			+ Int(ceil(sqrt(size(data[1][1],1)))) * size(data[1][1],0) 
+			+ Int(ceil(sqrt(size(data[1][1],1))))
 		)
 
 	# now return the different scoring functions
