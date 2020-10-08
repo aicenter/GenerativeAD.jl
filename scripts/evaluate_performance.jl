@@ -191,18 +191,22 @@ model based on `criterion_col`. By default the output contains `dataset`, `model
 `samples` columns, where the last represents the number of hyperparameter combinations
 over which the maximum is computed. Addional comlumns can be specified using `output_cols`.
 """
-function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc])
-	agg_cols = vcat(_prefix_symbol.("val", METRICS), _prefix_symbol.("tst", METRICS))
+function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc]; verbose=false)
+	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 
 	# agregate by seed over given hyperparameter and then choose best
 	results = []
 	for (dkey, dg) in pairs(groupby(df, :dataset))
-		@info "Processing $(dkey.dataset) with $(nrow(dg)) trained models."
+		if verbose
+			@info "Processing $(dkey.dataset) with $(nrow(dg)) trained models."
+		end
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
 			pg = groupby(mg, :phash)
 			pg_agg = combine(pg, :parameters => unique => :parameters, agg_cols .=> mean .=> agg_cols)
-			@info "\t$(mkey.modelname) with $(nrow(pg_agg)) experiments."
+			if verbose
+				@info "\t$(mkey.modelname) with $(nrow(pg_agg)) experiments."
+			end
 			best = first(sort!(pg_agg, order(criterion_col, rev=true)))
 			row = merge(
 				(dataset = dkey.dataset, modelname = mkey.modelname, samples=nrow(pg_agg)), 
