@@ -1,0 +1,34 @@
+@testset "GAN" begin
+	using DrWatson
+	@quickactivate
+	using Test
+	using GenerativeAD
+	import StatsBase: fit!, predict
+	using ConditionalDists, GenerativeModels, Distributions
+	using EvalMetrics
+	using Flux
+
+	# toy example
+	M = 4
+	N1 = 100
+	N2 = 50
+	X = vcat(randn(Float32, Int(M/2), N1), ones(Float32, Int(M/2), N1))
+	Y = vcat(randn(Float32, Int(M/2), N2), ones(Float32, Int(M/2), N2))
+	Z = vcat(ones(Float32, Int(M/2), N2), randn(Float32, Int(M/2), N2))
+	data = ((X,),(Y,zeros(size(Y,2))))
+	parameters = (zdim=8, hdim=32, lr=0.001, batchsize=8, activation="swish", nlayers=3, idim=M)
+	function basic_convergence_test(model, gloss, dloss)
+		history, iterations, model = fit!(model, data, gloss, dloss; patience = 100, max_iter=5000,
+			max_train_time=600, parameters...)
+		scores = map(x->GenerativeAD.Models.discriminate(model, x), (X,Y,Z))
+		@test mean(scores[1]) > mean(scores[3])
+		@test mean(scores[2]) > mean(scores[3])
+		model
+	end
+	# vanilla GAN
+	model = GenerativeAD.Models.gan_constructor(;parameters...)
+	gloss = GenerativeAD.Models.gloss
+	dloss = GenerativeAD.Models.dloss
+	model = basic_convergence_test(model, gloss, dloss)
+	@test size(GenerativeAD.Models.generate(model, 10)) == (M,10)
+end

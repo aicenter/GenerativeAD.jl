@@ -46,7 +46,7 @@ Constructs a classical variational autoencoder.
 """
 function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, 
 	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
-	(nlayers < 2) ? error("Less than 3 layers are not supported") : nothing
+	(nlayers < 3) ? error("Less than 3 layers are not supported") : nothing
 	
 	# if seed is given, set it
 	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
