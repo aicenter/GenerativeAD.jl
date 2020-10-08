@@ -13,19 +13,19 @@ Constructs an adversarial autoencoder.
 """
 function AAE(zdim::Int, encoder, decoder, discriminator)
 	W = first(Flux.params(encoder))
-    μ = fill!(similar(W, zdim), 0)
-    σ = fill!(similar(W, zdim), 1)
-    prior = DistributionsAD.TuringMvNormal(μ, σ)
-    AAE(prior, encoder, decoder, discriminator)
+	μ = fill!(similar(W, zdim), 0)
+	σ = fill!(similar(W, zdim), 1)
+	prior = DistributionsAD.TuringMvNormal(μ, σ)
+	AAE(prior, encoder, decoder, discriminator)
 end
 
 Flux.@functor AAE
 
 function Flux.trainable(m::AAE)
-    (encoder=m.encoder, decoder=m.decoder, discriminator=m.discriminator)
+	(encoder=m.encoder, decoder=m.decoder, discriminator=m.discriminator)
 end
 function Flux.trainable(m::AAE{<:VAMP})
-    (prior=m.prior, encoder=m.encoder, decoder=m.decoder, discriminator=m.discriminator)
+	(prior=m.prior, encoder=m.encoder, decoder=m.decoder, discriminator=m.discriminator)
 end
 
 """
@@ -86,14 +86,14 @@ function aae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=12
 end
 
 """
-    dloss(d,g,x,z)
+	dloss(d,g,x,z)
 
 Discriminator loss.
 """
 dloss(d,g,x,z) = - 0.5f0*(mean(log.(d(x) .+ eps(Float32))) + mean(log.(1 .- d(g(z)) .+ eps(Float32))))
 
 """
-    gloss(d,g,x)
+	gloss(d,g,x)
 
 Generator loss.
 """
