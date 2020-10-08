@@ -175,11 +175,10 @@ function collect_stats(source_prefix::String)
 	files = collect_files(source)
 	@info "Collected $(length(files)) files from $source folder."
 
-	frames = []
-	# run multithread reduction with vcat here
-	for f in files
-		df = load(f)[:df]
-		push!(frames, df)
+	frames = Vector{DataFrame}(undef, length(files))
+	@threads for i in 1:length(files)
+		df = load(files[i])[:df]
+		frames[i] = df
 	end
 	vcat(frames...)
 end
