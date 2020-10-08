@@ -105,7 +105,7 @@ function StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss::Functio
 			
 		# early stopping
 		# only stop if discriminator score gets too close to zero
-		if val_dloss > 0.01
+		if val_dloss > 0.1
 			best_val_dloss = val_dloss
 			_patience = patience
 
