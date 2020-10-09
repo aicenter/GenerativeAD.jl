@@ -24,8 +24,8 @@ modelname = "MO_GAAL"
 
 function sample_params()
 	argnames = (
-        :ngenerators, 
-        :nepochs, 
+        :k, 
+        :stop_epochs, 
         :lr_d, 
         :lr_g, 
         :decay, 
@@ -39,7 +39,7 @@ function sample_params()
         10f0 .^ (-4:-2),
         [1e-6],
         0.5:0.1:0.9,
-        0f0:0.1:0.5,
+        0.1:0.1:0.5,
     )
     return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec)))
 end
@@ -52,6 +52,7 @@ function fit(data, parameters)
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
 	catch e
+		println("error caught", e)
 		# return an empty array if fit fails so nothing is computed
 		return (fit_t = NaN,), [] 
 	end
