@@ -22,9 +22,10 @@ Constructs a classical variational autoencoder.
 - `hdim::Int=128`: size of hidden dimension.
 - `nlayers::Int=3`: number of generator/discriminator layers, must be >= 2. 
 - `init_seed=nothing`: seed to initialize weights.
+- `last_linear=false`: is output of discriminator linear?
 """
 function gan_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=2, 
-	init_seed=nothing, kwargs...)
+	init_seed=nothing, last_linear=false, kwargs...)
 	(nlayers < 2) ? error("Less than 3 layers are not supported") : nothing
 	
 	# if seed is given, set it
@@ -36,7 +37,8 @@ function gan_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=12
 	generator = ConditionalMvNormal(generator_map)
 	
 	# discriminator
-	discriminator_map = build_mlp(idim, hdim, 1, nlayers, activation=activation, lastlayer="σ")
+	lastlayer = last_linear ? "linear" : "σ"
+	discriminator_map = build_mlp(idim, hdim, 1, nlayers, activation=activation, lastlayer=lastlayer)
 	discriminator = ConditionalMvNormal(discriminator_map)
 
 	# reset seed
@@ -49,14 +51,14 @@ end
 """
 	StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss:Function, dloss::Function; 
 		max_iter=10000, max_train_time=82800, lr=0.001, batchsize=64, patience=30, check_interval::Int=10, 
-		kwargs...)
+		weight_clip=nothing, discriminator_advantage::Int=1, stop_threshold=0.01, kwargs...)
 """
 function StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss::Function, dloss::Function; 
 	max_iter=10000, max_train_time=82800, lr=0.001, batchsize=64, patience=30, check_interval::Int=10, 
-	kwargs...)
+	weight_clip=nothing, discriminator_advantage::Int=1, stop_threshold=0.01, kwargs...)
 	history = MVHistory()
-	dopt = ADAM(lr)
-	gopt = ADAM(lr)
+	dopt = RMSProp(lr)
+	gopt = RMSProp(lr)
 
 	tr_model = deepcopy(model)
 	dps = Flux.params(tr_model.discriminator)
@@ -75,10 +77,16 @@ function StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss::Functio
 	for xbatch in RandomBatches(tr_x, batchsize)
 		# disc loss
 		batch_dloss = 0f0
-		gs = gradient(() -> begin 
-			batch_dloss = dloss(tr_model,xbatch)
-		end, dps)
-	 	Flux.update!(dopt, dps, gs)
+		# some recommend training the discriminator mupltiple times
+		for n in 1:discriminator_advantage
+			gs = gradient(() -> begin 
+				batch_dloss = dloss(tr_model,xbatch)
+			end, dps)
+		 	Flux.update!(dopt, dps, gs)
+
+		 	# clip weights of discriminator - needed for wgan
+		 	(weight_clip != nothing) ? clip_weights!(dps, weight_clip) : nothing
+		end
 
 	 	# gen loss
 		batch_gloss = 0f0
@@ -105,7 +113,7 @@ function StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss::Functio
 			
 		# early stopping
 		# only stop if discriminator score gets too close to zero
-		if val_dloss > 0.1
+		if val_dloss > stop_threshold
 			best_val_dloss = val_dloss
 			_patience = patience
 
