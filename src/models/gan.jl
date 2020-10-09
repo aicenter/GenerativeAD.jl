@@ -140,7 +140,7 @@ Classical discriminator loss of the GAN model.
 dloss(model::GenerativeModels.GAN,x) = 
 	dloss(model.discriminator.mapping,model.generator.mapping,x,rand(model.prior,size(x,ndims(x))))
 dloss(model::GenerativeModels.GAN,x,batchsize::Int) = 
-	mean(map(y->dloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
+	mean(map(y->dloss(model,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 
 """
 	gloss(model::GenerativeModels.GAN,x[,batchsize])
@@ -150,7 +150,7 @@ Classical generator loss of the GAN model.
 gloss(model::GenerativeModels.GAN,x) = 
 	gloss(model.discriminator.mapping,model.generator.mapping,rand(model.prior,size(x,ndims(x))))
 gloss(model::GenerativeModels.GAN,x,batchsize::Int) = 
-	mean(map(y->gloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
+	mean(map(y->gloss(model,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 	
 """
 	generate(model::GenerativeModels.GAN, N::Int)

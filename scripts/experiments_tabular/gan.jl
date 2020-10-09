@@ -59,12 +59,20 @@ function fit(data, parameters)
 	gloss = GenerativeAD.Models.gloss
 	dloss = GenerativeAD.Models.dloss
 
+	# set number of max iterations apropriatelly
+	N = size(data[1][1],2)
+	max_iter = 5000 # this should be enough
+	#max_iter = N*50 # this is too much for large datasets
+	#max_iter = floor(Int,M/parameters.batchsize*20) # this does not work
+
+	println(max_iter)
 	# fit train data
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data, gloss, dloss; 
-			max_iter=10000, max_train_time=82800/max_seed, 
-			patience=200, check_interval=10, parameters...)
+			max_iter=max_iter, max_train_time=82800/max_seed, 
+			patience=50, check_interval=10, parameters...)
 	catch e
+		rethrow(e)
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
