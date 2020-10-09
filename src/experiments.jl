@@ -43,6 +43,7 @@ end
 
 """
 	check_params(savepath, parameters)
+
 Returns `true` if the model with given parameters wasn't already trained and saved. 
 """
 function check_params(savepath, parameters)

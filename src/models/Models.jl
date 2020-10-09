@@ -22,5 +22,7 @@ include("SkipGANomaly.jl")
 include("skmodels.jl")
 include("pyodmodels.jl")
 include("tabular_flows.jl")
+include("vae.jl")
+include("aae.jl")
 
 end

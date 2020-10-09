@@ -22,19 +22,20 @@ parsed_args = parse_args(ARGS, s)
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "hbos"
-# sample parameters, should return a Dict of model kwargs 
-
+modelname = "ocsvm1"
 function sample_params()
-	par_vec = (2:2:100,0.05:0.05:1,0:0.05:1)
-	argnames = (:n_bins, :alpha, :tol)
+	par_vec = (round.([10^x for x in -4:0.1:2],digits=5),["poly", "rbf", "sigmoid"],[0.01])
+	argnames = (:gamma,:kernel,:nu)
 	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.HBOS(;parameters...)
+	model = GenerativeAD.Models.OCSVM(;parameters...)
 
-	# fit train data
+	# sumbsample and fit train data
+	tr_data = data[1][1]
+	M,N = size(tr_data)
+	tr_data = tr_data[:, sample(1:N, min(10000, N), replace=false)]
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
 	catch e
@@ -69,7 +70,7 @@ while try_counter < max_tries
 		
 		# edit parameters
 		edited_parameters = GenerativeAD.edit_params(data, parameters)
-
+		
 		@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
 		# check if a combination of parameters and seed alread exists
 		if GenerativeAD.check_params(savepath, edited_parameters)
