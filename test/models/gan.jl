@@ -31,4 +31,10 @@
 	dloss = GenerativeAD.Models.dloss
 	model = basic_convergence_test(model, gloss, dloss)
 	@test size(GenerativeAD.Models.generate(model, 10)) == (M,10)
+	# feature-matching GAN
+	model = GenerativeAD.Models.gan_constructor(;parameters...)
+	alpha = 1f0
+	fmloss(args...) = alpha*GenerativeAD.Models.gloss(args...) + GenerativeAD.Models.fmloss(args...)
+	dloss = GenerativeAD.Models.dloss
+	model = basic_convergence_test(model, fmloss, dloss)
 end

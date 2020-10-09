@@ -115,7 +115,7 @@ function StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss::Functio
 				model = deepcopy(tr_model)
 			end
 		end
-		if (time() - start_time > max_train_time) || (i>max_iter) # stop early if time is running out
+		if (time() - start_time > max_train_time) || (i>=max_iter) # stop early if time is running out
 			model = deepcopy(tr_model)
 			@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
 			break
@@ -137,31 +137,47 @@ end
 
 Classical discriminator loss of the GAN model.
 """
-dloss(model::GenerativeModels.GAN,x) = 
-	dloss(model.discriminator.mapping,model.generator.mapping,x,rand(model.prior,size(x,ndims(x))))
-dloss(model::GenerativeModels.GAN,x,batchsize::Int) = 
-	mean(map(y->dloss(model,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
+dloss(m::GenerativeModels.GAN,x) = 
+	dloss(m.discriminator.mapping,m.generator.mapping,x,rand(m.prior,size(x,ndims(x))))
+dloss(m::GenerativeModels.GAN,x,batchsize::Int) = 
+	mean(map(y->dloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 
 """
 	gloss(model::GenerativeModels.GAN,x[,batchsize])
 
 Classical generator loss of the GAN model.
 """
-gloss(model::GenerativeModels.GAN,x) = 
-	gloss(model.discriminator.mapping,model.generator.mapping,rand(model.prior,size(x,ndims(x))))
-gloss(model::GenerativeModels.GAN,x,batchsize::Int) = 
-	mean(map(y->gloss(model,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
-	
+gloss(m::GenerativeModels.GAN,x) = 
+	gloss(m.discriminator.mapping,m.generator.mapping,rand(m.prior,size(x,ndims(x))))
+gloss(m::GenerativeModels.GAN,x,batchsize::Int) = 
+	mean(map(y->gloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
+
+"""
+	fmloss(model,x[,batchsize])
+
+Feature-matching loss matches the output of the penultimate layer of the discriminator on 
+real and fake data.
+"""
+function fmloss(m::GenerativeModels.GAN,x)
+	z = rand(m.prior, size(x,ndims(x)))
+	h = m.discriminator.mapping[1:end-1]
+	hx = h(x)
+	hz = h(m.generator.mapping(z))
+	Flux.mse(hx, hz)
+end
+fmloss(m::GenerativeModels.GAN,x,batchsize::Int) = 
+	mean(map(y->fmloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
+		
 """
 	generate(model::GenerativeModels.GAN, N::Int)
 
 Generate novel samples.
 """
-generate(model::GenerativeModels.GAN, N::Int) = model.generator.mapping(rand(model.prior, N))
+generate(m::GenerativeModels.GAN, N::Int) = m.generator.mapping(rand(m.prior, N))
 
 """
 	discriminate(model::GenerativeModels.GAN, x)
 
 Discriminate the input - lower score belongs to samples not coming from training distribution.
 """
-discriminate(model::GenerativeModels.GAN, x) = model.discriminator.mapping(x)
+discriminate(m::GenerativeModels.GAN, x) = m.discriminator.mapping(x)
