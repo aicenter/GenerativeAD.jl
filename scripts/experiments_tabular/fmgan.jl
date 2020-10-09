@@ -70,7 +70,6 @@ function fit(data, parameters)
 			max_iter=max_iter, max_train_time=82800/max_seed, 
 			patience=50, check_interval=10, parameters...)
 	catch e
-		rethrow(e)
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
