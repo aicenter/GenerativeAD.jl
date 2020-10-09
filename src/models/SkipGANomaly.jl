@@ -267,7 +267,8 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 	best_val_loss = 1e10
 	val_batches = length(val_loader)
 	# define optimiser
-	opt = Flux.Optimise.ADAM(params.lr)
+	# ADAMW(η = 0.001, β = (0.9, 0.999), decay = 0) = Optimiser(ADAM(η, β), WeightDecay(decay))
+	opt = haskey(params, :decay) ? ADAMW(params.lr, (0.9, 0.999), params.decay) : ADAM(params.lr)
 
 	ps_g = Flux.params(SkipGAN.generator)
 	ps_d = Flux.params(SkipGAN.discriminator)

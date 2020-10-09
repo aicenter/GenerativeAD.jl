@@ -1,6 +1,5 @@
 """
 	experiment(score_fun, parameters, data, savepath; save_entries...)
-
 Eval score function on test/val/train data and save.
 """
 function experiment(score_fun, parameters, data, savepath; verb=true, save_result=true, save_entries...)
@@ -35,7 +34,6 @@ end
 
 """
 	edit_params(data, parameters)
-
 This modifies parameters according to data. Default version only returns the input arg. 
 Overload for models where this is needed.
 """

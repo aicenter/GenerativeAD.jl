@@ -69,3 +69,23 @@ mutable struct HBOS <: PyODmodel
 		new(py"construct_hbos"(kwargs))
 	end
 end
+
+
+"""
+	MO_GAAL(k=10, stop_epochs=20, lr_d=0.01, lr_g=0.0001, decay=1e-06, momentum=0.9, contamination=0.1)
+
+The MO_GAAL model. (GAN based)
+"""
+mutable struct MO_GAAL <: PyODmodel
+	model
+
+	function MO_GAAL(;kwargs...)
+		py"""
+		from pyod.models.mo_gaal import MO_GAAL
+
+		def construct_mogaal(kwargs):
+			return MO_GAAL(**kwargs)
+		"""
+		new(py"construct_mogaal"(kwargs))
+	end
+end
