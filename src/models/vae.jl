@@ -44,7 +44,62 @@ Constructs a classical variational autoencoder.
 - `pseudoinput_mean=nothing`: mean of data used to initialize the VAMP prior.
 - `k::Int=1`: number of VAMP components. 
 """
-function vae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, 
+function vae_constructor(;idim::Int=1, zdim::Int=1, activation="relu", hdim=128, nlayers::Int=3, 
+	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
+	(nlayers < 2) ? error("Less than 3 layers are not supported") : nothing
+	
+	# if seed is given, set it
+	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
+	
+	# construct the model
+	# encoder - diagonal covariance
+	encoder_map = Chain(
+		build_mlp(idim, hdim, hdim, nlayers-1, activation=activation)...,
+		ConditionalDists.SplitLayer(hdim, [zdim, zdim], [identity, safe_softplus])
+		)
+	encoder = ConditionalMvNormal(encoder_map)
+	
+	# decoder - we will optimize only a shared scalar variance for all dimensions
+	decoder_map = Chain(
+		build_mlp(zdim, hdim, hdim, nlayers-1, activation=activation)...,
+		ConditionalDists.SplitLayer(hdim, [idim, 1], [identity, safe_softplus])
+		)
+	decoder = ConditionalMvNormal(decoder_map)
+
+	# prior
+	if prior == "normal"
+		prior_arg = zdim
+	elseif prior == "vamp"
+		(pseudoinput_mean == nothing) ? error("if `prior=vamp`, supply pseudoinput array") : nothing
+		prior_arg = init_vamp(pseudoinput_mean, k)
+	end
+
+	# reset seed
+	(init_seed != nothing) ? Random.seed!() : nothing
+
+	# get the vanilla VAE
+	model = VAE(prior_arg, encoder, decoder)
+end
+
+"""
+	vae_conv_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, 
+		init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
+
+Constructs a classical variational autoencoder.
+
+# Arguments
+- `idim::Int`: input dimension.
+- `zdim::Int`: latent space dimension.
+- `activation::String="relu"`: activation function.
+- `hdim::Int=128`: size of hidden dimension.
+- `nlayers::Int=3`: number of decoder/encoder layers, must be >= 3. 
+- `init_seed=nothing`: seed to initialize weights.
+- `prior="normal"`: one of ["normal", "vamp"].
+- `pseudoinput_mean=nothing`: mean of data used to initialize the VAMP prior.
+- `k::Int=1`: number of VAMP components. 
+"""
+function vae_conv_constructor(;idim=(2,2,1), zdim::Int=1, activation="relu", hdim=128, 
+	kernelsizes=(1,1), channels=(1,1), scalings=(1,1),
 	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
 	(nlayers < 2) ? error("Less than 3 layers are not supported") : nothing
 	
