@@ -13,7 +13,7 @@ using Random
 	gan_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, 
 		init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
 
-Constructs a classical variational autoencoder.
+Constructs a generative adversarial net.
 
 # Arguments
 - `idim::Int`: input dimension.

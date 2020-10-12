@@ -9,7 +9,7 @@ s = ArgParseSettings()
     	arg_type = String
         help = "the path where model results are saved"
     "--check"
-        help = "check validity of saved files"
+        help = "check validity of saved files, may take some time"
         action = :store_true
 end
 parsed_args = parse_args(ARGS, s)
@@ -24,7 +24,10 @@ function list_files(datapath)
 end
 function _check_validity(file)
 	data = load(file)
-	return (length(data[:val_labels]) == length(data[:val_scores])) && length(data[:tst_labels]) == length(data[:tst_scores])
+	(length(data[:val_labels]) == length(data[:val_scores])) && 
+		length(data[:tst_labels]) == length(data[:tst_scores]) &&
+		!any(isnan.(data[:val_scores])) &&
+		!any(isnan.(data[:tst_scores]))
 end
 function check_model_dataset(modelpath, check_validity=true)
 	modelname = basename(modelpath)
@@ -42,9 +45,13 @@ function check_model_dataset(modelpath, check_validity=true)
 			nuf = length(ufiles)
 			col = (length(ufiles) < 100) ? (255, 153, 51) : (255, 255, 255)
 			if check_validity
-				valid_inds = _check_validity.(ufiles)
-				invalid_files = vcat(invalid_files, ufiles[.!valid_inds])
-				nvalid = sum(valid_inds)
+				if length(ufiles) == 0
+					nvalid = 0
+				else
+					valid_inds = _check_validity.(ufiles)
+					invalid_files = vcat(invalid_files, ufiles[.!valid_inds])
+					nvalid = sum(valid_inds)
+				end
 				col = (nvalid < nuf) ? (255,0,0) : col
 				println(Crayon(foreground=col), "SEED = $seed: $(nvalid)/$(nuf)")
 			else
@@ -56,3 +63,5 @@ function check_model_dataset(modelpath, check_validity=true)
 end
 
 invalid_files = check_model_dataset(modelpath, check)
+# without this, bash color may remain changed
+println(Crayon(foreground=(255,255,255)), "\nDONE")
