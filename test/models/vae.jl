@@ -23,6 +23,7 @@
 		scores = map(x->GenerativeAD.Models.reconstruction_score(model, x), (X,Y,Z))
 		@test mean(scores[1]) < mean(scores[3])
 		@test mean(scores[2]) < mean(scores[3])
+		model
 	end
 	# vanilla VAE
 	model = GenerativeAD.Models.vae_constructor(;parameters...)

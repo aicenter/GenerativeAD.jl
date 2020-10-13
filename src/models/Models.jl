@@ -25,4 +25,7 @@ include("tabular_flows.jl")
 include("vae.jl")
 include("aae.jl")
 
+# this contains dependencies from vae and aae
+include("utils/vae_utils.jl")
+
 end

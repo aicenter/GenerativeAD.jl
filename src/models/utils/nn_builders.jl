@@ -82,7 +82,7 @@ function conv_encoder(idim::Union{Tuple, Vector}, zdim::Int, kernelsizes::Union{
 	(all(kernelsizes .% 2 .== 1)) ? nothing : error("not implemented for odd kernelsizes")
 
 	# string to function
-	activation = eval(:($(Symbol(activation))))
+	actf = eval(:($(Symbol(activation))))
 	
 	# initialize dimensions
 	cins = vcat(idim[3], channels[1:end-1]...) # channels in
@@ -95,7 +95,7 @@ function conv_encoder(idim::Union{Tuple, Vector}, zdim::Int, kernelsizes::Union{
 	for (k, ci, co, s) in zip(kernelsizes, cins, couts, scalings)
 		pad = Int((k-1)/2)
 		# paddding so that input and output size are same
-		push!(layers, Conv((k,k), ci=>co, activation; pad = (pad, pad))) 
+		push!(layers, Conv((k,k), ci=>co, actf; pad = (pad, pad))) 
 		push!(layers, MaxPool((s,s)))
 		# generally, bn is not recommended for training vaes
 		batchnorm ? push!(layers, BatchNorm(co)) : nothing
@@ -108,7 +108,7 @@ function conv_encoder(idim::Union{Tuple, Vector}, zdim::Int, kernelsizes::Union{
 	ndense = length(densedims)
 	dins = vcat(din, densedims...)
 	douts = vcat(densedims..., zdim)
-	dacts = vcat([activation for _ in 1:ndense]..., identity)
+	dacts = vcat([actf for _ in 1:ndense]..., identity)
 	for (_di, _do, _da) in zip(dins, douts, dacts)
 		push!(layers, Dense(_di, _do, _da))
 	end
@@ -152,6 +152,9 @@ function conv_decoder(odim::Union{Tuple, Vector}, zdim::Int, kernelsizes::Union{
 	# also check that kernelsizes are all odd numbers
 	(all(kernelsizes .% 2 .== 1)) ? nothing : error("not implemented for odd kernelsizes")
 
+	# string to function
+	actf = eval(:($(Symbol(activation))))
+	
 	# initialize some stuff
 	cins = channels # channels in
 	couts = vcat(channels[2:end]..., odim[3]) # channels out
@@ -165,18 +168,18 @@ function conv_decoder(odim::Union{Tuple, Vector}, zdim::Int, kernelsizes::Union{
 	dins = vcat(zdim, densedims...)
 	douts = vcat(densedims..., dout)
 	for (_di, _do) in zip(dins, douts)
-		push!(layers, Dense(_di, _do, activation))
+		push!(layers, Dense(_di, _do, actf))
 	end
 
 	# reshape
 	push!(layers, x -> reshape(x, ho, wo, channels[1], :))
 
 	# add the transpose and convolutional layers
-	acts = vcat([activation for _ in 1:nconv-1]..., identity) 
+	acts = vcat([actf for _ in 1:nconv-1]..., identity) 
 	for (k, ci, co, s, act) in zip(kernelsizes, cins, couts, scalings, acts)
 		pad = Int((k-1)/2)
 		# use convtranspose for upscaling - there are other posibilities, however this seems to be ok
-		push!(layers, ConvTranspose((s,s), ci=>ci, activation, stride = (s,s))) 
+		push!(layers, ConvTranspose((s,s), ci=>ci, actf, stride = (s,s))) 
 		push!(layers, Conv((k,k), ci=>co, act; pad = (pad, pad)))
 		# generally, bn is not recommended for training vaes
 		batchnorm ? push!(layers, BatchNorm(co)) : nothing

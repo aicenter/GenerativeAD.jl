@@ -82,8 +82,9 @@ function vae_constructor(;idim::Int=1, zdim::Int=1, activation="relu", hdim=128,
 end
 
 """
-	vae_conv_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, 
-		init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
+	conv_vae_constructor(idim=(2,2,1), zdim::Int=1, activation="relu", hdim=1024, kernelsizes=(1,1), 
+		channels=(1,1), scalings=(1,1), init_seed=nothing, prior="normal", pseudoinput_mean=nothing, 
+		k=1, batchnorm=false, kwargs...)
 
 Constructs a classical variational autoencoder.
 
@@ -91,33 +92,39 @@ Constructs a classical variational autoencoder.
 - `idim::Int`: input dimension.
 - `zdim::Int`: latent space dimension.
 - `activation::String="relu"`: activation function.
-- `hdim::Int=128`: size of hidden dimension.
-- `nlayers::Int=3`: number of decoder/encoder layers, must be >= 3. 
+- `hdim::Int=1024`: size of hidden dimension.
+- `kernelsizes=(1,1)`: kernelsizes in consequent layers.
+- `channels=(1,1)`: number of channels.
+- `scalings=(1,1)`: scalings in subsewuent layers.
 - `init_seed=nothing`: seed to initialize weights.
 - `prior="normal"`: one of ["normal", "vamp"].
 - `pseudoinput_mean=nothing`: mean of data used to initialize the VAMP prior.
-- `k::Int=1`: number of VAMP components. 
+- `k::Int=1`: number of VAMP components.
+- `batchnorm=false`: use batchnorm (discouraged). 
 """
-function vae_conv_constructor(;idim=(2,2,1), zdim::Int=1, activation="relu", hdim=128, 
+function conv_vae_constructor(;idim=(2,2,1), zdim::Int=1, activation="relu", hdim=1024, 
 	kernelsizes=(1,1), channels=(1,1), scalings=(1,1),
-	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
-	(nlayers < 2) ? error("Less than 3 layers are not supported") : nothing
-	
+	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, 
+	batchnorm=false, kwargs...)
 	# if seed is given, set it
 	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
 	
 	# construct the model
 	# encoder - diagonal covariance
 	encoder_map = Chain(
-		build_mlp(idim, hdim, hdim, nlayers-1, activation=activation)...,
+		conv_encoder(idim, hdim, kernelsizes, channels, scalings; activation=activation, 
+			batchnorm=batchnorm)...,
 		ConditionalDists.SplitLayer(hdim, [zdim, zdim], [identity, safe_softplus])
 		)
 	encoder = ConditionalMvNormal(encoder_map)
 	
 	# decoder - we will optimize only a shared scalar variance for all dimensions
+	# also, the decoder output will be vectorized so the usual logpdfs vcan be used
+	vecdim = reduce(*,idim[1:3]) # size of vectorized data
 	decoder_map = Chain(
-		build_mlp(zdim, hdim, hdim, nlayers-1, activation=activation)...,
-		ConditionalDists.SplitLayer(hdim, [idim, 1], [identity, safe_softplus])
+		conv_decoder(idim, zdim, reverse(kernelsizes), reverse(channels), reverse(scalings),
+			activation=activation, vec_output=true, vec_output_dim=nothing, batchnorm=batchnorm)...,
+		ConditionalDists.SplitLayer(vecdim, [vecdim, 1], [identity, safe_softplus])
 		)
 	decoder = ConditionalMvNormal(decoder_map)
 
@@ -150,14 +157,22 @@ function StatsBase.fit!(model::VAE, data::Tuple, loss::Function; max_train_time=
 	_patience = patience
 
 	tr_x = data[1][1]
-	val_x = data[2][1][:,data[2][2] .== 0]
-	val_N = size(val_x,2)
+	# i know this could be done generally for all sizes but it is very ugly afaik
+	if ndims(tr_x) == 2
+		val_x = data[2][1][:,data[2][2] .== 0]
+	elseif ndims(tr_x) == 4
+		val_x = data[2][1][:,:,:,data[2][2] .== 0]
+	else
+		error("not implemented for other than 2D and 4D data")
+	end
+	val_N = size(val_x,ndims(val_x))
 
 	# on large datasets, batching loss is faster
 	best_val_loss = Inf
 	i = 1
 	start_time = time() # end the training loop after 23hrs
 	for batch in RandomBatches(tr_x, batchsize)
+		# batch loss
 		batch_loss = 0f0
 		gs = gradient(() -> begin 
 			batch_loss = loss(tr_model,batch)
