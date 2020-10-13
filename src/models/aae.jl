@@ -97,7 +97,7 @@ dloss(d,g,x,z) = - 0.5f0*(mean(log.(d(x) .+ eps(Float32))) + mean(log.(1 .- d(g(
 
 Generator loss.
 """
-gloss(d,g,x) = - mean(log.(d(g(x)) .+ eps(Float32)))
+gloss(d,g,z) = - mean(log.(d(g(z)) .+ eps(Float32)))
 
 """
 	aeloss(AAE, x[, batchsize])
