@@ -45,7 +45,7 @@
 		model
 	end
 	# test convolutional vae
-	parameters = (idim=idim, zdim=zdim, activation="swish", hdim=32, kernelsizes=(5,3),
+	parameters = (idim=idim, zdim=zdim, activation="swish", kernelsizes=(5,3),
 		channels=(4,8), scalings=(2,2))
 	model = GenerativeAD.Models.conv_vae_constructor(;parameters...)
 	loss(m,x) = -elbo(m,x)

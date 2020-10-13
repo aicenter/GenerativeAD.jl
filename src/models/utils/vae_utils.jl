@@ -40,6 +40,30 @@ generate(model::AEModel, N::Int) = mean(model.decoder, rand(model.prior, N))
 generate(model::AEModel, N::Int, outdim) = reshape(generate(model, N), outdim..., :)
 
 """
+	encode_mean(model::AEModel, x)
+
+Produce data encodings.
+"""
+encode_mean(model::AEModel, x) = mean(model.encoder, x)
+"""
+	encode_mean_gpu(model::AEModel, x[, batchsize])
+
+Produce data encodings. Works only on 4D tensors.
+"""
+encode_mean_gpu(model, x::AbstractArray{T,4}) where T = encode_mean(model, gpu(Array(x)))
+function encode_mean_gpu(model, x::AbstractArray{T,4}, batchsize::Int) where T
+	# this has to be done in a loop since doing cat(map()...) fails if there are too many arguments
+	dl = Flux.Data.DataLoader(x, batchsize=batchsize)
+	z = encode_mean_gpu(model, iterate(dl,1)[1])
+	N = size(x, ndims(x))
+	encodings = gpu(zeros(eltype(z), size(z,1), N))
+	for (i,batch) in enumerate(dl)
+		encodings[:,1+(i-1)*batchsize:min(i*batchsize,N)] .= encode_mean_gpu(model, batch)
+	end
+	encodings
+end
+
+"""
 	reconstruction_score(model::AEModel, x)
 
 Anomaly score based on the reconstruction probability of the data.
