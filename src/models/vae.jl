@@ -34,15 +34,15 @@ end
 Constructs a classical variational autoencoder.
 
 # Arguments
-- `idim::Int`: input dimension.
-- `zdim::Int`: latent space dimension.
-- `activation::String="relu"`: activation function.
-- `hdim::Int=128`: size of hidden dimension.
-- `nlayers::Int=3`: number of decoder/encoder layers, must be >= 3. 
-- `init_seed=nothing`: seed to initialize weights.
-- `prior="normal"`: one of ["normal", "vamp"].
-- `pseudoinput_mean=nothing`: mean of data used to initialize the VAMP prior.
-- `k::Int=1`: number of VAMP components. 
+	- `idim::Int`: input dimension.
+	- `zdim::Int`: latent space dimension.
+	- `activation::String="relu"`: activation function.
+	- `hdim::Int=128`: size of hidden dimension.
+	- `nlayers::Int=3`: number of decoder/encoder layers, must be >= 3. 
+	- `init_seed=nothing`: seed to initialize weights.
+	- `prior="normal"`: one of ["normal", "vamp"].
+	- `pseudoinput_mean=nothing`: mean of data used to initialize the VAMP prior.
+	- `k::Int=1`: number of VAMP components. 
 """
 function vae_constructor(;idim::Int=1, zdim::Int=1, activation="relu", hdim=128, nlayers::Int=3, 
 	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
@@ -89,18 +89,18 @@ end
 Constructs a classical variational autoencoder.
 
 # Arguments
-- `idim::Int`: input dimension.
-- `zdim::Int`: latent space dimension.
-- `activation::String="relu"`: activation function.
-- `hdim::Int=1024`: size of hidden dimension.
-- `kernelsizes=(1,1)`: kernelsizes in consequent layers.
-- `channels=(1,1)`: number of channels.
-- `scalings=(1,1)`: scalings in subsewuent layers.
-- `init_seed=nothing`: seed to initialize weights.
-- `prior="normal"`: one of ["normal", "vamp"].
-- `pseudoinput_mean=nothing`: mean of data used to initialize the VAMP prior.
-- `k::Int=1`: number of VAMP components.
-- `batchnorm=false`: use batchnorm (discouraged). 
+	- `idim::Int`: input dimension.
+	- `zdim::Int`: latent space dimension.
+	- `activation::String="relu"`: activation function.
+	- `hdim::Int=1024`: size of hidden dimension.
+	- `kernelsizes=(1,1)`: kernelsizes in consequent layers.
+	- `channels=(1,1)`: number of channels.
+	- `scalings=(1,1)`: scalings in subsewuent layers.
+	- `init_seed=nothing`: seed to initialize weights.
+	- `prior="normal"`: one of ["normal", "vamp"].
+	- `pseudoinput_mean=nothing`: mean of data used to initialize the VAMP prior.
+	- `k::Int=1`: number of VAMP components.
+	- `batchnorm=false`: use batchnorm (discouraged). 
 """
 function conv_vae_constructor(;idim=(2,2,1), zdim::Int=1, activation="relu", hdim=1024, 
 	kernelsizes=(1,1), channels=(1,1), scalings=(1,1),

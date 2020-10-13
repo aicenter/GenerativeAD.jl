@@ -11,13 +11,13 @@ using GenerativeModels
 s = ArgParseSettings()
 @add_arg_table! s begin
    "max_seed"
-        default = 1
-        arg_type = Int
-        help = "seed"
-    "dataset"
-        default = "MNIST"
-        arg_type = String
-        help = "dataset"
+		default = 1
+		arg_type = Int
+		help = "seed"
+	"dataset"
+		default = "MNIST"
+		arg_type = String
+		help = "dataset"
 	"anomaly_classes"
 		arg_type = Int
 		default = 10
@@ -105,7 +105,9 @@ function fit(data, parameters)
 	# now return the different scoring functions
 	training_info, [
 		(x -> cpu(GenerativeAD.Models.reconstruction_score(model, gpu(Array(x)))), merge(parameters, (score = "reconstruction",))),
-		(x -> cpu(GenerativeAD.Models.reconstruction_score_mean(model, gpu(Array(x)))), merge(parameters, (score = "reconstruction-mean",)))
+		(x -> cpu(GenerativeAD.Models.reconstruction_score_mean(model, gpu(Array(x)))), merge(parameters, (score = "reconstruction-mean",))),
+		(x -> cpu(GenerativeAD.Models.latent_score(info.model, gpu(Array(x)))), merge(parameters, (score = "latent",))),
+		(x -> cpu(GenerativeAD.Models.latent_score_mean(info.model, gpu(Array(x)))), merge(parameters, (score = "latent-mean",))),
 		]
 end
 
@@ -117,9 +119,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
 	try_counter = 0
 	max_tries = 10*max_seed
 	while try_counter < max_tries
-	    parameters = sample_params()
+		parameters = sample_params()
 
-	    for seed in 1:max_seed
+		for seed in 1:max_seed
 			for i in 1:anomaly_classes
 				savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 				mkpath(savepath)

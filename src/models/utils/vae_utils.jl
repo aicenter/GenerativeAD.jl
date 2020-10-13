@@ -4,7 +4,7 @@
 
 A Union of VAE and AAE types.
 """
-AEModel = Union{VAE, AAE}
+const AEModel = Union{VAE, AAE}
 
 # these functions need to be overloaded for convolutional models
 function ConditionalDists.condition(p::ConditionalMvNormal, z::AbstractArray{T,4}) where T
