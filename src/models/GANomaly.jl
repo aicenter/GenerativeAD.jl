@@ -250,6 +250,8 @@ end
 computes generator and discriminator loss without additional pass through model
 """
 function validation_loss(g::Generator, d::Discriminator, real_input; weights=[1,50,1])
+	testmode!(g)
+	testmode!(d)
 	fake, latent_i, latent_o = g(real_input)
 	pred_real, feat_real = d(real_input)
 	pred_fake, feat_fake = d(fake)
@@ -260,7 +262,8 @@ function validation_loss(g::Generator, d::Discriminator, real_input; weights=[1,
 
 	loss_for_real = Flux.crossentropy(pred_real, 1f0) # ones(typeof(pred_real), size(pred_real)) has same speed
 	loss_for_fake = Flux.crossentropy(1f0.-pred_fake, 1f0)
-
+	testmode!(g, false)
+	testmode!(d, false)
 	return adversarial_loss*weights[1]+contextual_loss*weights[2]+encoder_loss*weights[3],
 		0.5f0*(loss_for_real+loss_for_fake)
 end
@@ -271,18 +274,22 @@ end
 computes unscaled anomaly score A(x) = || E1(x) - E2(D(E1(x))) ||_1
 """
 function anomaly_score(generator::Generator, real_input; dims=3)
+	testmode!(generator)
 	_, latent_i, latent_o = generator(real_input)
+	testmode!(generator, false)
 	return vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims)))'
 end
 
 function anomaly_score_gpu(generator::Generator, real_input; dims=3, batch_size=64)
 	real_input = Flux.Data.DataLoader(real_input, batchsize=batch_size)
+	testmode!(generator)
 	generator = generator|>gpu
 	output = Array{Float32}([])
 	for X in real_input
 		_, latent_i, latent_o = generator(X|>gpu)
 		output = cat(output,vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims))) |> cpu, dims=1)
 	end
+	testmode!(generator, false)
 	return output'
 end
 
