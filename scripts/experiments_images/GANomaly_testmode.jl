@@ -10,8 +10,6 @@ using Flux
 using MLDataPattern
 
 
-savepath = datadir("experiments/images/Conv-GANomaly")
-
 function models_and_params(path_to_model)
     directories = []
     models = []
@@ -63,7 +61,7 @@ for model in models
         s = split(r, "/") #linux "/" vs windows "\\"
         dataset = String(s[end-2])
         seed = parse(Int, split(s[end-1], "=")[2])
-        ac = parse(Int, split(ss[end], "=")[2])
+        ac = parse(Int, split(s[end], "=")[2])
         
         data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac)
         data = GenerativeAD.Models.preprocess_images(data, p)
