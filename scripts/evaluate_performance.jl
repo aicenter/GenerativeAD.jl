@@ -9,6 +9,7 @@ using FileIO
 using BSON
 using DataFrames
 using ValueHistories
+using LinearAlgebra
 
 function compute_stats(f::String)
 	data = load(f)
