@@ -20,6 +20,7 @@ function compute_stats(f::String)
 
 	results = []
 	for (scores, labels) in scores_labels
+		scores = vec(scores)
 		roc = EvalMetrics.roccurve(labels, scores)
 		auc = EvalMetrics.auc_trapezoidal(roc...)
 		prc = EvalMetrics.prcurve(labels, scores)
