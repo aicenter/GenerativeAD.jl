@@ -61,9 +61,9 @@ function fit(data, parameters)
 	training_info = (
 		fit_t = fit_t,
 		model = nothing,
-		npars = parameters.ngenerators * 2 * (size(data[1][1],0)^2) 
-			+ Int(ceil(sqrt(size(data[1][1],1)))) * size(data[1][1],0) 
-			+ Int(ceil(sqrt(size(data[1][1],1))))
+		npars = parameters.k * 2 * (size(data[1][1],1)^2) 
+			+ Int(ceil(sqrt(size(data[1][1],2)))) * size(data[1][1],1) 
+			+ Int(ceil(sqrt(size(data[1][1],2))))
 		)
 
 	# now return the different scoring functions
@@ -88,7 +88,7 @@ while try_counter < max_tries
 
 		@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
 		# check if a combination of parameters and seed alread exists
-		if GenerativeAD.check_params(savepath, data, edited_parameters)
+		if GenerativeAD.check_params(savepath, edited_parameters)
 			# fit
 			training_info, results = fit(data, edited_parameters)
 			# here define what additional info should be saved together with parameters, scores, labels and predict times
