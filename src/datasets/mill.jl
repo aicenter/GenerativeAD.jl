@@ -39,3 +39,46 @@ function load_mill_data(dataset::String)
 	# return normal and anomalous bags
 	(normal = BagNode(ArrayNode(x[:,c0[:]]), bags0), anomaly = BagNode(ArrayNode(x[:,c1[:]]), bags1),)
 end
+
+import Base.length
+Base.length(B::BagNode)=length(B.bags.bags)
+
+"""
+	train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); seed=nothing,
+	    	contamination::Real=0.0)
+
+Split Bag data.
+"""
+function train_val_test_split(data_normal::BagNode, data_anomalous::BagNode, ratios=(0.6,0.2,0.2); seed=nothing,
+	    	contamination::Real=0.0)
+	# split the normal data, add some anomalies to the train set and divide
+	# the rest between validation and test
+	(0 <= contamination <= 1) ? nothing : error("contamination must be in the interval [0,1]")
+	nd = ndims(data_normal.data.data) # differentiate between 2D tabular and 4D image data
+
+	# split normal indices
+	indices = 1:length(data_normal.bags.bags)
+	split_inds = train_val_test_inds(indices, ratios; seed=seed)
+
+	# select anomalous indices
+	indices_anomalous = 1:length(data_anomalous.bags.bags)
+	vtr = (1 - contamination)/2 # validation/test ratio
+	split_inds_anomalous = train_val_test_inds(indices_anomalous, (contamination, vtr, vtr); seed=seed)
+
+	# this can be done universally - how?
+	tr_n, val_n, tst_n = map(is -> data_normal[is], split_inds)
+	tr_a, val_a, tst_a = map(is -> data_anomalous[is], split_inds_anomalous)
+
+	# cat it together
+	tr_x = cat(tr_n, tr_a, dims = nd)
+	val_x = cat(val_n, val_a, dims = nd)
+	tst_x = cat(tst_n, tst_a, dims = nd)
+
+	# now create labels
+	tr_y = vcat(zeros(Float32, length(tr_n)), ones(Float32, length(tr_a)))
+	val_y = vcat(zeros(Float32, length(val_n)), ones(Float32, length(val_a)))
+	tst_y = vcat(zeros(Float32, length(tst_n)), ones(Float32, length(tst_a)))
+
+	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
+end
+

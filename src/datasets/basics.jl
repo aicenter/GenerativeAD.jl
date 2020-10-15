@@ -68,6 +68,7 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
 end
 
+
 """
 	load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamination::Real=0.0)
 
@@ -85,6 +86,8 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamin
 		data_normal, data_anomalous = load_mldatasets_data(dataset; kwargs...)
 	elseif dataset in other_datasets
 		data_normal, data_anomalous = load_other_data(dataset; standardize=true, kwargs...)
+	elseif dataset in mill_datasets
+		data_normal, data_anomalous = load_mill_data(dataset; kwargs...)
 	else
 		error("Dataset $(dataset) not known, either not implemented or misspeled.")
 		# TODO add the rest
