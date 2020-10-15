@@ -124,33 +124,30 @@ function StatsBase.fit!(advae::adVAE, data, params)
 
 	ps_step1 = Flux.params(advae.generator, advae.transformer)
 	ps_step2 = Flux.params(advae.encoder)
-
+    ps_all = Flux.params(advae)
 
 	progress = Progress(length(train_loader))
-	for (iter, X) in enumerate(train_loader)
-		# training step 1
-		loss_1, back = Flux.pullback(ps_step1) do
+    for (iter, X) in enumerate(train_loader)
+        # one forward pass 
+        losses, back = Flux.pullback(ps_all) do
             loss(advae|>gpu , getobs(X)|>gpu, γ=params.gamma, λ=params.lambda, mx=params.mx, mz=params.mz)
-		end
-		grad_step1 = back((1f0, 0f0, 0f0, 0f0))
+        end
+        # training step 1
+        grad_step1 = back((1f0, 0f0, 0f0, 0f0))
         Flux.Optimise.update!(opt, ps_step1, grad_step1)
         # training step 2
-        loss_2, back = Flux.pullback(ps_step2) do
-            loss(advae|>gpu , getobs(X)|>gpu, γ=params.gamma, λ=params.lambda, mx=params.mx, mz=params.mz)
-		end
         grad_step2 = back((0f0, 1f0, 0f0, 0f0))
 		Flux.Optimise.update!(opt, ps_step2, grad_step2)
 
-
-        push!(history, :loss_step_1, iter, loss_1[1])
-        push!(history, :encoder_loss, iter, loss_2[2])
-        push!(history, :generator_loss, iter, loss_1[3])
-        push!(history, :transformer_loss, iter, loss_1[4])
+        push!(history, :loss_step_1, iter, losses[1])
+        push!(history, :encoder_loss, iter, losses[2])
+        push!(history, :generator_loss, iter, losses[3])
+        push!(history, :transformer_loss, iter, losses[4])
 
 		next!(progress; showvalues=[
 			(:iters, "$(iter)/$(params.iters)"),
-			(:loss_step_1, loss_1[1]),
-			(:loss_step_2, loss_2[2])
+			(:loss_step_1, losses[1]),
+			(:loss_step_2, losses[2])
 			])
         # TODO: check and prepare early stopping 
         if mod(iter, params.check_every) == 0
