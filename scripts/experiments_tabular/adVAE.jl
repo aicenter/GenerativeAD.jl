@@ -26,42 +26,42 @@ parsed_args = parse_args(ARGS, s)
 modelname ="adVAE"
 
 function sample_params()
-    argnames = (
-        :hdim, 
-        :zdim, 
-        :nlayers, 
-        :activation,
-        :gamma,
-        :lambda,
-        :mx,
-        :mz,
-        :lr, 
-        :decay,
-        :batch_size, 
-        :iters, 
-        :check_every, 
-        :patience, 
-        :init_seed,
-    )
-    par_vec = (
-        2 .^(4:9),
-        2 .^(1:8),
-        3:4,
-        ["relu", "swish", "tanh"],
-        [0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1], # γ
-        [5, 10, 50, 100, 500].^1e-4, # λ  
-        0.5:0.5:2.5, #mx
-        10:10:100, #mz
-        10f0 .^ (-4:-3),
-        0f0:0.1:0.5,
-        2 .^ (5:6),
-        [10000],
-        [10],
-        [30],
-        1:Int(1e8),
-    )
+	argnames = (
+		:hdim, 
+		:zdim, 
+		:nlayers, 
+		:activation,
+		:gamma,
+		:lambda,
+		:mx,
+		:mz,
+		:lr, 
+		:decay,
+		:batch_size, 
+		:iters, 
+		:check_every, 
+		:patience, 
+		:init_seed,
+	)
+	par_vec = (
+		2 .^(4:9),
+		2 .^(1:8),
+		3:4,
+		["relu", "swish", "tanh"],
+		[0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1], # γ
+		[5, 10, 50, 100, 500].^1e-4, # λ  
+		0.5:0.5:2.5, #mx
+		10:10:100, #mz
+		10f0 .^ (-4:-3),
+		0f0:0.1:0.5,
+		2 .^ (5:6),
+		[10000],
+		[10],
+		[30],
+		1:Int(1e8),
+	)
 
-    return NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec))
+	return NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec))
 end
 
 function fit(data, parameters)
@@ -84,9 +84,9 @@ function fit(data, parameters)
 		iters = info[4] # optim iterations of model
 		)
 
-    return training_info, 
-    [(x -> GenerativeAD.Models.anomaly_score(advae|>cpu, x; dims=1, L=100), merge(parameters, (L=100, )))]
-    # L = samples for one x in anomaly_score computation
+	return training_info, 
+	[(x -> GenerativeAD.Models.anomaly_score(advae|>cpu, x; dims=1, L=100), merge(parameters, (L=100, )))]
+	# L = samples for one x in anomaly_score computation
 end
 
 #_________________________________________________________________________________________________
@@ -98,30 +98,30 @@ while try_counter < max_tries
 	parameters = sample_params()
 
 	for seed in 1:max_seed
-        savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
+		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
 
-        data = GenerativeAD.load_data(dataset, seed=seed)
-        # update parameter
-        parameters = merge(parameters, (idim=size(data[1][1],1), ))
-        # here, check if a model with the same parameters was already tested
-        if GenerativeAD.check_params(savepath, parameters)
-            #(X_train,_), (X_val, y_val), (X_test, y_test) = data
-            training_info, results = fit(data, parameters)
-            # saving model separately
-            if training_info.model !== nothing
-                tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
-                training_info = merge(training_info, (model = nothing,))
-            end
-            save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
-            # now loop over all anomaly score funs
-            for result in results
-                GenerativeAD.experiment(result..., data, savepath; save_entries...)
-            end
-            global try_counter = max_tries + 1
-        else
-            @info "Model already present, sampling new hyperparameters..."
-            global try_counter += 1
-        end
+		data = GenerativeAD.load_data(dataset, seed=seed)
+		# update parameter
+		parameters = merge(parameters, (idim=size(data[1][1],1), ))
+		# here, check if a model with the same parameters was already tested
+		if GenerativeAD.check_params(savepath, parameters)
+			#(X_train,_), (X_val, y_val), (X_test, y_test) = data
+			training_info, results = fit(data, parameters)
+			# saving model separately
+			if training_info.model !== nothing
+				tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+				training_info = merge(training_info, (model = nothing,))
+			end
+			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+			# now loop over all anomaly score funs
+			for result in results
+				GenerativeAD.experiment(result..., data, savepath; save_entries...)
+			end
+			global try_counter = max_tries + 1
+		else
+			@info "Model already present, sampling new hyperparameters..."
+			global try_counter += 1
+		end
 	end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing

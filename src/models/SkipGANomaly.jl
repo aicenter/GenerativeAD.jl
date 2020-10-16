@@ -184,8 +184,8 @@ end
 	function validation_loss(SkipGAN::SkipGANomaly, real_input, weights=[1,50,1])
 computes generator and discriminator loss without additional pass through model
 """
-function validation_loss(SkipGAN::SkipGANomaly, real_input; weights=[1,50,1])
-	testmode!(SkipGAN)
+function validation_loss(SkipGAN::SkipGANomaly, real_input; weights=[1,50,1], to_testmode::Bool=true)
+	(to_testmode == true) ? Flux.testmode!(SkipGAN) : nothing
 	fake = SkipGAN.generator(real_input)
 
 	pred_real, feat_real = SkipGAN.discriminator(real_input)
@@ -198,7 +198,7 @@ function validation_loss(SkipGAN::SkipGANomaly, real_input; weights=[1,50,1])
 	loss_for_real = Flux.crossentropy(pred_real, 1f0)
 	loss_for_fake = Flux.crossentropy(1f0.-pred_fake, 1f0)
 
-	testmode!(SkipGAN, false)
+	(to_testmode == true) ? Flux.testmode!(SkipGAN, false) : nothing
 	return adv_loss * weights[1] + con_loss * weights[2] + lat_loss * weights[3],
 		loss_for_real + loss_for_fake + lat_loss, con_loss, lat_loss
 end
@@ -207,8 +207,8 @@ end
 	function anomaly_score(SkipGAN::SkipGANomaly, real_input; lambda = 0.5)
 computes unscaled anomaly score of real input, losses are weighted by factor lambda
 """
-function anomaly_score(SkipGAN::SkipGANomaly, real_input; lambda = 0.9, dims=[1,2,3])
-	testmode!(SkipGAN)
+function anomaly_score(SkipGAN::SkipGANomaly, real_input; lambda = 0.9, dims=[1,2,3], to_testmode::Bool=true)
+	(to_testmode == true) ? Flux.testmode!(SkipGAN) : nothing
 	fake = SkipGAN.generator(real_input) # + randn(typeof(real_input[1]), size(real_input))
 
 	pred_real, feat_real = SkipGAN.discriminator(real_input)
@@ -216,12 +216,12 @@ function anomaly_score(SkipGAN::SkipGANomaly, real_input; lambda = 0.9, dims=[1,
 
 	rec_loss  = Flux.mae(fake, real_input, agg=x->Flux.mean(x, dims=dims)) # reconstruction loss -> similar to contextual loss
 	lat_loss = Flux.mse(feat_fake, feat_real, agg=x->Flux.mean(x, dims=dims)) # loss of latent representation
-	testmode!(SkipGAN, false)
+	(to_testmode == true) ? Flux.testmode!(SkipGAN, false) : nothing
 	return lambda .* rec_loss .+ (1 - lambda) .* lat_loss |>cpu
 end
 
-function generalized_anomaly_score(SkipGAN::SkipGANomaly, real_input; R="mae", L="mae", lambda=0.9, dims=[1,2,3])
-	testmode!(SkipGAN)
+function generalized_anomaly_score(SkipGAN::SkipGANomaly, real_input; R="mae", L="mae", lambda=0.9, dims=[1,2,3], to_testmode::Bool=true)
+	(to_testmode == true) ? Flux.testmode!(SkipGAN) : nothing
 	fake = SkipGAN.generator(real_input) # + randn(typeof(real_input[1]), size(real_input))
 
 	pred_real, feat_real = SkipGAN.discriminator(real_input)
@@ -231,13 +231,13 @@ function generalized_anomaly_score(SkipGAN::SkipGANomaly, real_input; R="mae", L
 	L = getfield(Flux, Symbol(L))
 	rec_loss  = R(fake, real_input, agg=x->Flux.mean(x, dims=dims)) # reconstruction loss -> similar to contextual loss
 	lat_loss = L(feat_fake, feat_real, agg=x->Flux.mean(x, dims=dims)) # loss of latent representation
-	testmode!(SkipGAN, false)
+	(to_testmode == true) ? Flux.testmode!(SkipGAN, false) : nothing
 	return lambda .* rec_loss .+ (1 - lambda) .* lat_loss |>cpu
 end
 
-function generalized_anomaly_score_gpu(SkipGAN::SkipGANomaly, real_input; R="mae", L="mae", lambda=0.9, dims=[1,2,3], batch_size=64)
+function generalized_anomaly_score_gpu(SkipGAN::SkipGANomaly, real_input; R="mae", L="mae", lambda=0.9, dims=[1,2,3], batch_size=64, to_tesrmode::Bool=true)
 	real_input = Flux.Data.DataLoader(real_input, batchsize=batch_size)
-	testmode!(SkipGAN)
+	(to_testmode == true) ? Flux.testmode!(SkipGAN) : nothing
 	SkipGAN = SkipGAN |> gpu
 	R = getfield(Flux, Symbol(R))
 	L = getfield(Flux, Symbol(L))
@@ -252,7 +252,7 @@ function generalized_anomaly_score_gpu(SkipGAN::SkipGANomaly, real_input; R="mae
 		Ls = cat(Ls, vec(L(feat_fake, feat_real, agg=x->Flux.mean(x, dims=dims))|>cpu), dims=1)
 		#output = cat(output,vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims))) |> cpu, dims=1)
 	end
-	testmode!(SkipGAN, false)
+	(to_testmode == true) ? Flux.testmode!(SkipGAN, false) : nothing
 	return lambda .* Rs .+ (1 - lambda) .* Ls
 end
 
@@ -276,7 +276,8 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 	val_batches = length(val_loader)
 	# define optimiser
 	# ADAMW(η = 0.001, β = (0.9, 0.999), decay = 0) = Optimiser(ADAM(η, β), WeightDecay(decay))
-	opt = haskey(params, :decay) ? ADAMW(params.lr, (0.9, 0.999), params.decay) : ADAM(params.lr)
+	opt_g = haskey(params, :decay) ? ADAMW(params.lr, (0.9, 0.999), params.decay) : ADAM(params.lr)
+	opt_d = haskey(params, :decay) ? ADAMW(params.lr, (0.9, 0.999), params.decay) : ADAM(params.lr)
 
 	ps_g = Flux.params(SkipGAN.generator)
 	ps_d = Flux.params(SkipGAN.discriminator)
@@ -288,14 +289,14 @@ function StatsBase.fit!(SkipGAN::SkipGANomaly, data, params)
 			generator_loss(SkipGAN, getobs(X)|>gpu, weights=params.weights)
 		end
 		grad = back((1f0, 0f0, 0f0, 0f0))
-		Flux.Optimise.update!(opt, ps_g, grad)
+		Flux.Optimise.update!(opt_g, ps_g, grad)
 
 		# discriminator update
 		loss2, back = Flux.pullback(ps_d) do
 			discriminator_loss(SkipGAN, getobs(X)|>gpu)
 		end
 		grad = back(1f0)
-		Flux.Optimise.update!(opt, ps_d, grad)
+		Flux.Optimise.update!(opt_d, ps_d, grad)
 
 		history = update_history(history, loss1, loss2)
 		next!(progress; showvalues=[

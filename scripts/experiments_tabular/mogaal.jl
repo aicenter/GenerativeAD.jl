@@ -9,13 +9,13 @@ using BSON
 s = ArgParseSettings()
 @add_arg_table! s begin
    "max_seed"
-        required = true
-        arg_type = Int
-        help = "seed"
-    "dataset"
-        required = true
-        arg_type = String
-        help = "dataset"
+		required = true
+		arg_type = Int
+		help = "seed"
+	"dataset"
+		required = true
+		arg_type = String
+		help = "dataset"
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed = parsed_args
@@ -24,24 +24,24 @@ modelname = "MO_GAAL"
 
 function sample_params()
 	argnames = (
-        :k, 
-        :stop_epochs, 
-        :lr_d, 
-        :lr_g, 
-        :decay, 
-        :momentum, 
-        :contamination, 
-    )
-    par_vec = (
-        5:20,
-        10:10:100,
-        10f0 .^ (-4:-2),
-        10f0 .^ (-4:-2),
-        [1e-6],
-        0.5:0.1:0.9,
-        0.1:0.1:0.5,
-    )
-    return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec)))
+		:k, 
+		:stop_epochs, 
+		:lr_d, 
+		:lr_g, 
+		:decay, 
+		:momentum, 
+		:contamination, 
+	)
+	par_vec = (
+		5:20,
+		10:10:100,
+		10f0 .^ (-4:-2),
+		10f0 .^ (-4:-2),
+		[1e-6],
+		0.5:0.1:0.9,
+		0.1:0.1:0.5,
+	)
+	return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec)))
 end
 
 function fit(data, parameters)
@@ -74,9 +74,9 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 while try_counter < max_tries
-    parameters = sample_params()
+	parameters = sample_params()
 
-    for seed in 1:max_seed
+	for seed in 1:max_seed
 		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
 		mkpath(savepath)
 

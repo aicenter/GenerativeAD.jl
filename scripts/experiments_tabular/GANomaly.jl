@@ -26,34 +26,34 @@ parsed_args = parse_args(ARGS, s)
 modelname ="GANomaly"
 
 function sample_params()
-    argnames = (
-        :hdim, 
-        :zdim, 
-        :nlayers, 
-        :activation, 
-        :lr, 
-        :decay,
-        :batch_size, 
-        :iters, 
-        :check_every, 
-        :patience, 
-        :init_seed,
-    )
-    par_vec = (
-        2 .^(4:9),
-        2 .^(3:8),
-        3:4,
-        ["relu", "swish", "tanh"],
-        10f0 .^ (-4:-3),
-        0f0:0.1:0.5,
-        2 .^ (5:7),
-        [10000],
-        [30],
-        [10],
-        1:Int(1e8),
-    )
-    w = (weights = sample([1,10:10:90 ...],3),)
-    return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec)), w)
+	argnames = (
+		:hdim, 
+		:zdim, 
+		:nlayers, 
+		:activation, 
+		:lr, 
+		:decay,
+		:batch_size, 
+		:iters, 
+		:check_every, 
+		:patience, 
+		:init_seed,
+	)
+	par_vec = (
+		2 .^(4:9),
+		2 .^(3:8),
+		3:4,
+		["relu", "swish", "tanh"],
+		10f0 .^ (-4:-3),
+		0f0:0.1:0.5,
+		2 .^ (5:7),
+		[10000],
+		[30],
+		[10],
+		1:Int(1e8),
+	)
+	w = (weights = sample([1,10:10:90 ...],3),)
+	return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec)), w)
 end
 
 
@@ -89,30 +89,30 @@ while try_counter < max_tries
 	parameters = sample_params()
 
 	for seed in 1:max_seed
-        savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
+		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
 
-        data = GenerativeAD.load_data(dataset, seed=seed)
-        # update parameter
-        parameters = merge(parameters, (idim=size(data[1][1],1), ))
-        # here, check if a model with the same parameters was already tested
-        if GenerativeAD.check_params(savepath, parameters)
-            #(X_train,_), (X_val, y_val), (X_test, y_test) = data
-            training_info, results = fit(data, parameters)
-            # saving model separately
-            if training_info.model !== nothing
-                tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
-                training_info = merge(training_info, (model = nothing,))
-            end
-            save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
-            # now loop over all anomaly score funs
-            for result in results
-                GenerativeAD.experiment(result..., data, savepath; save_entries...)
-            end
-            global try_counter = max_tries + 1
-        else
-            @info "Model already present, sampling new hyperparameters..."
-            global try_counter += 1
-        end
+		data = GenerativeAD.load_data(dataset, seed=seed)
+		# update parameter
+		parameters = merge(parameters, (idim=size(data[1][1],1), ))
+		# here, check if a model with the same parameters was already tested
+		if GenerativeAD.check_params(savepath, parameters)
+			#(X_train,_), (X_val, y_val), (X_test, y_test) = data
+			training_info, results = fit(data, parameters)
+			# saving model separately
+			if training_info.model !== nothing
+				tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+				training_info = merge(training_info, (model = nothing,))
+			end
+			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+			# now loop over all anomaly score funs
+			for result in results
+				GenerativeAD.experiment(result..., data, savepath; save_entries...)
+			end
+			global try_counter = max_tries + 1
+		else
+			@info "Model already present, sampling new hyperparameters..."
+			global try_counter += 1
+		end
 	end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
