@@ -6,12 +6,13 @@ using Flux
 using Statistics
 using ImageTransformations
 using MLDataPattern
-#using EvalMetrics
 
 include("datasets/Datasets.jl")
 using .Datasets: load_data
 
 include("experiments.jl")
 include("models/Models.jl")
+
+include("evaluation/eval.jl")
 
 end #module

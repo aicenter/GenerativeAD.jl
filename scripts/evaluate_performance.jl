@@ -1,344 +1,96 @@
+using ArgParse
 using DrWatson
 @quickactivate
-using EvalMetrics
-using FileIO
+using CSV
 using BSON
+using Random
+using FileIO
 using DataFrames
+using Base.Threads: @threads
 using PrettyTables
 using PrettyTables.Crayons
-using Statistics
-using StatsBase
-using Base.Threads: @threads
 
-# pkgs which come from BSONs
-using ValueHistories
-using LinearAlgebra
+using GenerativeAD.Evaluation: _prefix_symbol, PAT_METRICS, aggregate_stats, print_table
 
-# metric names and settings 
-const BASE_METRICS = ["auc", "auprc", "tpr_5", "f1_5"]
-const PAT_METRICS = ["pat_1", "pat_5", "pat_10", "pat_20"]
-
-"""
-	_prefix_symbol(prefix, s)
-
-Modifies symbol `s` by adding `prefix` with underscore.
-"""
-_prefix_symbol(prefix, s) = Symbol("$(prefix)_$(s)")
-
-
-"""
-	_precision_at(p, scores, labels)
-
-Computes precision on portion `p` samples with highest score.
-"""
-function _precision_at(p, labels, scores)
-	pN = Int(round(floor(p*length(labels)))) # round is more forgiving
-	if pN > 0
-		sp = sortperm(scores, rev=true)[1:pN]
-		# @info sp scores[sp] labels[sp]
-		return EvalMetrics.precision(labels[sp], ones(eltype(labels), pN))
-	else
-		return NaN
-	end
+s = ArgParseSettings()
+@add_arg_table! s begin
+    "filename"
+		arg_type = String
+		default = "evaluation/tabular_eval.bson"
+		help = "Location of cached DataFrame."
+	"-cm", "--criterion-metric"
+		arg_type = String
+		default = "val_auc"
+		help = "Criterion to sort the models."
+	"-rm", "--rank-metric"
+		arg_type = String
+		default = "tst_auc"
+		help = "Criterion to sort the models."
+	"-d", "--deviation"
+		action = :store_true
+		help = "Mean standard deviation accross dataset is added to output table."
+	"-b", "--backend"
+		arg_type = String
+		default
+		help = "Backend for PrettyTable print. Either of [text (default), latex, html] is allowed."
+	"-p", "--proportional"
+		action = :store_true
+		help = "Overloads criterion and uses pat@x% with incresing x."
+	"-bp", "--best-params"
+		action = :store_true
+		help = "Stores CSV files for each model's best parameters."
 end
 
+function aggregate(df, criterion, metric)
+	std_col = _prefix_symbol("std", metric)
+    df_agg = aggregate_stats(
+    	df, 
+    	criterion, 
+    	[metric, std_col, :parameters]; 
+    	undersample=Dict("ocsvm" => 100))
 
-"""
-	compute_stats(f::String)
-
-Computes evaluation metrics from the results of experiment in serialized bson at path `f`.
-Returns a DataFrame row with metrics and additional metadata for groupby's.
-Hash of the model parameters is precomputed in order to make the groupby easier.
-"""
-function compute_stats(f::String)
-	r = load(f)
-	row = (
-		modelname = r[:modelname],
-		dataset = r[:dataset],
-		phash = hash(r[:parameters]),
-		parameters = savename(r[:parameters], digits=6), 
-		seed = r[:seed])
-	
-	if Symbol("anomaly_class") in keys(r)
-		row = merge(row, (anomaly_class = r[:anomaly_class],))
-	end
-
-	for splt in ["val", "tst"]
-		scores = r[_prefix_symbol(splt, :scores)]
-		labels = r[_prefix_symbol(splt, :labels)]
-
-		if length(scores) > 1
-			invalid = isnan.(scores)
-			ninvalid = sum(invalid)
-
-			if ninvalid > 0
-				invrat = ninvalid/length(scores)
-				invlab = labels[invalid]
-				cml = countmap(invlab)
-				@warn "Invalid stats for $(f) \t $(ninvalid) | $(invrat) | $(length(scores)) | $(get(cml, 1.0, 0)) | $(get(cml, 0.0, 0))"
-
-				scores = scores[.~invalid]
-				labels = labels[.~invalid]
-				(invrat > 0.5) && error("$(splt)_scores contain too many NaN")
-			end
-			
-			# in cases where the score is not 1D array
-			scores = scores[:]
-
-			roc = EvalMetrics.roccurve(labels, scores)
-			auc = EvalMetrics.auc_trapezoidal(roc...)
-			prc = EvalMetrics.prcurve(labels, scores)
-			auprc = EvalMetrics.auc_trapezoidal(prc...)
-
-			t5 = EvalMetrics.threshold_at_fpr(labels, scores, 0.05)
-			cm5 = ConfusionMatrix(labels, scores, t5)
-			tpr5 = EvalMetrics.true_positive_rate(cm5)
-			f5 = EvalMetrics.f1_score(cm5)
-
-			row = merge(row, (;zip(_prefix_symbol.(splt, 
-					BASE_METRICS), 
-					[auc, auprc, tpr5, f5])...))
-
-			# compute precision on most anomalous samples
-			pat = [_precision_at(p/100, labels, scores) for p in [1, 5, 10, 20]]
-			row = merge(row, (;zip(_prefix_symbol.(splt, PAT_METRICS), pat)...))
-		else
-			error("$(splt)_scores contain only one value")
-		end
-	end
-
-	DataFrame([row])
+	df_agg[:, metric] = round.(df_agg[:, metric], digits=2)
+	df_agg[:, std_col] = round.(df_agg[:, std_col], digits=2)
+	df_agg
 end
 
-function collect_files!(target::String, files)
-	if isfile(target)
-		push!(files, target)
-	else
-		for file in readdir(target, join=true)
-			collect_files!(file, files)
+function main(args)
+	f = datadir(args["filename"])
+	df = load(f)[:df]
+	@info "Loaded $(nrow(df)) rows from "
+
+	if args["proportional"]
+		ranks = []
+		for criterion in _prefix_symbol.(PAT_METRICS, "val")
+			df_agg = aggregate(df, args["criterion-metric"], args["rank-metric"])
+			push!(ranks, print_table(df_agg, args["criterion-metric"])[end:end, :])
 		end
-	end
-	files
-end
 
-
-"""
-	collect_files(target)
-
-Walks recursively the `target` directory, collecting all files only along the way.
-"""
-collect_files(target) = collect_files!(target, [])
-
-
-"""
-	generate_stats(source_prefix::String, target_prefix::String; force=true)
-
-Collects all the results from experiments in datadir prefix `source_prefix`, 
-computes evaluation metrics and stores results in datadir prefix `target_prefix` 
-while retaining the folder structure. If `force=true` the function overwrites 
-already precomputed results. 
-"""
-function generate_stats(source_prefix::String, target_prefix::String; force=true)
-	(source_prefix == target_prefix) && error("Results have to be stored in different folder.")
-	
-	source = datadir(source_prefix)
-	@info "Collecting files from $source folder."
-	files = collect_files(source)
-	# filter out model files
-	filter!(x -> !startswith(basename(x), "model"), files)
-	@info "Collected $(length(files)) files from $source folder."
-	# it might happen that when appending results some of the cores
-	# just go over already computed files
-	files = files[randperm(length(files))]
-
-	@threads for f in files
-		try
-			target_dir = dirname(replace(f, source_prefix => target_prefix))
-			target = joinpath(target_dir, "eval_$(basename(f))")
-			if (isfile(target) && force) || ~isfile(target)
-				df = compute_stats(f)
-				wsave(target, Dict(:df => df))
-				@info "Saving evaluation results at $(target)"
-			end
-		catch e
-			@warn "Processing of $f failed due to \n$e"
-		end
-	end
-end
-
-
-"""
-	collect_stats(source_prefix::String)
-
-Collects evaluation DataFrames from a given data folder prefix `source_prefix`.
-"""
-function collect_stats(source_prefix::String)
-	source = datadir(source_prefix)
-	@info "Collecting files from $source folder."
-	files = collect_files(source)
-	@info "Collected $(length(files)) files from $source folder."
-
-	frames = Vector{DataFrame}(undef, length(files))
-	@threads for i in 1:length(files)
-		df = load(files[i])[:df]
-		frames[i] = df
-	end
-	vcat(frames...)
-end
-
-"""
-	aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc, :tst_auc_std]; undersample=Dict("ocsvm" => 100), verbose=false)
-
-Agregates eval metrics by seed over a given hyperparameter and then chooses best
-model based on `criterion_col`. By default the output contains `dataset`, `modelname` and
-`samples` columns, where the last represents the number of hyperparameter combinations
-over which the maximum is computed. Addional comlumns can be specified using `output_cols`.
-Additionaly with `undersample` dictionary one can specify, which of the models should be undersampled.
-The dictionary's entries have the form of`("model" => #samples)`.
-"""
-function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc, :tst_auc_std]; undersample=Dict("ocsvm" => 100), verbose=false)
-	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
-	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
-
-	# agregate by seed over given hyperparameter and then choose best
-	results = []
-	for (dkey, dg) in pairs(groupby(df, :dataset))
-		if verbose
-			@info "Processing $(dkey.dataset) with $(nrow(dg)) trained models."
-		end
-		for (mkey, mg) in pairs(groupby(dg, :modelname))
-			n = length(unique(mg.phash))
-			Random.seed!(42)
-			pg = (mkey.modelname in keys(undersample)) ? groupby(mg, :phash)[randperm(n)[1:undersample[mkey.modelname]]] : groupby(mg, :phash)
-			Random.seed!()
-			pg_agg = combine(pg, :parameters => unique => :parameters, agg_cols .=> std, agg_cols .=> mean .=> agg_cols)
-			if verbose
-				@info "\t$(mkey.modelname) with $(nrow(pg_agg)) experiments."
-			end
-			best = first(sort!(pg_agg, order(criterion_col, rev=true)))
-			row = merge(
-				(dataset = dkey.dataset, modelname = mkey.modelname, samples=nrow(pg_agg)), 
-				(;zip(output_cols, [best[oc] for oc in output_cols])...))
-			push!(results, DataFrame([row]))
-		end
-	end
-	vcat(results...)
-end
-
-"""
-	print_table(df::DataFrame, metric_col=:tst_auc; metric_std=true)
-
-Prints dataframe with columns [:modelname, :dataset] and one scalar variable column
-given by `metric_col` argument. By default highlights maximum value in each row.
-Last row of the dataframe contains average rank of each model and if `metric_std=true`
-the second to last row contains average std over all dataset.
-There are three backends to choose from `:text (default)`, `:latex` and `:html`.
-"""
-function print_table(df::DataFrame, metric_col=:tst_auc; metric_std=true, backend=:text)
-	# check if column names are present
-	(!(String(metric_col) in names(df)) || !("modelname" in names(df)) || !("dataset" in names(df))) && error("Incorrect column names.")
-	(metric_std && !(String(metric_col)*"_std" in names(df))) && error("DataFrame does not contain std for the given metric.")
-
-	# get all the models that are present in the dataframe
-	all_models = unique(df.modelname)
-
-	# transposing the dataframe
-	results = []
-	for (dkey, dg) in pairs(groupby(df, :dataset))
-		models = dg[:modelname]
-		metric = dg[metric_col]
-		row = merge(
-			(dataset = dkey.dataset,),
-			(;zip(Symbol.(models), metric)...))
-
-		# when there are no evaluation files for some models on particular dataset
-		if nrow(dg) < length(all_models)
-			mm = setdiff(all_models, models)
-			row = merge(row, (;zip(Symbol.(mm), fill(NaN, length(mm)))...))
-		end
-		push!(results, DataFrame([row]))
-	end
-
-	ultimate = vcat(results...)
-	sort!(ultimate, :dataset)
-	
-	# add average std
-	if metric_std
-		std_column = String(metric_col)*"_std"
-		# order must be the same as in the ultimate dataset
-		mean_std = [
-			mean(
-				filter(y -> ~isnan(y), 
-					filter(x -> (x.modelname == m), df)[std_column])) for m in names(ultimate[:,2:end])]
-		push!(ultimate, ["MEAN_STD", mean_std...])
-	end
-
-	# add average rank
-	mask_nan_max = (x) -> (isnan(x) ? -Inf : x)
-	rs = zeros(size(ultimate, 2) - 1)
-	for row in eachrow(ultimate)
-		rs .+= StatsBase.competerank(mask_nan_max.(Vector(row[2:end])), rev = true)
-	end
-	rs ./= size(ultimate, 1)
-	push!(ultimate, ["RANK", rs...])
-
-	# add horizontal lines to separate derived statistics from the rest of the table
-	hlines = metric_std ? [size(ultimate, 1) - 2, size(ultimate, 1) - 1] : [size(ultimate, 1) - 1]
-	
-	# highlight maximum values of metric in each row (i.e. per dataset)
-	f_hl_best = (data, i, j) -> (i < size(ultimate, 1)) && (data[i,j]  == maximum(mask_nan_max, ultimate[i, 2:end]))
-	
-	# highlight minimum rank in last row
-	f_hl_best_rank = (data, i, j) -> i == size(ultimate, 1) && (data[i,j] == minimum(ultimate[i, 2:end]))	
-
-	if backend == :html
-		hl_best = HTMLHighlighter(f_hl_best, HTMLDecoration(color = "blue", font_weight = "bold"))
-		hl_best_rank = HTMLHighlighter(f_hl_best_rank, HTMLDecoration(color = "red", font_weight = "bold"))
-
-		open("table.html", "w") do io
-			pretty_table(
-				io,
-				ultimate,
-				formatters=ft_round(2),
-				highlighters=(hl_best, hl_best_rank),
-				nosubheader=true,
-				tf=html_minimalist
-			)
-		end
-	elseif backend == :latex
-		hl_best = LatexHighlighter(f_hl_best, ["color{blue}","textbf"])
-		hl_best_rank = LatexHighlighter(f_hl_best_rank,	["color{red}","textbf"])
-
-		open("table.tex", "w") do io
-			pretty_table(
-				io,
-				ultimate, 
-				backend=:latex,
-				formatters=ft_round(2),
-				highlighters=(hl_best, hl_best_rank),
-				hlines=hlines
-			)
-		end
-	else
-		hl_best = Highlighter(f=f_hl_best, crayon=crayon"yellow bold")
-		hl_best_rank = Highlighter(f=f_hl_best_rank, crayon=crayon"green bold")
+		df_ranks = vcat(ranks...)
+		df_ranks[:, :dataset] .= PAT_METRICS
+		hl_best_rank = Highlighter(
+					f = (data, i, j) -> (data[i,j] == minimum(df_ranks[i, 2:end])),
+					crayon = crayon"green bold")
 
 		pretty_table(
-			ultimate, 
-			formatters=ft_round(2),
-			highlighters=(hl_best, hl_best_rank),
-			body_hlines=hlines
-		)
+				df_ranks,
+				formatters = ft_round(2),
+				highlighters = (hl_best_rank),
+			)
+	else
+		df_agg = aggregate(df, args["criterion-metric"], args["rank-metric"])
+		print_table(df_agg, args["rank-metric"]; metric_std=args["deviation"], backend=Symbol(args["backend"]))
+
+		if args["best-params"]
+			target_dir = datadir("evaluation/"*args["criterion-metric"])
+			(~isdir(target_dir)) && mkdir(target_dir)
+			all_models = unique(df_agg[:modelname])
+			for m in all_models
+				magg = filter(x -> (x.modelname == m), df_agg)
+				CSV.write(joinpath("$(m).csv")), magg)
+			end
+		end
 	end
-	ultimate
 end
 
-### test code
-DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
-source_prefix, target_prefix = "experiments/tabular", "evaluation-pat/tabular"
-generate_stats(source_prefix, target_prefix, force=true)
-
-df = collect_stats(target_prefix)
-df_agg = aggregate_stats(df, :pat_10, [:pat_10, :parameters])
-df_agg[:, :pat_10] = round.(df_agg[:, :pat_10], digits=2)
-print_table(df_agg, :pat_10)
+main(parse_args(ARGS, s))
