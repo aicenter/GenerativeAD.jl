@@ -56,7 +56,14 @@ function (advae::adVAE)(x)
 	xᵣ = advae.generator(z)
 end
 
-kl_divergence(μ, Σ) = 0.5 * sum(1 .+ log.(Σ.^2) - μ.^2  - Σ.^2) # actually it is -kl_divergence
+"""
+Notice:
+
+In the original article for adVAE, autor defines kl_divergence as bellow but that is acutally -KLD !!!
+However I want to match with equations in the paper so I am keeping oposite signs before kl_divergence. 
+
+"""
+kl_divergence(μ, Σ) = 0.5 * sum(1 .+ log.(Σ.^2) - μ.^2  - Σ.^2) 
 kl_divergence(μ₁, Σ₁, μ₂, Σ₂) = sum(log.(Σ₂ ./ Σ₁) + (Σ₁.^2 + (μ₁ - μ₂).^2) ./ (2*Σ₂.^2) .- 0.5)
 
 function loss(advae::adVAE, x; γ=1e-3, λ=1e-2, mx=1, mz=1)

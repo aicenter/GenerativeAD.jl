@@ -10,6 +10,20 @@ using Flux
 using MLDataPattern
 
 
+s = ArgParseSettings()
+@add_arg_table! s begin
+	"savepath"
+		required = true
+		arg_type = String
+		help = "savepath"
+
+end
+parsed_args = parse_args(ARGS, s)
+@unpack savepath = parsed_args
+
+println(savepath)
+savepath = datadir(savepath)
+
 function models_and_params(path_to_model)
 	directories = []
 	models = []
@@ -41,7 +55,7 @@ end
 
 # code
 
-savepath = datadir("experiments/images/Conv-GANomaly")
+#savepath = datadir("experiments/images/Conv-GANomaly")
 
 models = models_and_params(savepath)
 for model in models
@@ -58,10 +72,10 @@ for model in models
 		
 		training_info_old = BSON.load(joinpath(r, tr_info_name))
 
-		s = split(r, "/") #linux "/" vs windows "\\"
-		dataset = String(s[end-2])
-		seed = parse(Int, split(s[end-1], "=")[2])
-		ac = parse(Int, split(s[end], "=")[2])
+		ss = split(r, "/") #linux "/" vs windows "\\"
+		dataset = String(ss[end-2])
+		seed = parse(Int, split(ss[end], "=")[2])
+		ac = parse(Int, split(ss[end-1], "=")[2])
 		
 		data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac)
 		data = GenerativeAD.Models.preprocess_images(data, p)

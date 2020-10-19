@@ -5,7 +5,9 @@
 #SBATCH --partition=gpu
 #SBATCH --mem=80G
 
+SAVEP=$1
+
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-julia ./GANomaly_testmode.jl 
+julia ./GANomaly_testmode.jl $SAVEP
