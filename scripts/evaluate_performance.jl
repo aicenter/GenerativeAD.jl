@@ -232,8 +232,9 @@ Prints dataframe with columns [:modelname, :dataset] and one scalar variable col
 given by `metric_col` argument. By default highlights maximum value in each row.
 Last row of the dataframe contains average rank of each model and if `metric_std=true`
 the second to last row contains average std over all dataset.
+There are three backends to choose from `:text (default)`, `:latex` and `:html`.
 """
-function print_table(df::DataFrame, metric_col=:tst_auc; metric_std=true)
+function print_table(df::DataFrame, metric_col=:tst_auc; metric_std=true, backend=:text)
 	# check if column names are present
 	(!(String(metric_col) in names(df)) || !("modelname" in names(df)) || !("dataset" in names(df))) && error("Incorrect column names.")
 	(metric_std && !(String(metric_col)*"_std" in names(df))) && error("DataFrame does not contain std for the given metric.")
@@ -269,7 +270,7 @@ function print_table(df::DataFrame, metric_col=:tst_auc; metric_std=true)
 			mean(
 				filter(y -> ~isnan(y), 
 					filter(x -> (x.modelname == m), df)[std_column])) for m in names(ultimate[:,2:end])]
-		push!(ultimate, ["_MEAN_STD_", mean_std...])
+		push!(ultimate, ["MEAN_STD", mean_std...])
 	end
 
 	# add average rank
@@ -279,26 +280,56 @@ function print_table(df::DataFrame, metric_col=:tst_auc; metric_std=true)
 		rs .+= StatsBase.competerank(mask_nan_max.(Vector(row[2:end])), rev = true)
 	end
 	rs ./= size(ultimate, 1)
-	push!(ultimate, ["_RANK_", rs...])
+	push!(ultimate, ["RANK", rs...])
 
-	# highlight maximum values of metric in each row (i.e. per dataset)
-	hl_best = Highlighter(f = (data, i, j) -> (i < size(ultimate, 1)) && (data[i,j]  == maximum(mask_nan_max, ultimate[i, 2:end])),
-	                        crayon = crayon"yellow bold")
-
-	# highlight minimum rank in last row
-	hl_best_rank = Highlighter(
-			f = (data, i, j) -> i == size(ultimate, 1) && (data[i,j] == minimum(ultimate[i, 2:end])),
-			crayon = crayon"green bold")
-	
 	# add horizontal lines to separate derived statistics from the rest of the table
 	hlines = metric_std ? [size(ultimate, 1) - 2, size(ultimate, 1) - 1] : [size(ultimate, 1) - 1]
+	
+	# highlight maximum values of metric in each row (i.e. per dataset)
+	f_hl_best = (data, i, j) -> (i < size(ultimate, 1)) && (data[i,j]  == maximum(mask_nan_max, ultimate[i, 2:end]))
+	
+	# highlight minimum rank in last row
+	f_hl_best_rank = (data, i, j) -> i == size(ultimate, 1) && (data[i,j] == minimum(ultimate[i, 2:end]))	
 
-	pretty_table(
-		ultimate, 
-		formatters = ft_printf("%.2f"),
-		highlighters = (hl_best, hl_best_rank),
-		body_hlines = hlines
-	)
+	if backend == :html
+		hl_best = HTMLHighlighter(f_hl_best, HTMLDecoration(color = "blue", font_weight = "bold"))
+		hl_best_rank = HTMLHighlighter(f_hl_best_rank, HTMLDecoration(color = "red", font_weight = "bold"))
+
+		open("table.html", "w") do io
+			pretty_table(
+				io,
+				ultimate,
+				formatters=ft_round(2),
+				highlighters=(hl_best, hl_best_rank),
+				nosubheader=true,
+				tf=html_minimalist
+			)
+		end
+	elseif backend == :latex
+		hl_best = LatexHighlighter(f_hl_best, ["color{blue}","textbf"])
+		hl_best_rank = LatexHighlighter(f_hl_best_rank,	["color{red}","textbf"])
+
+		open("table.tex", "w") do io
+			pretty_table(
+				io,
+				ultimate, 
+				backend=:latex,
+				formatters=ft_round(2),
+				highlighters=(hl_best, hl_best_rank),
+				hlines=hlines
+			)
+		end
+	else
+		hl_best = Highlighter(f=f_hl_best, crayon=crayon"yellow bold")
+		hl_best_rank = Highlighter(f=f_hl_best_rank, crayon=crayon"green bold")
+
+		pretty_table(
+			ultimate, 
+			formatters=ft_round(2),
+			highlighters=(hl_best, hl_best_rank),
+			body_hlines=hlines
+		)
+	end
 	ultimate
 end
 
