@@ -187,12 +187,14 @@ function collect_stats(source_prefix::String)
 end
 
 """
-	aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc])
+	aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc, :tst_auc_std]; undersample=Dict("ocsvm" => 100), verbose=false)
 
-Chooses agregates eval metrics by seed over a given hyperparameter and then chooses best
+Agregates eval metrics by seed over a given hyperparameter and then chooses best
 model based on `criterion_col`. By default the output contains `dataset`, `modelname` and
 `samples` columns, where the last represents the number of hyperparameter combinations
 over which the maximum is computed. Addional comlumns can be specified using `output_cols`.
+Additionaly with `undersample` dictionary one can specify, which of the models should be undersampled.
+The dictionary's entries have the form of`("model" => #samples)`.
 """
 function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc, :tst_auc_std]; undersample=Dict("ocsvm" => 100), verbose=false)
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
@@ -224,14 +226,17 @@ function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:ts
 end
 
 """
-	print_table(df::DataFrame)
+	print_table(df::DataFrame, metric_col=:tst_auc; metric_std=true)
 
 Prints dataframe with columns [:modelname, :dataset] and one scalar variable column
 given by `metric_col` argument. By default highlights maximum value in each row.
+Last row of the dataframe contains average rank of each model and if `metric_std=true`
+the second to last row contains average std over all dataset.
 """
-function print_table(df::DataFrame, metric_col=:tst_auc)
+function print_table(df::DataFrame, metric_col=:tst_auc; metric_std=true)
 	# check if column names are present
 	(!(String(metric_col) in names(df)) || !("modelname" in names(df)) || !("dataset" in names(df))) && error("Incorrect column names.")
+	(metric_std && !(String(metric_col)*"_std" in names(df))) && error("DataFrame does not contain std for the given metric.")
 
 	# get all the models that are present in the dataframe
 	all_models = unique(df.modelname)
@@ -244,7 +249,7 @@ function print_table(df::DataFrame, metric_col=:tst_auc)
 		row = merge(
 			(dataset = dkey.dataset,),
 			(;zip(Symbol.(models), metric)...))
-		
+
 		# when there are no evaluation files for some models on particular dataset
 		if nrow(dg) < length(all_models)
 			mm = setdiff(all_models, models)
@@ -253,32 +258,48 @@ function print_table(df::DataFrame, metric_col=:tst_auc)
 		push!(results, DataFrame([row]))
 	end
 
-	# pretty print
 	ultimate = vcat(results...)
 	sort!(ultimate, :dataset)
+	
+	# add average std
+	if metric_std
+		std_column = String(metric_col)*"_std"
+		# order must be the same as in the ultimate dataset
+		mean_std = [
+			mean(
+				filter(y -> ~isnan(y), 
+					filter(x -> (x.modelname == m), df)[std_column])) for m in names(ultimate[:,2:end])]
+		push!(ultimate, ["_MEAN_STD_", mean_std...])
+	end
 
-	# average rank
+	# add average rank
 	mask_nan_max = (x) -> (isnan(x) ? -Inf : x)
 	rs = zeros(size(ultimate, 2) - 1)
 	for row in eachrow(ultimate)
 		rs .+= StatsBase.competerank(mask_nan_max.(Vector(row[2:end])), rev = true)
 	end
 	rs ./= size(ultimate, 1)
-	push!(ultimate, ["--- RANK ---", rs...])
+	push!(ultimate, ["_RANK_", rs...])
 
-
+	# highlight maximum values of metric in each row (i.e. per dataset)
 	hl_best = Highlighter(f = (data, i, j) -> (i < size(ultimate, 1)) && (data[i,j]  == maximum(mask_nan_max, ultimate[i, 2:end])),
 	                        crayon = crayon"yellow bold")
+
+	# highlight minimum rank in last row
 	hl_best_rank = Highlighter(
 			f = (data, i, j) -> i == size(ultimate, 1) && (data[i,j] == minimum(ultimate[i, 2:end])),
 			crayon = crayon"green bold")
+	
+	# add horizontal lines to separate derived statistics from the rest of the table
+	hlines = metric_std ? [size(ultimate, 1) - 2, size(ultimate, 1) - 1] : [size(ultimate, 1) - 1]
 
 	pretty_table(
 		ultimate, 
 		formatters = ft_printf("%.2f"),
 		highlighters = (hl_best, hl_best_rank),
-		body_hlines = [size(ultimate, 1) - 1]
+		body_hlines = hlines
 	)
+	ultimate
 end
 
 ### test code
