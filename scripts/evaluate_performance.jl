@@ -194,7 +194,7 @@ model based on `criterion_col`. By default the output contains `dataset`, `model
 `samples` columns, where the last represents the number of hyperparameter combinations
 over which the maximum is computed. Addional comlumns can be specified using `output_cols`.
 """
-function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc, :tst_auc_std]; verbose=false)
+function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc, :tst_auc_std]; undersample=Dict("ocsvm" => 100), verbose=false)
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 
@@ -205,7 +205,10 @@ function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:ts
 			@info "Processing $(dkey.dataset) with $(nrow(dg)) trained models."
 		end
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
-			pg = groupby(mg, :phash)
+			n = length(unique(mg.phash))
+			Random.seed!(42)
+			pg = (mkey.modelname in keys(undersample)) ? groupby(mg, :phash)[randperm(n)[1:undersample[mkey.modelname]]] : groupby(mg, :phash)
+			Random.seed!()
 			pg_agg = combine(pg, :parameters => unique => :parameters, agg_cols .=> std, agg_cols .=> mean .=> agg_cols)
 			if verbose
 				@info "\t$(mkey.modelname) with $(nrow(pg_agg)) experiments."
