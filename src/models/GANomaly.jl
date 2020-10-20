@@ -420,6 +420,7 @@ function ganomaly_constructor(kwargs)
 end
 
 function tabular_ganomaly_constructor(kwargs)
+	(kwargs.init_seed !== nothing) ? Random.seed!(kwargs.init_seed) : nothing
 	encoder1 = build_mlp(
 		kwargs.idim, 
 		kwargs.hdim, 
@@ -457,6 +458,7 @@ function tabular_ganomaly_constructor(kwargs)
 
 	generator = Generator(encoder1, decoder, encoder2)
 	discriminator = Discriminator(features, classsifier)
+	(kwargs.init_seed !== nothing) ? Random.seed!() : nothing
 
 	return generator, discriminator
 end

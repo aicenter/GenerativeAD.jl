@@ -114,7 +114,7 @@ while try_counter < max_tries
 				training_info, results = fit(data, parameters)
 				# saving model separately
 				if training_info.model != nothing
-					tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+					tagsave(joinpath(savepath, savename("model", parameters, "bson", digits=5)), Dict("model"=>training_info.model), safe = true)
 					training_info = merge(training_info, (model = nothing,))
 				end
 				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))

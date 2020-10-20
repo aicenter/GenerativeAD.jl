@@ -56,8 +56,8 @@ function sample_params()
 		0f0:0.1:0.5,
 		2 .^ (5:6),
 		[10000],
-		[10],
 		[30],
+		[10],
 		1:Int(1e8),
 	)
 
@@ -109,7 +109,7 @@ while try_counter < max_tries
 			training_info, results = fit(data, parameters)
 			# saving model separately
 			if training_info.model !== nothing
-				tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+				tagsave(joinpath(savepath, savename("model", parameters, "bson", digits=5)), Dict("model"=>training_info.model), safe = true)
 				training_info = merge(training_info, (model = nothing,))
 			end
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))

@@ -4,7 +4,17 @@ struct adVAE
 	transformer
 end
 
-function adVAE(;idim::Int=1, zdim::Int=1, hdim::Int=64, activation = "relu", nlayers::Int=3, kwargs...)
+function adVAE(
+		;idim::Int=1, 
+		zdim::Int=1, 
+		hdim::Int=64, 
+		activation = "relu", 
+		nlayers::Int=3, 
+		init_seed=nothing, 
+		kwargs...
+		)
+	(init_seed !== nothing) ? Random.seed!(init_seed) : nothing
+
 	encoder = Flux.Chain(
 		build_mlp(idim, hdim, hdim, nlayers-1, activation=activation),
 		ConditionalDists.SplitLayer(hdim, [zdim,zdim], [identity,softplus])
@@ -14,7 +24,8 @@ function adVAE(;idim::Int=1, zdim::Int=1, hdim::Int=64, activation = "relu", nla
 		ConditionalDists.SplitLayer(hdim, [zdim,zdim], [identity,softplus])
 	)
 	generator = build_mlp(zdim, hdim, idim, nlayers, activation=activation, lastlayer="linear")
-	
+
+	(init_seed !== nothing) ? Random.seed!() : nothing
 	return adVAE(encoder, generator, transformer)
 end
 
@@ -27,9 +38,11 @@ function Conv_adVAE(
 		hdim::Int=64,
 		depth::Int=3, 
 		activation="relu", 
+		init_seed=nothing,
 		kwargs...
 		)
 
+	(init_seed !== nothing) ? Random.seed!(init_seed) : nothing
 	encoder = Flux.Chain(
 		ConvEncoder(isize, in_ch, zdim, nf, extra_layers),
 		x->reshape(x, (zdim,size(x)[end])), # equivalent to flatten
@@ -44,7 +57,7 @@ function Conv_adVAE(
 		x->reshape(x, (1,1,zdim,size(x)[end])), # inverse to flatten
 		ConvDecoder(isize, zdim, in_ch, nf, extra_layers) 
 	)
-
+	(init_seed !== nothing) ? Random.seed!() : nothing
 	return adVAE(encoder, generator, transformer)
 end
 
@@ -160,10 +173,8 @@ function StatsBase.fit!(advae::adVAE, data, params)
 			Flux.testmode!(advae)
 			for X_val in val_loader
 				X_val = X_val |> gpu
-				μ, Σ = advae.encoder(X_val)
-				z = μ + Σ * randn(Float32)
-				xᵣ = advae.generator(z)
-				total_val_loss += Flux.mse(X_val, xᵣ)
+				(𝓛, 𝓛ₑ, _, _) = loss(advae|>gpu , X_val, γ=params.gamma, λ=params.lambda, mx=params.mx, mz=params.mz)
+				total_val_loss += 𝓛 + 𝓛ₑ
 			end
 			Flux.testmode!(advae, false)
 			push!(history, :validation_loss, iter, total_val_loss/val_batches)

@@ -32,7 +32,6 @@ modelname ="adVAE"
 function sample_params()
 	argnames = (
 		:zdim,
-		:hdim, 
 		:nf, 
 		:extra_layers,
 		:activation,
@@ -49,8 +48,7 @@ function sample_params()
 		:init_seed,
 	)
 	par_vec = (
-		2 .^(3:8), # dim of latent space
-		2 .^(3:8), # number of neurons in transformer
+		2 .^(3:8), # dim of latent space and number neurons in transformer
 		2 .^(2:7), # number of filters
 		[0:2 ...], # extra layers
 		["relu", "swish", "tanh"], # activation function for dense layers
@@ -62,8 +60,8 @@ function sample_params()
 		0f0:0.1:0.5, # weight decay
 		2 .^ (5:6), # batch_size
 		[10000],
-		[10],
 		[30],
+		[10],
 		1:Int(1e8),
 	)
 
@@ -123,7 +121,7 @@ while try_counter < max_tries
 				training_info, results = fit(data, parameters)
 				# saving model separately
 				if training_info.model !== nothing
-					tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+					tagsave(joinpath(savepath, savename("model", parameters, "bson", digits=5)), Dict("model"=>training_info.model), safe = true)
 					training_info = merge(training_info, (model = nothing,))
 				end
 				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
