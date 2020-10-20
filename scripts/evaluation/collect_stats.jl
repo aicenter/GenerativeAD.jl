@@ -12,11 +12,11 @@ s = ArgParseSettings()
 @add_arg_table! s begin
     "source_prefix"
 		arg_type = String
-		default = "evaluation/tabular"
+		default = "evaluation/images"
 		help = "Data prefix of generated files."
 	"filename"
 		arg_type = String
-		default = "evaluation/tabular_eval.bson"
+		default = "evaluation/images_eval.bson"
 		help = "Where to store the cached DataFrame."
 	"-f", "--force"
     	action = :store_true
@@ -44,8 +44,7 @@ end
 
 
 function main(args)
-	df = collect_stats(
-			args["source_prefix"])
+	df = collect_stats(args["source_prefix"])
 	f = datadir(args["filename"])
 	if (isfile(f) && args["force"]) || ~isfile(f)
 		@info "Saving $(nrow(df)) rows to $f."

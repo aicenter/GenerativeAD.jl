@@ -1,15 +1,11 @@
+using DrWatson
 using BSON
 using FileIO
+using Random
 using DataFrames
 using Statistics
 using StatsBase
 using EvalMetrics
-
-# pkgs which come from deserialized BSONs
-using ValueHistories
-using LinearAlgebra
-
-
 
 # metric names and settings 
 const BASE_METRICS = ["auc", "auprc", "tpr_5", "f1_5"]

@@ -8,15 +8,20 @@ using DataFrames
 using Base.Threads: @threads
 using GenerativeAD
 
+# pkgs which come from deserialized BSONs
+# have to be present in the Main module
+using ValueHistories
+using LinearAlgebra
+
 s = ArgParseSettings()
 @add_arg_table! s begin
     "source_prefix"
 		arg_type = String
-		default = "experiments/tabular"
+		default = "experiments/images"
 		help = "Data prefix of experiment files."
 	"target_prefix"
 		arg_type = String
-		default = "evaluation/tabular"
+		default = "evaluation/images"
 		help = "Data prefix of generated files."
 	"-f", "--force"
     	action = :store_true

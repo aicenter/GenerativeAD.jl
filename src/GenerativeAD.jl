@@ -13,6 +13,6 @@ using .Datasets: load_data
 include("experiments.jl")
 include("models/Models.jl")
 
-include("evaluation/eval.jl")
+include("evaluation/Evaluation.jl")
 
 end #module
