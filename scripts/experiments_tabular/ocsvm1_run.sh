@@ -16,4 +16,4 @@ export PYTHON="${HOME}/sklearn-env/bin/python"
 # PyCall needs to be rebuilt if environment changed
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-julia ./ocsvm.jl ${MAX_SEED} $DATASET
+julia ./ocsvm1.jl ${MAX_SEED} $DATASET

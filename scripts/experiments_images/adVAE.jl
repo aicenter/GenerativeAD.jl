@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
-using GenerativeAD.Models: anomaly_score
+using GenerativeAD.Models
 using BSON
 using StatsBase: fit!, predict, sample
 
@@ -27,62 +27,72 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes = parsed_args
 
-modelname = "Conv-GANomaly"
-
+modelname ="adVAE"
 
 function sample_params()
-	argnames = (:hdim, :num_filters, :extra_layers, :lr, :batch_size,
-				:iters, :check_every, :patience, :init_seed, )
+	argnames = (
+		:zdim,
+		:hdim, 
+		:nf, 
+		:extra_layers,
+		:activation,
+		:gamma,
+		:lambda,
+		:mx,
+		:mz,
+		:lr, 
+		:decay,
+		:batch_size, 
+		:iters, 
+		:check_every, 
+		:patience, 
+		:init_seed,
+	)
 	par_vec = (
-			2 .^(3:8),
-			2 .^(2:7),
-			[0:3 ...],
-			10f0 .^ (-4:-3),
-			2 .^ (5:7),
-			[10000],
-			[30],
-			[10],
-			1:Int(1e8),
-			)
+		2 .^(3:8), # dim of latent space
+		2 .^(3:8), # number of neurons in transformer
+		2 .^(2:7), # number of filters
+		[0:2 ...], # extra layers
+		["relu", "swish", "tanh"], # activation function for dense layers
+		[0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1], # γ
+		[5, 10, 50, 100, 500]*1e-4, # λ  
+		0.5:0.5:2.5, #mx
+		10:10:100, #mz
+		10f0 .^ (-4:-3), # lr
+		0f0:0.1:0.5, # weight decay
+		2 .^ (5:6), # batch_size
+		[10000],
+		[10],
+		[30],
+		1:Int(1e8),
+	)
+
 	return NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec))
 end
 
-"""
-	function fit(data, parameters)
-
-parameters => type named tuple with keys
-	latent_dim    - dimension of latent space on the encoder's end
-	num_filters   - number of kernels/masks in convolutional layers
-	extra_layers  - number of additional conv layers
-	lr            - learning rate for optimiser
-	iters         - number of optimisation steps (iterations) during training
-	batch_size    - batch/minibatch size
-
-Note:
-	data = load_data("MNIST")
-	(x_train, y_train), (x_val, y_val), (x_test, y_test) = data
-"""
 function fit(data, parameters)
 	# define models (Generator, Discriminator)
-	generator, discriminator, _, _ = GenerativeAD.Models.ganomaly_constructor(parameters)
+	advae = Conv_adVAE(;parameters...)
 
 	# define optimiser
 	try
-		global info, fit_t, _, _, _ = @timed fit!(generator|>gpu, discriminator|>gpu, data, parameters)
+		global info, fit_t, _, _, _ = @timed fit!(advae |> gpu, data, parameters)
 	catch e
-		println("Error caught.")
+		println("Error caught => $(e).")
 		return (fit_t = NaN, model = nothing, history = nothing, n_parameters = NaN), []
 	end
 
 	training_info = (
 		fit_t = fit_t,
-		model = (info[2]|>cpu, info[3]|>cpu),
+		model = info[2]|>cpu,
 		history = info[1], # losses through time
-		npars = info[4], # number of parameters
-		iters = info[5] # optim iterations of model
+		npars = info[3], # number of parameters
+		iters = info[4] # optim iterations of model
 		)
 
-	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(generator|>cpu, x; dims=3)[:], parameters)]
+	return training_info, 
+	[(x -> GenerativeAD.Models.anomaly_score(advae|>cpu, x; dims=(1,2,3), L=100), merge(parameters, (L=100, )))]
+	# L = samples for one x in anomaly_score computation
 end
 
 #_________________________________________________________________________________________________
@@ -112,7 +122,7 @@ while try_counter < max_tries
 				#(X_train,_), (X_val, y_val), (X_test, y_test) = data
 				training_info, results = fit(data, parameters)
 				# saving model separately
-				if training_info.model != nothing
+				if training_info.model !== nothing
 					tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
 					training_info = merge(training_info, (model = nothing,))
 				end

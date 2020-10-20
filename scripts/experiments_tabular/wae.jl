@@ -6,7 +6,9 @@ import StatsBase: fit!, predict
 using StatsBase
 using BSON
 using Flux
+using IPMeasures
 using GenerativeModels
+using Distributions
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -29,7 +31,7 @@ parsed_args = parse_args(ARGS, s)
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "vae"
+modelname = "wae"
 # sample parameters, should return a Dict of model kwargs 
 """
 	sample_params()
@@ -37,8 +39,9 @@ modelname = "vae"
 Should return a named tuple that contains a sample of model parameters.
 """
 function sample_params()
-	par_vec = (2 .^(3:8), 2 .^(4:9), 10f0 .^(-4:-3), 2 .^ (5:7), ["relu", "swish", "tanh"], 3:4, 1:Int(1e8))
-	argnames = (:zdim, :hdim, :lr, :batchsize, :activation, :nlayers, :init_seed)
+	par_vec = (2 .^(3:8), 2 .^(4:9), 10f0 .^(-4:-3), 2 .^ (5:7), ["relu", "swish", "tanh"], 3:4, 1:Int(1e8),
+		["imq", "gauss", "rq"], 10f0 .^ (-3:0), 10f0 .^(-1:0))
+	argnames = (:zdim, :hdim, :lr, :batchsize, :activation, :nlayers, :init_seed, :kernel, :sigma, :lambda)
 	parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 	# ensure that zdim < hdim
 	while parameters.zdim >= parameters.hdim
@@ -46,15 +49,6 @@ function sample_params()
 	end
 	return parameters
 end
-"""
-	loss(model::GenerativeModels.VAE, x[, batchsize])
-
-Negative ELBO for training of a VAE model.
-"""
-loss(model::GenerativeModels.VAE, x) = -elbo(model, x)
-# version of loss for large datasets
-loss(model::GenerativeModels.VAE, x, batchsize::Int) = 
-	mean(map(y->loss(model,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 """
 	fit(data, parameters)
 
@@ -66,6 +60,20 @@ Final parameters is a named tuple of names and parameter values that are used fo
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
 	model = GenerativeAD.Models.vae_constructor(;idim=size(data[1][1],1), parameters...)
+
+	# construct loss function
+	if parameters.kernel == "imq"
+		k = IMQKernel(parameters.sigma)
+	elseif parameters.kernel == "gauss"
+		k = GaussianKernel(parameters.sigma)
+	elseif parameters.kernel == "rq"
+		k = RQKernel(parameters.sigma)
+	else
+		error("given kernel not known")
+	end
+	loss(m::GenerativeModels.VAE,x) = parameters.lambda*mmd_mean(m, x, k) .- mean(logpdf(m.decoder, x, rand(m.encoder, x)))
+	loss(m::GenerativeModels.VAE, x, batchsize::Int) = 
+		mean(map(y->loss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 
 	# fit train data
 	try
@@ -125,7 +133,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 			edited_parameters = GenerativeAD.edit_params(data, parameters)
 			
 			@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
-			@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[3][1], 2))"
+			@info "Train/validation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[3][1], 2))"
 			@info "Number of features: $(size(data[1][1], 1))"
 
 			# check if a combination of parameters and seed alread exists

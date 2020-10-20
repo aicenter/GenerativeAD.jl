@@ -6,30 +6,27 @@ import StatsBase: fit!, predict
 using StatsBase
 using BSON
 using Flux
+using IPMeasures
 using GenerativeModels
+using Distributions
 
 s = ArgParseSettings()
 @add_arg_table! s begin
    "max_seed"
-        required = true
         arg_type = Int
         help = "seed"
+        default = 1
     "dataset"
-        required = true
         arg_type = String
         help = "dataset"
-end
-# for testing purposes
-if length(ARGS) == 0
-	push!(ARGS, "1")
-	push!(ARGS, "iris")
+        default = "iris"
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "vae"
+modelname = "aae"
 # sample parameters, should return a Dict of model kwargs 
 """
 	sample_params()
@@ -37,8 +34,9 @@ modelname = "vae"
 Should return a named tuple that contains a sample of model parameters.
 """
 function sample_params()
-	par_vec = (2 .^(3:8), 2 .^(4:9), 10f0 .^(-4:-3), 2 .^ (5:7), ["relu", "swish", "tanh"], 3:4, 1:Int(1e8))
-	argnames = (:zdim, :hdim, :lr, :batchsize, :activation, :nlayers, :init_seed)
+	par_vec = (2 .^(3:8), 2 .^(4:9), 10f0 .^(-4:-3), 2 .^ (5:7), ["relu", "swish", "tanh"], 3:4, 1:Int(1e8),
+		10f0 .^(-1:0))
+	argnames = (:zdim, :hdim, :lr, :batchsize, :activation, :nlayers, :init_seed, :lambda)
 	parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 	# ensure that zdim < hdim
 	while parameters.zdim >= parameters.hdim
@@ -46,15 +44,6 @@ function sample_params()
 	end
 	return parameters
 end
-"""
-	loss(model::GenerativeModels.VAE, x[, batchsize])
-
-Negative ELBO for training of a VAE model.
-"""
-loss(model::GenerativeModels.VAE, x) = -elbo(model, x)
-# version of loss for large datasets
-loss(model::GenerativeModels.VAE, x, batchsize::Int) = 
-	mean(map(y->loss(model,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 """
 	fit(data, parameters)
 
@@ -65,11 +54,11 @@ Final parameters is a named tuple of names and parameter values that are used fo
 """
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.vae_constructor(;idim=size(data[1][1],1), parameters...)
+	model = GenerativeAD.Models.aae_constructor(;idim=size(data[1][1],1), parameters...)
 
 	# fit train data
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data, loss; max_train_time=82800/max_seed, 
+		global info, fit_t, _, _, _ = @timed fit!(model, data; max_train_time=82800/max_seed, 
 			patience=200, check_interval=10, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
@@ -125,7 +114,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 			edited_parameters = GenerativeAD.edit_params(data, parameters)
 			
 			@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
-			@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[3][1], 2))"
+			@info "Train/validation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[3][1], 2))"
 			@info "Number of features: $(size(data[1][1], 1))"
 
 			# check if a combination of parameters and seed alread exists

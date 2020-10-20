@@ -6,30 +6,27 @@ import StatsBase: fit!, predict
 using StatsBase
 using BSON
 using Flux
+using IPMeasures
 using GenerativeModels
+using Distributions
 
 s = ArgParseSettings()
 @add_arg_table! s begin
    "max_seed"
-        required = true
-        arg_type = Int
-        help = "seed"
-    "dataset"
-        required = true
-        arg_type = String
-        help = "dataset"
-end
-# for testing purposes
-if length(ARGS) == 0
-	push!(ARGS, "1")
-	push!(ARGS, "iris")
+		default = 1
+		arg_type = Int
+		help = "seed"
+	"dataset"
+		default = "iris"
+		arg_type = String
+		help = "dataset"
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "vae"
+modelname = "gan"
 # sample parameters, should return a Dict of model kwargs 
 """
 	sample_params()
@@ -37,7 +34,7 @@ modelname = "vae"
 Should return a named tuple that contains a sample of model parameters.
 """
 function sample_params()
-	par_vec = (2 .^(3:8), 2 .^(4:9), 10f0 .^(-4:-3), 2 .^ (5:7), ["relu", "swish", "tanh"], 3:4, 1:Int(1e8))
+	par_vec = (2 .^(1:6), 2 .^(4:9), 10f0 .^(-4:-3), 2 .^ (5:7), ["relu", "swish", "tanh"], 2:4, 1:Int(1e8))
 	argnames = (:zdim, :hdim, :lr, :batchsize, :activation, :nlayers, :init_seed)
 	parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 	# ensure that zdim < hdim
@@ -46,15 +43,6 @@ function sample_params()
 	end
 	return parameters
 end
-"""
-	loss(model::GenerativeModels.VAE, x[, batchsize])
-
-Negative ELBO for training of a VAE model.
-"""
-loss(model::GenerativeModels.VAE, x) = -elbo(model, x)
-# version of loss for large datasets
-loss(model::GenerativeModels.VAE, x, batchsize::Int) = 
-	mean(map(y->loss(model,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 """
 	fit(data, parameters)
 
@@ -65,13 +53,26 @@ Final parameters is a named tuple of names and parameter values that are used fo
 """
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.vae_constructor(;idim=size(data[1][1],1), parameters...)
+	model = GenerativeAD.Models.gan_constructor(;idim=size(data[1][1],1), parameters...)
 
+	# construct loss function
+	gloss = GenerativeAD.Models.gloss
+	dloss = GenerativeAD.Models.dloss
+
+	# set number of max iterations apropriatelly
+	N = size(data[1][1],2)
+	max_iter = 5000 # this should be enough
+	#max_iter = N*50 # this is too much for large datasets
+	#max_iter = floor(Int,M/parameters.batchsize*20) # this does not work
+
+	println(max_iter)
 	# fit train data
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data, loss; max_train_time=82800/max_seed, 
-			patience=200, check_interval=10, parameters...)
+		global info, fit_t, _, _, _ = @timed fit!(model, data, gloss, dloss; 
+			max_iter=max_iter, max_train_time=82800/max_seed, 
+			patience=50, check_interval=10, parameters...)
 	catch e
+		rethrow(e)
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
@@ -87,17 +88,14 @@ function fit(data, parameters)
 
 	# now return the different scoring functions
 	training_info, [
-		(x -> GenerativeAD.Models.reconstruction_score(info.model, x), merge(parameters, (score = "reconstruction",))),
-		(x -> GenerativeAD.Models.reconstruction_score_mean(info.model, x), merge(parameters, (score = "reconstruction-mean",))),
-		(x -> GenerativeAD.Models.latent_score(info.model, x), merge(parameters, (score = "latent",))),
-		(x -> GenerativeAD.Models.latent_score_mean(info.model, x), merge(parameters, (score = "latent-mean",))),
+		(x -> 1f0 .- vec(GenerativeAD.Models.discriminate(info.model, x)), parameters)
 		]
 end
 function GenerativeAD.edit_params(data, parameters)
 	idim = size(data[1][1],1)
 	# put the largest possible zdim where zdim < idim, the model tends to converge poorly if the latent dim is larger than idim
 	if parameters.zdim >= idim
-		zdims = 2 .^(1:8)
+		zdims = 2 .^(1:6)
 		zdim_new = zdims[zdims .< idim][end]
 		parameters = merge(parameters, (zdim=zdim_new,))
 	end
@@ -112,9 +110,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
 	try_counter = 0
 	max_tries = 10*max_seed
 	while try_counter < max_tries
-	    parameters = sample_params()
+		parameters = sample_params()
 
-	    for seed in 1:max_seed
+		for seed in 1:max_seed
 			savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
 			mkpath(savepath)
 
@@ -125,7 +123,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 			edited_parameters = GenerativeAD.edit_params(data, parameters)
 			
 			@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
-			@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[3][1], 2))"
+			@info "Train/validation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[3][1], 2))"
 			@info "Number of features: $(size(data[1][1], 1))"
 
 			# check if a combination of parameters and seed alread exists
