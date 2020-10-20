@@ -42,4 +42,4 @@ The third step is intended to be run in more interactive manner as it allows mul
                         --proportional
 ```
 
-Some combination of parameters don't make sense, such as running with `--best-params` while also using `--proportional`. Furthermore the tex(latex) output does not escape underscores and therefore cannot be parsed sometimes.
+Some combination of parameters don't make sense, such as running with `--best-params` while also using `--proportional`. Furthermore the tex(latex) output does not escape underscores and therefore cannot be parsed sometimes. The code scaling to multiple threads does not work optimally, but it is encouraged to use 32 threads when processing more than 50k files.
