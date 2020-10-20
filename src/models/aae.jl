@@ -97,7 +97,7 @@ dloss(d,g,x,z) = - 0.5f0*(mean(log.(d(x) .+ eps(Float32))) + mean(log.(1 .- d(g(
 
 Generator loss.
 """
-gloss(d,g,x) = - mean(log.(d(g(x)) .+ eps(Float32)))
+gloss(d,g,z) = - mean(log.(d(g(z)) .+ eps(Float32)))
 
 """
 	aeloss(AAE, x[, batchsize])
@@ -227,56 +227,4 @@ function StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, lr=0.001,
 	end
 	# again, this is not optimal, the model should be passed by reference and only the reference should be edited
 	(history=history, iterations=i, model=model, npars=sum(map(p->length(p), Flux.params(model))))
-end
-
-"""
-	AEModel
-
-A Union of VAE and AAE types.
-"""
-AEModel = Union{VAE, AAE}
-
-"""
-	reconstruct(model::AEModel, x)
-
-Data reconstruction.
-"""
-reconstruct(model::AEModel, x) = mean(model.decoder, rand(model.encoder, x))
-
-"""
-	reconstruction_score(model::AEModel, x)
-
-Anomaly score based on the reconstruction probability of the data.
-"""
-function reconstruction_score(model::AEModel, x) 
-	p = condition(model.decoder, rand(model.encoder, x))
-	-logpdf(p, x)
-end
-"""
-	reconstruction_score_mean(model::AEModel, x)
-
-Anomaly score based on the reconstruction probability of the data. Uses mean of encoding.
-"""
-function reconstruction_score_mean(model::AEModel, x) 
-	p = condition(model.decoder, mean(model.encoder, x))
-	-logpdf(p, x)
-end
-"""
-	latent_score(model::AEModel, x) 
-
-Anomaly score based on the similarity of the encoded data and the prior.
-"""
-function latent_score(model::AEModel, x) 
-	z = rand(model.encoder, x)
-	-logpdf(model.prior, z)
-end
-
-"""
-	latent_score_mean(model::AEModel, x) 
-
-Anomaly score based on the similarity of the encoded data and the prior. Uses mean of encoding.
-"""
-function latent_score_mean(model::AEModel, x) 
-	z = mean(model.encoder, x)
-	-logpdf(model.prior, z)
 end

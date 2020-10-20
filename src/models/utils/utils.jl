@@ -90,3 +90,19 @@ function prepare_dataloaders(data, params)
 	val_loader = Flux.Data.DataLoader(val_data, batchsize=params.batch_size)
 	return train_loader, val_loader
 end
+
+"""
+	clip_weights!(ps::Flux.Zygote.Params,c::Real)
+	clip_weights!(ps::Flux.Zygote.Params,low::Real,high::Real)
+
+Clips weights so they lie in the interval (-c,c)/(low,high).
+"""
+function clip_weights!(ps::Flux.Zygote.Params,low::Real,high::Real)
+	@assert low <= high
+	for p in ps
+		T = eltype(p)
+		p .= max.(p, T(low))
+		p .= min.(p, T(high))
+	end
+end
+clip_weights!(ps::Flux.Zygote.Params,c::Real) = clip_weights!(ps,-abs(c),abs(c))
