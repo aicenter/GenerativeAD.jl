@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
-using GenerativeAD.Models: anomaly_score, generalized_anomaly_score_gpu
+using GenerativeAD.Models
 using BSON
 using StatsBase: fit!, predict, sample
 
@@ -19,17 +19,23 @@ s = ArgParseSettings()
 		required = true
 		arg_type = String
 		help = "dataset"
+	"anomaly_classes"
+		arg_type = Int
+		default = 10
+		help = "number of anomaly classes"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed = parsed_args
+@unpack dataset, max_seed, anomaly_classes = parsed_args
 
 modelname ="adVAE"
 
 function sample_params()
 	argnames = (
+		:zdim,
 		:hdim, 
 		:nf, 
 		:extra_layers,
+		:activation,
 		:gamma,
 		:lambda,
 		:mx,
@@ -43,16 +49,18 @@ function sample_params()
 		:init_seed,
 	)
 	par_vec = (
-		2 .^(3:8),
-		2 .^(2:7),
-		[0:3 ...],
+		2 .^(3:8), # dim of latent space
+		2 .^(3:8), # number of neurons in transformer
+		2 .^(2:7), # number of filters
+		[0:2 ...], # extra layers
+		["relu", "swish", "tanh"], # activation function for dense layers
 		[0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1], # γ
-		[5, 10, 50, 100, 500].^1e-4, # λ  
+		[5, 10, 50, 100, 500]*1e-4, # λ  
 		0.5:0.5:2.5, #mx
 		10:10:100, #mz
-		10f0 .^ (-4:-3),
-		0f0:0.1:0.5,
-		2 .^ (5:6),
+		10f0 .^ (-4:-3), # lr
+		0f0:0.1:0.5, # weight decay
+		2 .^ (5:6), # batch_size
 		[10000],
 		[10],
 		[30],
@@ -83,7 +91,7 @@ function fit(data, parameters)
 		)
 
 	return training_info, 
-	[(x -> GenerativeAD.Models.anomaly_score(advae|>cpu, x; dims=1, L=100), merge(parameters, (L=100, )))]
+	[(x -> GenerativeAD.Models.anomaly_score(advae|>cpu, x; dims=(1,2,3), L=100), merge(parameters, (L=100, )))]
 	# L = samples for one x in anomaly_score computation
 end
 

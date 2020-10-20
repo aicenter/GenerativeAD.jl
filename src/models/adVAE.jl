@@ -32,17 +32,17 @@ function Conv_adVAE(
 
 	encoder = Flux.Chain(
 		ConvEncoder(isize, in_ch, zdim, nf, extra_layers),
-		x->reshape(x, (1,size(x)[end])), # equivalent to flatten
+		x->reshape(x, (zdim,size(x)[end])), # equivalent to flatten
 		ConditionalDists.SplitLayer(zdim, [zdim, zdim], [identity, softplus])
 	)
-	transfromer = Flux.Chain(
+	transformer = Flux.Chain(
 		build_mlp(zdim*2, hdim, hdim, depth, activation=activation),
 		ConditionalDists.SplitLayer(hdim, [zdim,zdim], [identity,softplus])
 	)
 	generator = Flux.Chain(
-		Flux.Dense(zdim, zdim, activation=activation),
-		x->reshape(x, (1,1,1,size(x)[end])), # inverse to flatten
-		ConvDecoder(isize, 1, in_ch, nf, extra_layers) 
+		Flux.Dense(zdim, zdim, eval(:($(Symbol(activation)))) ),
+		x->reshape(x, (1,1,zdim,size(x)[end])), # inverse to flatten
+		ConvDecoder(isize, zdim, in_ch, nf, extra_layers) 
 	)
 
 	return adVAE(encoder, generator, transformer)
@@ -63,8 +63,8 @@ In the original article for adVAE, autor defines kl_divergence as bellow but tha
 However I want to match with equations in the paper so I am keeping oposite signs before kl_divergence. 
 
 """
-kl_divergence(μ, Σ) = 0.5 * sum(1 .+ log.(Σ.^2) - μ.^2  - Σ.^2) 
-kl_divergence(μ₁, Σ₁, μ₂, Σ₂) = sum(log.(Σ₂ ./ Σ₁) + (Σ₁.^2 + (μ₁ - μ₂).^2) ./ (2*Σ₂.^2) .- 0.5)
+kl_divergence(μ, Σ) = 0.5f0 * sum(1f0 .+ log.(Σ.^2) - μ.^2  - Σ.^2) 
+kl_divergence(μ₁, Σ₁, μ₂, Σ₂) = sum(log.(Σ₂ ./ Σ₁) + (Σ₁.^2 + (μ₁ - μ₂).^2) ./ (2*Σ₂.^2) .- 0.5f0)
 
 function loss(advae::adVAE, x; γ=1e-3, λ=1e-2, mx=1, mz=1)
 	μ, Σ = advae.encoder(x)
@@ -100,12 +100,13 @@ function anomaly_score(advae::adVAE, real_input; L=100, dims=3, batch_size=64, t
 	advae = advae |> gpu
 	output = Array{Float32}([])
 	for x in real_input
+        x = x |> gpu
 		X = Array{Float32}(undef, size(x)[end], 1)
 		μ, Σ = advae.encoder(x)
 		for l=1:L
 			z = μ + Σ * randn(Float32)
 			xᵣ = advae.generator(z)
-			rec_loss = vec(Flux.mse(latent_i, latent_o, agg=x->mean(x, dims=dims))) |> cpu # loss per batch
+			rec_loss = vec(Flux.mse(x, xᵣ, agg=x->Flux.mean(x, dims=dims))) |> cpu # loss per batch
 			X = cat(X, rec_loss, dims=2)
 		end
 		output = cat(output, Flux.mean(X, dims=2), dims=1)

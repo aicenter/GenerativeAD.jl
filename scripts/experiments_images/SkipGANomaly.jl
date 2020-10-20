@@ -82,7 +82,7 @@ function fit(data, parameters)
 
 
 	return training_info, [(x -> generalized_anomaly_score_gpu(model|>cpu, x, R=r, L=l, lambda=lam), 
-		merge(parameters, (R=r, L=l, test_labda=lam,))
+		merge(parameters, (R=r, L=l, test_labda=lam,)))
 		for r in ["mae", "mse"] for l in ["mae", "mse"] for lam = 0.1:0.1:0.9 ]
 end
 

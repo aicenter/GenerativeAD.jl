@@ -235,7 +235,7 @@ function generalized_anomaly_score(SkipGAN::SkipGANomaly, real_input; R="mae", L
 	return lambda .* rec_loss .+ (1 - lambda) .* lat_loss |>cpu
 end
 
-function generalized_anomaly_score_gpu(SkipGAN::SkipGANomaly, real_input; R="mae", L="mae", lambda=0.9, dims=[1,2,3], batch_size=64, to_tesrmode::Bool=true)
+function generalized_anomaly_score_gpu(SkipGAN::SkipGANomaly, real_input; R="mae", L="mae", lambda=0.9, dims=[1,2,3], batch_size=64, to_testmode::Bool=true)
 	real_input = Flux.Data.DataLoader(real_input, batchsize=batch_size)
 	(to_testmode == true) ? Flux.testmode!(SkipGAN) : nothing
 	SkipGAN = SkipGAN |> gpu

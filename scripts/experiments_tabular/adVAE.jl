@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
-using GenerativeAD.Models: anomaly_score, generalized_anomaly_score_gpu
+using GenerativeAD.Models
 using BSON
 using StatsBase: fit!, predict, sample
 
@@ -49,7 +49,7 @@ function sample_params()
 		3:4,
 		["relu", "swish", "tanh"],
 		[0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1], # γ
-		[5, 10, 50, 100, 500].^1e-4, # λ  
+		[5, 10, 50, 100, 500]*1e-4, # λ  
 		0.5:0.5:2.5, #mx
 		10:10:100, #mz
 		10f0 .^ (-4:-3),
@@ -66,7 +66,7 @@ end
 
 function fit(data, parameters)
 	# define models (Generator, Discriminator)
-	advae = adVAE(;parameters...)
+	advae = GenerativeAD.Models.adVAE(;parameters...)
 
 	# define optimiser
 	try
