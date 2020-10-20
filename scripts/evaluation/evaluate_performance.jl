@@ -64,7 +64,6 @@ function main(args)
 	@info "Loaded $(nrow(df)) rows from $f"
 
 	if args["proportional"]
-		# TODO: save this to file the same way as single ranks
 		ranks = []
 		if args["rank-metric"] != ""
 			for criterion in _prefix_symbol.("val", PAT_METRICS)
@@ -72,7 +71,7 @@ function main(args)
 				push!(ranks, rank_table(df_agg, args["rank-metric"])[end:end, :])
 			end
 		else # pat/pat scenario if no rank-metric is provided
-			for criterion, metric in zip(_prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
+			for (criterion, metric) in zip(_prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 				df_agg = aggregate_experiments(df, criterion, metric)
 				push!(ranks, rank_table(df_agg, metric)[end:end, :])
 			end
@@ -83,13 +82,30 @@ function main(args)
 		hl_best_rank = Highlighter(
 					f = (data, i, j) -> (data[i,j] == minimum(df_ranks[i, 2:end])),
 					crayon = crayon"green bold")
+		
+		rank_metric = (args["rank-metric"] != "") ? args["rank-metric"] : "tst_pat_x"
+		
 		@info "Best models chosen by validation pat@x% with incresing x"
-		@info "Ranking by $((args["rank-metric"] != "") ? args["rank-metric"] : "test pat pat@x% with incresing x")"
-		pretty_table(
-				df_ranks,
-				formatters = ft_round(2),
-				highlighters = (hl_best_rank),
-			)
+		@info "Ranking by $(rank_metric)"
+		
+		if ~args["verbose"]
+			target_filename = datadir(args["output-prefix"],"ranks_pat_$(rank_metric).txt")
+			(~isdir(dirname(target_filename))) && mkdir(dirname(target_filename))
+			open(target_filename, "w") do io
+				pretty_table(
+					io,
+					df_ranks,
+					formatters = ft_round(2),
+					highlighters = (hl_best_rank),
+				)
+			end
+		else
+			pretty_table(
+					df_ranks,
+					formatters = ft_round(2),
+					highlighters = (hl_best_rank),
+				)
+		end
 	else
 		df_agg = aggregate_experiments(df, args["criterion-metric"], args["rank-metric"])
 		rt = rank_table(df_agg, args["rank-metric"])
