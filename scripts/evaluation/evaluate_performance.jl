@@ -9,7 +9,8 @@ using DataFrames
 using PrettyTables
 using PrettyTables.Crayons
 
-using GenerativeAD.Evaluation: _prefix_symbol, PAT_METRICS, aggregate_stats, print_table
+using GenerativeAD.Evaluation: _prefix_symbol, PAT_METRICS, aggregate_stats
+using GenerativeAD.Evaluation: rank_table, print_rank_table
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -23,24 +24,28 @@ s = ArgParseSettings()
 		help = "Criterion to sort the models."
 	"-r", "--rank-metric"
 		arg_type = String
-		default = "tst_auc"
-		help = "Criterion to sort the models."
-	"-d", "--deviation"
-		action = :store_true
-		help = "Mean standard deviation accross dataset is added to output table."
+		default = ""
+		help = "Metric to rank models."
 	"-b", "--backend"
 		arg_type = String
-		default = "text"
-		help = "Backend for PrettyTable print. Either of [text (default), latex, html] is allowed."
+		default = "txt"
+		help = "Backend for PrettyTable print. Either of [txt (default), tex, html] is allowed."
+	"-o", "--output-prefix"
+		arg_type = String
+		default = "evaluation/images_eval"
+		help = "Output prefix for storing results."
+	"-v", "--verbose"
+		action = :store_true
+		help = "Print all results instead of storing to files."
 	"-p", "--proportional"
 		action = :store_true
-		help = "Overloads criterion and uses pat@x% with incresing x."
+		help = "Overloads criterion and uses pat@x% with incresing x. Prints only ranks."
 	"--best-params"
 		action = :store_true
 		help = "Stores CSV files for each model's best parameters."
 end
 
-function aggregate(df, criterion, metric)
+function aggregate_experiments(df, criterion, metric)
 	std_col = _prefix_symbol(metric, :std)
     df_agg = aggregate_stats(
     	df, 
@@ -59,10 +64,18 @@ function main(args)
 	@info "Loaded $(nrow(df)) rows from $f"
 
 	if args["proportional"]
+		# TODO: save this to file the same way as single ranks
 		ranks = []
-		for criterion in _prefix_symbol.("val", PAT_METRICS)
-			df_agg = aggregate(df, criterion, args["rank-metric"])
-			push!(ranks, print_table(df_agg, args["rank-metric"])[end:end, :])
+		if args["rank-metric"] != ""
+			for criterion in _prefix_symbol.("val", PAT_METRICS)
+				df_agg = aggregate_experiments(df, criterion, args["rank-metric"])
+				push!(ranks, rank_table(df_agg, args["rank-metric"])[end:end, :])
+			end
+		else # pat/pat scenario if no rank-metric is provided
+			for criterion, metric in zip(_prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
+				df_agg = aggregate_experiments(df, criterion, metric)
+				push!(ranks, rank_table(df_agg, metric)[end:end, :])
+			end
 		end
 
 		df_ranks = vcat(ranks...)
@@ -70,18 +83,32 @@ function main(args)
 		hl_best_rank = Highlighter(
 					f = (data, i, j) -> (data[i,j] == minimum(df_ranks[i, 2:end])),
 					crayon = crayon"green bold")
-
+		@info "Best models chosen by validation pat@x% with incresing x"
+		@info "Ranking by $((args["rank-metric"] != "") ? args["rank-metric"] : "test pat pat@x% with incresing x")"
 		pretty_table(
 				df_ranks,
 				formatters = ft_round(2),
 				highlighters = (hl_best_rank),
 			)
 	else
-		df_agg = aggregate(df, args["criterion-metric"], args["rank-metric"])
-		print_table(df_agg, args["rank-metric"]; metric_std=args["deviation"], backend=Symbol(args["backend"]))
+		df_agg = aggregate_experiments(df, args["criterion-metric"], args["rank-metric"])
+		rt = rank_table(df_agg, args["rank-metric"])
+
+		@info "Best models chosen by $(args["criterion-metric"])"
+		@info "Ranking by $(args["rank-metric"])"
+		if ~args["verbose"]
+			target_filename = datadir(args["output-prefix"],"$(args["criterion-metric"])_$(args["rank-metric"]).$(args["backend"])")
+			(~isdir(dirname(target_filename))) && mkdir(dirname(target_filename))
+			open(target_filename, "w") do io
+				print_rank_table(io, rt; backend=Symbol(args["backend"]))
+			end
+		else
+			print_rank_table(rt; backend=Symbol(args["backend"]))
+		end
 
 		if args["best-params"]
-			target_dir = datadir("evaluation/$(split(basename(f),'.')[1])_params_"*args["criterion-metric"])
+			target_dir = datadir(args["output-prefix"], "params_"*args["criterion-metric"])
+			@info "Storing best parameters as separate CSVs in $(target_dir)"
 			(~isdir(target_dir)) && mkdir(target_dir)
 			all_models = unique(df_agg[:modelname])
 			for m in all_models
