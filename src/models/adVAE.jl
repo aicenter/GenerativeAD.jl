@@ -69,10 +69,10 @@ kl_divergence(μ₁, Σ₁, μ₂, Σ₂) = sum(log.(Σ₂ ./ Σ₁) + (Σ₁.^2
 function loss(advae::adVAE, x; γ=1e-3, λ=1e-2, mx=1, mz=1)
 	μ, Σ = advae.encoder(x)
 	μₜ, Σₜ = advae.transformer(cat(μ, Σ, dims=1))
-	
+
 	z = μ + Σ * randn(Float32)
 	zₜ = μₜ + Σₜ * randn(Float32)
-	
+
 	xᵣ = advae.generator(z)
 	xₜᵣ = advae.generator(zₜ)
 	
@@ -81,14 +81,14 @@ function loss(advae::adVAE, x; γ=1e-3, λ=1e-2, mx=1, mz=1)
 
 	# 𝓛 for generator => 𝓛 = 𝓛_z + 𝓛_zₜ 
 	𝓛_z = Flux.Losses.mse(x, xᵣ) .+ γ * kl_divergence(μᵣ, Σᵣ)
-	𝓛_zₜ = max(0, (mx - Flux.Losses.mse(xᵣ, xₜᵣ))) + γ * max(0, (mz - kl_divergence(μₜᵣ, Σₜᵣ)))
+	𝓛_zₜ = max(0f0, (mx - Flux.Losses.mse(xᵣ, xₜᵣ))) + γ * max(0f0, (mz - kl_divergence(μₜᵣ, Σₜᵣ)))
 	𝓛 = 𝓛_z + 𝓛_zₜ
 	# 𝓛ₜ for transformer 
 	𝓛ₜ = kl_divergence(μ, Σ, μₜ, Σₜ)
 	# 𝓛ₑ for encoder
 	𝓛ₑ = Flux.Losses.mse(x, xᵣ) .+ γ * kl_divergence(μ, Σ) 
-		+ γ * max(0, (mz - kl_divergence(μᵣ, Σᵣ)))
-		+ γ * max(0, (mz - kl_divergence(μₜᵣ, Σₜᵣ)))
+		+ γ * max(0f0, (mz - kl_divergence(μᵣ, Σᵣ)))
+		+ γ * max(0f0, (mz - kl_divergence(μₜᵣ, Σₜᵣ)))
 
 	return 𝓛 + λ*𝓛ₜ, 𝓛ₑ, 𝓛, 𝓛ₜ
 end
