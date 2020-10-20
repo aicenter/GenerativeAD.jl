@@ -35,7 +35,6 @@ function Conv_adVAE(
 		zdim::Int=64, 
 		nf::Int=16, 
 		extra_layers::Int=0, 
-		hdim::Int=64,
 		depth::Int=3, 
 		activation="relu", 
 		init_seed=nothing,
@@ -49,8 +48,8 @@ function Conv_adVAE(
 		ConditionalDists.SplitLayer(zdim, [zdim, zdim], [identity, softplus])
 	)
 	transformer = Flux.Chain(
-		build_mlp(zdim*2, hdim, hdim, depth, activation=activation),
-		ConditionalDists.SplitLayer(hdim, [zdim,zdim], [identity,softplus])
+		build_mlp(zdim*2, zdim, zdim, depth, activation=activation),
+		ConditionalDists.SplitLayer(zdim, [zdim,zdim], [identity,softplus])
 	)
 	generator = Flux.Chain(
 		Flux.Dense(zdim, zdim, eval(:($(Symbol(activation)))) ),
