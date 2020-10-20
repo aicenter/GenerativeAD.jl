@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
-using GenerativeAD.Models: anomaly_score, generalized_anomaly_score_gpu
+using GenerativeAD.Models
 using BSON
 using StatsBase: fit!, predict, sample
 
@@ -23,14 +23,18 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed = parsed_args
 
-modelname ="GANomaly"
+modelname ="adVAE"
 
 function sample_params()
 	argnames = (
 		:hdim, 
 		:zdim, 
 		:nlayers, 
-		:activation, 
+		:activation,
+		:gamma,
+		:lambda,
+		:mx,
+		:mz,
 		:lr, 
 		:decay,
 		:batch_size, 
@@ -41,29 +45,32 @@ function sample_params()
 	)
 	par_vec = (
 		2 .^(4:9),
-		2 .^(3:8),
+		2 .^(1:8),
 		3:4,
 		["relu", "swish", "tanh"],
+		[0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1], # γ
+		[5, 10, 50, 100, 500]*1e-4, # λ  
+		0.5:0.5:2.5, #mx
+		10:10:100, #mz
 		10f0 .^ (-4:-3),
 		0f0:0.1:0.5,
-		2 .^ (5:7),
+		2 .^ (5:6),
 		[10000],
-		[30],
 		[10],
+		[30],
 		1:Int(1e8),
 	)
-	w = (weights = sample([1,10:10:90 ...],3),)
-	return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec)), w)
-end
 
+	return NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec))
+end
 
 function fit(data, parameters)
 	# define models (Generator, Discriminator)
-	generator, discriminator = GenerativeAD.Models.tabular_ganomaly_constructor(parameters)
+	advae = GenerativeAD.Models.adVAE(;parameters...)
 
 	# define optimiser
 	try
-		global info, fit_t, _, _, _ = @timed fit!(generator|>gpu, discriminator|>gpu, data, parameters)
+		global info, fit_t, _, _, _ = @timed fit!(advae |> gpu, data, parameters)
 	catch e
 		println("Error caught.")
 		return (fit_t = NaN, model = nothing, history = nothing, n_parameters = NaN), []
@@ -71,13 +78,15 @@ function fit(data, parameters)
 
 	training_info = (
 		fit_t = fit_t,
-		model = (info[2]|>cpu, info[3]|>cpu),
+		model = info[2]|>cpu,
 		history = info[1], # losses through time
-		npars = info[4], # number of parameters
-		iters = info[5] # optim iterations of model
+		npars = info[3], # number of parameters
+		iters = info[4] # optim iterations of model
 		)
 
-	return training_info, [(x -> GenerativeAD.Models.anomaly_score(generator|>cpu, x; dims=1)[:], parameters)]
+	return training_info, 
+	[(x -> GenerativeAD.Models.anomaly_score(advae|>cpu, x; dims=1, L=100), merge(parameters, (L=100, )))]
+	# L = samples for one x in anomaly_score computation
 end
 
 #_________________________________________________________________________________________________

@@ -24,6 +24,7 @@ include("pyodmodels.jl")
 include("tabular_flows.jl")
 include("vae.jl")
 include("aae.jl")
+include("adVAE.jl")
 include("gan.jl")
 
 # this contains dependencies from vae and aae

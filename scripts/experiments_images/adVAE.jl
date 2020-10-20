@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
-using GenerativeAD.Models: anomaly_score, generalized_anomaly_score_gpu
+using GenerativeAD.Models
 using BSON
 using StatsBase: fit!, predict, sample
 
@@ -27,63 +27,72 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes = parsed_args
 
-modelname = "Conv-SkipGANomaly"
+modelname ="adVAE"
 
 function sample_params()
-	argnames = (:num_filters, :extra_layers, :lr, :batch_size,
-				:iters, :check_every, :patience, :lambda, :init_seed, )
+	argnames = (
+		:zdim,
+		:hdim, 
+		:nf, 
+		:extra_layers,
+		:activation,
+		:gamma,
+		:lambda,
+		:mx,
+		:mz,
+		:lr, 
+		:decay,
+		:batch_size, 
+		:iters, 
+		:check_every, 
+		:patience, 
+		:init_seed,
+	)
 	par_vec = (
-			   2 .^ (3:6),
-			   [0:3 ...],
-			   10f0 .^ (-4:-3),
-			   2 .^ (5:7),
-			   [10000],
-			   [30],
-			   [10],
-			   [0.9],
-			   1:Int(1e8),
-			   )
-	w = (weights= sample([1,10:10:90...],3),)
-	return merge(NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec)), w)
+		2 .^(3:8), # dim of latent space
+		2 .^(3:8), # number of neurons in transformer
+		2 .^(2:7), # number of filters
+		[0:2 ...], # extra layers
+		["relu", "swish", "tanh"], # activation function for dense layers
+		[0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1], # γ
+		[5, 10, 50, 100, 500]*1e-4, # λ  
+		0.5:0.5:2.5, #mx
+		10:10:100, #mz
+		10f0 .^ (-4:-3), # lr
+		0f0:0.1:0.5, # weight decay
+		2 .^ (5:6), # batch_size
+		[10000],
+		[10],
+		[30],
+		1:Int(1e8),
+	)
+
+	return NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec))
 end
 
-"""
-	function fit(data, parameters)
-
-parameters => type named tuple with keys
-	num_filters   - number of kernels/masks in convolutional layers
-	extra_layers  - number of additional conv layers in discriminator
-	lr            - learning rate for optimiser
-	iters         - number of optimisation steps (iterations) during training
-	batch_size    - batch/minibatch size
-
-Note:
-	data = load_data("MNIST")
-	(x_train, y_train), (x_val, y_val), (x_test, y_test) = data
-"""
 function fit(data, parameters)
 	# define models (Generator, Discriminator)
-	model, _ = GenerativeAD.Models.SkipGANomaly_constructor(parameters)
+	advae = Conv_adVAE(;parameters...)
 
+	# define optimiser
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model |>gpu , data, parameters)
+		global info, fit_t, _, _, _ = @timed fit!(advae |> gpu, data, parameters)
 	catch e
-		println("Error caught.")
+		println("Error caught => $(e).")
 		return (fit_t = NaN, model = nothing, history = nothing, n_parameters = NaN), []
 	end
 
 	training_info = (
 		fit_t = fit_t,
-		model = (info[2] |> cpu),
+		model = info[2]|>cpu,
 		history = info[1], # losses through time
 		npars = info[3], # number of parameters
 		iters = info[4] # optim iterations of model
 		)
 
-
-	return training_info, [(x -> generalized_anomaly_score_gpu(model|>cpu, x, R=r, L=l, lambda=lam), 
-		merge(parameters, (R=r, L=l, test_labda=lam,)))
-		for r in ["mae", "mse"] for l in ["mae", "mse"] for lam = 0.1:0.1:0.9 ]
+	return training_info, 
+	[(x -> GenerativeAD.Models.anomaly_score(advae|>cpu, x; dims=(1,2,3), L=100), merge(parameters, (L=100, )))]
+	# L = samples for one x in anomaly_score computation
 end
 
 #_________________________________________________________________________________________________
@@ -103,17 +112,17 @@ while try_counter < max_tries
 			in_ch = size(data[1][1],3)
 			isize = maximum([size(data[1][1],1),size(data[1][1],2)])
 
-			isize = (isize % 32 != 0) ? isize + 32 - isize % 32 : isize
+			isize = (isize % 16 != 0) ? isize + 16 - isize % 16 : isize
 			# update parameter
 			parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
 			# here, check if a model with the same parameters was already tested
 			if GenerativeAD.check_params(savepath, parameters)
 
-				data = GenerativeAD.Models.preprocess_images(data, parameters, denominator=32)
+				data = GenerativeAD.Models.preprocess_images(data, parameters)
 				#(X_train,_), (X_val, y_val), (X_test, y_test) = data
 				training_info, results = fit(data, parameters)
 				# saving model separately
-				if training_info.model != nothing
+				if training_info.model !== nothing
 					tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
 					training_info = merge(training_info, (model = nothing,))
 				end
