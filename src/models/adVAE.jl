@@ -56,15 +56,9 @@ function (advae::adVAE)(x)
 	xᵣ = advae.generator(z)
 end
 
-"""
-Notice:
 
-In the original article for adVAE, autor defines kl_divergence as bellow but that is acutally -KLD !!!
-However I want to match with equations in the paper so I am keeping oposite signs before kl_divergence. 
-
-"""
-kl_divergence(μ, Σ) = 0.5f0 * sum(1f0 .+ log.(Σ.^2) - μ.^2  - Σ.^2) 
-kl_divergence(μ₁, Σ₁, μ₂, Σ₂) = sum(log.(Σ₂ ./ Σ₁) + (Σ₁.^2 + (μ₁ - μ₂).^2) ./ (2*Σ₂.^2) .- 0.5f0)
+kl_divergence(μ, Σ) = - Flux.mean(0.5f0 * sum(1f0 .+ log.(Σ.^2) - μ.^2  - Σ.^2, dims=1)) 
+kl_divergence(μ₁, Σ₁, μ₂, Σ₂) = Flux.mean(sum(log.(Σ₂) - log.(Σ₁) + (Σ₁.^2 + (μ₁ - μ₂).^2) ./ (2*Σ₂.^2) .- 0.5f0, dims=1))
 
 function loss(advae::adVAE, x; γ=1e-3, λ=1e-2, mx=1, mz=1)
 	μ, Σ = advae.encoder(x)
@@ -86,7 +80,7 @@ function loss(advae::adVAE, x; γ=1e-3, λ=1e-2, mx=1, mz=1)
 	# 𝓛ₜ for transformer 
 	𝓛ₜ = kl_divergence(μ, Σ, μₜ, Σₜ)
 	# 𝓛ₑ for encoder
-	𝓛ₑ = Flux.Losses.mse(x, xᵣ) .+ γ * kl_divergence(μ, Σ) 
+	𝓛ₑ = Flux.Losses.mse(x, xᵣ) .+ λ * kl_divergence(μ, Σ) 
 		+ γ * max(0f0, (mz - kl_divergence(μᵣ, Σᵣ)))
 		+ γ * max(0f0, (mz - kl_divergence(μₜᵣ, Σₜᵣ)))
 
