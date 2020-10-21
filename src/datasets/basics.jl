@@ -96,3 +96,11 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamin
 	# now do the train/validation/test split
 	train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
 end
+
+
+function load_datam(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamination::Real=0.0, kwargs...)
+	# extract data and labels
+	data_normal, data_anomalous = load_mill_data(dataset; kwargs...)
+	# now do the train/validation/test split
+	train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
+end

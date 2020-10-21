@@ -12,8 +12,9 @@ using Flux # for one-hot encoding
 
 export load_data
 
-include("tabular.jl")
-include("img.jl")
+# include("tabular.jl")
+# include("img.jl")
 include("basics.jl")
+include("mill.jl")
 
 end
