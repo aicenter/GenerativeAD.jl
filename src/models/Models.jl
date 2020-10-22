@@ -26,6 +26,7 @@ include("vae.jl")
 include("aae.jl")
 include("adVAE.jl")
 include("gan.jl")
+include("sptn.jl")
 
 # this contains dependencies from vae and aae
 include("utils/vae_utils.jl")
