@@ -26,29 +26,27 @@ parsed_args = parse_args(ARGS, s)
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "knn"
+modelname = "abod"
 # sample parameters, should return a Dict of model kwargs 
-"""
-	sample_params()
 
-Should return a named tuple that contains a sample of model parameters.
-"""
 function sample_params()
-	par_vec = (1:2:101,)
-	argnames = (:k,)
+	par_vec = (1:100,["fast"])
+	argnames = (:n_neighbors, :method)
 	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
-"""
-	fit(data, parameters)
-
-This is the most important function - returns `training_info` and a tuple or a vector of tuples `(score_fun, final_parameters)`.
-`training_info` contains additional information on the training process that should be saved, the same for all anomaly score functions.
-Each element of the return vector contains a specific anomaly score function - there can be multiple for each trained model.
-Final parameters is a named tuple of names and parameter values that are used for creation of the savefile name.
-"""
+function GenerativeAD.edit_params(data, parameters)
+	D, N = size(data[1][1])
+	if N < parameters.n_neighbors
+		# if there are not enough samples, set the number of neighbors to N-1 as in the Python implementation
+		@info "Not enough samples in training, changing n_neighbors value from $(parameters.n_neighbors) to $(N-1)."
+		return merge(parameters, (;n_neighbors = N-1))
+	else 
+		return parameters
+	end
+end
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.knn_constructor(;v=:kappa, parameters...)
+	model = GenerativeAD.Models.ABOD(;parameters...)
 
 	# fit train data
 	try
@@ -65,18 +63,7 @@ function fit(data, parameters)
 		)
 
 	# now return the different scoring functions
-	function knn_predict(model, x, v::Symbol)
-		try 
-			return predict(model, x, v)
-		catch e
-			if isa(e, ArgumentError) # this happens in the case when k > number of points
-				return NaN # or nothing?
-			else
-				rethrow(e)
-			end
-		end
-	end
-	training_info, [(x -> knn_predict(model, x, v), merge(parameters, (distance = v,))) for v in [:gamma, :kappa, :delta]]
+	training_info, [(x->predict(model, x), parameters)]
 end
 
 ####################################################################
@@ -98,7 +85,7 @@ while try_counter < max_tries
 
 			# edit parameters
 			edited_parameters = GenerativeAD.edit_params(data, parameters)
-			
+
 			@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
 			# check if a combination of parameters and seed alread exists
 			if GenerativeAD.check_params(savepath, edited_parameters)
