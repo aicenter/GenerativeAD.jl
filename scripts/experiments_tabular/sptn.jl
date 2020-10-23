@@ -45,7 +45,8 @@ function fit(data, parameters)
 	model = GenerativeAD.Models.SPTN(;idim=size(data[1][1],1), parameters...)
 
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data; parameters...)
+		global info, fit_t, _, _, _ = @timed fit!(model, data; max_train_time=82800/max_seed, 
+			patience=200, check_interval=10, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
@@ -71,7 +72,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 	while try_counter < max_tries
 	    parameters = sample_params()
 
-	    for seed in 1:max_seed
+		for seed in 1:max_seed
 			savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
 			mkpath(savepath)
 
