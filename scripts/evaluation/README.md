@@ -4,12 +4,18 @@ Due to the large number of files that need to be processed the main evaluation i
 - collection of previously generated files into one cached dataframe (parallel) - `collect_stats.jl`
 - printing of summary tables - `evaluate_performance.jl`
 
-The first two steps can be run as a batch job by running `sbatch run_eval.sh` script. By default this won't rewrite any precomputed files with the exception of the cached DataFrame in the second step.
+The first two steps can be run as a batch job by running `sbatch run_eval.sh` script. By default this won't rewrite any precomputed files with the exception of the cached DataFrame in the second step. 
 
 ```
     julia --threads 16 --project ./generate_stats.jl experiments/images evaluation/images 
+```
+will collect all the experiment files from `experiments/images` data folder and generates the statistics files into the same structed folders but with different data prefix `evaluation/images`. Unless `-f` flag is added the script will ignore experiment files for which the statistics already exist in `evaluation/images`.
+
+```
     julia --threads 16 --project ./collect_stats.jl  evaluation/images evaluation/images_eval.bson -f
 ```
+will collect all the statistics files from `evaluation/images` data folder and store them into one dataframe `images_eval.bson`
+in the `evaluation` data folder.
 
 The third step is intended to be run in more interactive manner as it allows multiple summary options.
 - loading `evaluation/images_eval.bson` cache, using `val_auc` for sorting models and `tst_auc` for final ranking, storing the rank table as `html` page in data prefixed folder given by `--output-prefix`
@@ -42,4 +48,4 @@ The third step is intended to be run in more interactive manner as it allows mul
                         --proportional
 ```
 
-Some combination of parameters don't make sense, such as running with `--best-params` while also using `--proportional`. Furthermore the tex(latex) output does not escape underscores and therefore cannot be parsed sometimes. The code scaling to multiple threads does not work optimally, but it is encouraged to use 32 threads when processing more than 50k files.
+Some combinations of parameters don't make sense, such as running with `--best-params` while also using `--proportional`. Furthermore the tex(latex) output does not escape underscores and therefore cannot be parsed sometimes. The code scaling to multiple threads does not work optimally, but it is encouraged to use 32 threads when processing more than 50k files.

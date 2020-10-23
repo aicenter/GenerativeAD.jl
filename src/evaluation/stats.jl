@@ -25,7 +25,7 @@ _prefix_symbol(prefix, s) = Symbol("$(prefix)_$(s)")
 Computes precision on portion `p` samples with highest score.
 """
 function _precision_at(p, labels, scores)
-	pN = Int(round(floor(p*length(labels)))) # round is more forgiving
+	pN = floor(Int, p*length(labels))
 	if pN > 0
 		sp = sortperm(scores, rev=true)[1:pN]
 		# @info sp scores[sp] labels[sp]

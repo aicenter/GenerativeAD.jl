@@ -18,9 +18,3 @@ export PYTHON="${HOME}/julia-env/bin/python"
 
 julia --threads 32 --project ./generate_stats.jl experiments/images evaluation/images 
 julia --threads 32 --project ./collect_stats.jl  evaluation/images evaluation/images_eval.bson -f
-
-julia --project ./evaluate_performance.jl \
-					evaluation/images_eval.bson \
-					--criterion-metric val_auc \
-					--rank-metric tst_auc \
-					--backend html
