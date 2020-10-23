@@ -1,7 +1,7 @@
 name = "GenerativeAD"
 uuid = "a83054f2-ddd1-11e8-0102-5779cc6302e6"
 authors = ["vitskvara"]
-version = "0.3.0"
+version = "0.3.1"
 
 [deps]
 ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
@@ -25,6 +25,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MLDataPattern = "9920b226-0b2a-5f5f-9153-9aa70a013f8b"
 MLDatasets = "eb30cadb-4394-5ae3-aed4-317e484a6458"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
+PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
