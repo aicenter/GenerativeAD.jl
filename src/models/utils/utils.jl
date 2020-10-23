@@ -17,13 +17,6 @@ function scale_to_interval(X; range=[0,1])
 	return X_std .* (range[2]-range[1]) .+ range[1]
 end
 
-function vectorize_images(data::Tuple)
-	(X_train, y_train), (X_val, y_val), (X_test, y_test) = data
-	vectorize(x) = reshape(x, :, size(x)[end])
-	
-	return (vectorize(X_train), y_train), (vectorize(X_val), y_val), (vectorize(X_test), y_test)
-end
-
 """
 	function preprocess_images(data, parameters)
 

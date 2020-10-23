@@ -74,7 +74,7 @@ function fit(data, parameters, n_models=10)
 		)
 
 	# now return the different scoring functions
-	training_info, [(x->joint_prediction(models, x), parameters)]
+	training_info, [(x->joint_predictiion(models, x), parameters)]
 end
 
 #_________________________________________________________________________________________________
@@ -90,7 +90,6 @@ while try_counter < max_tries
 			savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 
 			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
-			data = GenerativeAD.Models.vectorize_images(data)
 			
 			# here, check if a model with the same parameters was already tested
 			if GenerativeAD.check_params(savepath, parameters)
