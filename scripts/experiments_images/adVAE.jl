@@ -52,10 +52,10 @@ function sample_params()
 		2 .^(2:7), # number of filters
 		[0:2 ...], # extra layers
 		["relu", "swish", "tanh"], # activation function for dense layers
-		[0.001, 0.003, 0.007, 0.01, 0.03, 0.07, 0.1], # γ
-		[5, 10, 50, 100, 500]*1e-4, # λ  
-		0.5:0.5:2.5, #mx
-		10:10:100, #mz
+		[0.0005, 0.001, 0.005], # γ
+		[0.005, 0.01, 0.05], # λ  
+		[1, 1.5], #mx
+		[40, 50, 60], #mz
 		10f0 .^ (-4:-3), # lr
 		0f0:0.1:0.5, # weight decay
 		2 .^ (5:6), # batch_size
