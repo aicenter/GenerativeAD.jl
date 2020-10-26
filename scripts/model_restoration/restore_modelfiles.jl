@@ -31,9 +31,9 @@ function fix_modelfile(mf)
 
 	# get additional fit info
 	# zdim is empty since there was a bug that saved it incorrectly in model file
-	infopars = merge(parameters, (score="latent", zdim="",))
+	#infopars = merge(parameters, (score="latent", zdim="",lr=""))
 	try
-		infof = filter(x->occursin(savename(infopars), x), files)[1]
+		infof = filter(x->occursin("$(parameters.init_seed)", x), files)[1]
 		global info = load(infof)
 	catch e
 		@info "data for $mf not found"
@@ -41,10 +41,10 @@ function fix_modelfile(mf)
 	end
 
 	# now create the new parameters
-	outpars = merge(parameters, (zdim=info[:parameters].zdim,))
+	outpars = merge(parameters, (zdim=info[:parameters].zdim,lr=info[:parameters].lr))
 
 	# now save the fixed model data and delete the old model
-	sn = joinpath(savepath, savename("model", outpars, "bson"))
+	sn = joinpath(savepath, savename("model", outpars, "bson",digits=5))
 	if sn != mf # only do all of this if the old and new modelfiles are different
 		# get model data
 		model_data = load(mf)
