@@ -143,13 +143,18 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
 					# save the model separately			
 					if training_info.model != nothing
-						tagsave(joinpath(savepath, savename("model", parameters, "bson")), 
+						tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
 							Dict("model"=>training_info.model,
 								 "tr_encodings"=>training_info.tr_encodings,
 								 "val_encodings"=>training_info.val_encodings,
-								 "tst_encodings"=>training_info.tst_encodings), 
+								 "tst_encodings"=>training_info.tst_encodings,
+								 "fit_t"=>training_info.fit_t,
+								 "history"=>training_info.history,
+								 "parameters"=>edited_parameters
+								 ), 
 							safe = true)
-						training_info = merge(training_info, (model=nothing,tr_encodings=nothing,val_encodings=nothing,tst_encodings=nothing))
+						training_info = merge(training_info, 
+							(model=nothing,tr_encodings=nothing,val_encodings=nothing,tst_encodings=nothing))
 					end
 
 					# here define what additional info should be saved together with parameters, scores, labels and predict times

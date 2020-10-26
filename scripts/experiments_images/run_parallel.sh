@@ -23,5 +23,5 @@ while read d; do
      ./${MODEL}_run.sh $MAX_SEED $d 10
 
     # for local testing    
-    # ./${MODEL}_run.sh $MAX_SEED $d
+    # ./${MODEL}_run.sh $MAX_SEED $d 10
 done < ${DATASET_FILE}
