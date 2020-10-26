@@ -3,9 +3,9 @@
 #SBATCH --nodes=1 --ntasks-per-node=2 --cpus-per-task=1
 #SBATCH --mem=20G
 
-PATH=$1
+WORKPATH=$1
 
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-julia ./restore_modelfiles.jl $PATH
+julia ./restore_modelfiles.jl $WORKPATH
