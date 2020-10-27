@@ -100,3 +100,59 @@ function latent_score_mean(model::AEModel, x)
 	z = mean(model.encoder, x)
 	-logpdf(model.prior, z)
 end
+
+# JacoDeco score
+# see https://arxiv.org/abs/1905.11890
+"""
+	jacobian(f, x)
+
+Jacobian of f given due to x.
+"""
+function jacobian(f, x)
+	y = f(x)
+	n = length(y)
+	m = length(x)
+	T = eltype(y)
+	j = Array{T, 2}(undef, n, m)
+	for i in 1:n
+		j[i, :] .= gradient(x -> f(x)[i], x)[1]
+	end
+	return j
+end
+
+"""
+	lJacoD(m,x)
+
+Jacobian decomposition JJ(m,x).
+"""
+function lJacoD(m,x)
+	JJ = zeros(eltype(x),size(x,2));
+	zg = mean(m.encoder,x);
+	for i=1:size(x,2)
+		jj,J = jacobian(y->mean(m.decoder,y)[:],zg[:,i]);
+		(U,S,V) = svd(J);
+		JJ[i]= sum(2*log.(S));
+	end
+	JJ
+end
+
+"""
+	lpx(m,x)
+
+p(x|g(x))
+"""
+lpx(m,x) = logpdf(m.decoder,x,mean(m.encoder,x))
+
+"""
+	lpz(m,x)
+
+p(z|e(x))
+"""
+lpz(m,x) = logpdf(m.prior,mean(m.encoder,x)) # 
+
+"""
+	lp_orthD(m,x)
+
+JacoDeco score: p(x|g(x)) + p(z|e(x)) - JJ(m,x)
+"""
+jacodeco(m,x) = (lpx(m,x) .+ lpz(m,x) .- lJacoD(m,x));
