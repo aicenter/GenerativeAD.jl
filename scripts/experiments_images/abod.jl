@@ -92,7 +92,7 @@ while try_counter < max_tries
 				# fit
 				training_info, results = fit(data, edited_parameters)
 				# here define what additional info should be saved together with parameters, scores, labels and predict times
-				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
 
 				# now loop over all anomaly score funs
 				for result in results
