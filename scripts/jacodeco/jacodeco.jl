@@ -60,7 +60,8 @@ for f in mfiles
 	savepath = dirname(f)
 	seed = parse(Int, replace(basename(savepath), "seed=" => ""))
 	data = GenerativeAD.load_data(dataset, seed=seed)
-
+	
 	# compute and save the score
+	@info "computing jacodeco for $f"
 	save_jacodeco(f, data, seed)
 end
