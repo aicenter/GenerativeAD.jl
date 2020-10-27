@@ -22,6 +22,7 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack path, force = parsed_args
 
+path = abspath(path)
 files = GenerativeAD.Evaluation.collect_files(path)
 mfiles = filter(f->occursin("model", f), files)
 @info "storing modelfiles in $path"
@@ -48,16 +49,16 @@ function fix_modelfile(mf)
 
 	# now save the fixed model data and delete the old model
 	sn = joinpath(savepath, savename("model", outpars, "bson",digits=5))
-	if sn != mf || force # only do all of this if the old and new modelfiles are different
+	if ((sn != mf) || force) # only do all of this if the old and new modelfiles are different
 		# get model data
 		model_data = load(mf)
 		# also add the additional fields
 		model_data["history"] = info[:history]
 		model_data["fit_t"] = info[:fit_t]
-		model_data["parameters"] = info[:parameters]
+		model_data["parameters"] = Base.structdiff(info[:parameters], (score=nothing,))
 
-		save(sn, model_data)
 		rm(mf)
+		save(sn, model_data)
 	end
 
 	return sn
