@@ -15,13 +15,17 @@ s = ArgParseSettings()
 	"path"
 		arg_type = String
 		help = "path"
+	"--force"
+		action = :store_true
+		help = "force overwriting"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack path = parsed_args
+@unpack path, force = parsed_args
 
+path = abspath(path)
 files = GenerativeAD.Evaluation.collect_files(path)
 mfiles = filter(f->occursin("model", f), files)
-@info "Restoring modelfiles in $path"
+@info "storing modelfiles in $path"
 
 function fix_modelfile(mf) 
 	# get parameters
@@ -36,7 +40,7 @@ function fix_modelfile(mf)
 		infof = filter(x->occursin("$(parameters.init_seed)", x), files)[1]
 		global info = load(infof)
 	catch e
-		@info "data for $mf not found"
+		#@info "data for $mf not found"
 		return ""
 	end
 
@@ -45,19 +49,25 @@ function fix_modelfile(mf)
 
 	# now save the fixed model data and delete the old model
 	sn = joinpath(savepath, savename("model", outpars, "bson",digits=5))
-	if sn != mf # only do all of this if the old and new modelfiles are different
+	if ((sn != mf) || force) # only do all of this if the old and new modelfiles are different
 		# get model data
 		model_data = load(mf)
 		# also add the additional fields
 		model_data["history"] = info[:history]
 		model_data["fit_t"] = info[:fit_t]
-		model_data["parameters"] = info[:parameters]
+		model_data["parameters"] = Base.structdiff(info[:parameters], (score=nothing,))
 
-		save(sn, model_data)
 		rm(mf)
+		save(sn, model_data)
 	end
 
 	return sn
 end
 
-@showprogress map(fix_modelfile, mfiles)
+newfiles = @showprogress map(fix_modelfile, mfiles)
+
+# print files that were not modified
+@info "these files were not updated, probably missing the corresponding score files:"
+for f in mfiles[newfiles .== ""]
+	println(f)
+end
