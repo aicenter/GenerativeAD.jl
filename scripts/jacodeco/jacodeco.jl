@@ -33,7 +33,7 @@ masterpath = datadir("experiments/$(datatype)/$(modelname)/$(dataset)")
 files = GenerativeAD.Evaluation.collect_files(masterpath)
 mfiles = filter(f->occursin("model", f), files)
 
-function save_jacodeco(f::String, data, seed::Int)
+function save_jacodeco(f::String, data, seed::Int, ac=nothing)
 	# get model
 	savepath = dirname(f)
 	mdata = load(f)
@@ -49,6 +49,7 @@ function save_jacodeco(f::String, data, seed::Int)
 		model = nothing,
 		seed = seed
 		)
+	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (ac=ac,))
 	result = (x -> -GenerativeAD.Models.jacodeco(model, x), 
 		merge(mdata["parameters"], (score = "jacodeco",)))
 
@@ -59,9 +60,12 @@ for f in mfiles
 	# get data
 	savepath = dirname(f)
 	seed = parse(Int, replace(basename(savepath), "seed=" => ""))
-	data = GenerativeAD.load_data(dataset, seed=seed)
-	
+	ac = occursin("ac=", savepath) ? parse(Int, replace(basename(dirname(savepath)), "ac=" => "")) : nothing
+	data = (ac == nothing) ? 
+		GenerativeAD.load_data(dataset, seed=seed) : 
+		GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac)
+		
 	# compute and save the score
 	@info "computing jacodeco for $f"
-	save_jacodeco(f, data, seed)
+	save_jacodeco(f, data, seed, ac)
 end
