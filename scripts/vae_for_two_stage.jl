@@ -25,7 +25,7 @@ function models_and_params(path_to_model)
 	end
 	
 	for dir in unique(directories)
-		fs = filter(x->(startswith(x, "model")), fs)
+		fs = filter(x->(startswith(x, "model")), readdir(dir))
 		info = map(x->x[7:end], fs)
 		info = fix_info_name.(info) # model_name -> info name
 		#par = map(x -> DrWatson.parse_savename("_"*x)[2], info)
@@ -36,7 +36,7 @@ end
 
 function create_df(models)
 	df = DataFrame(
-		path = String[], 
+		path = String[], #path to model / encodings
 		params = String[],
 		dataset = String[], 
 		ac = Int64[], 
@@ -47,7 +47,7 @@ function create_df(models)
 	i = 1
 
 	for model in models
-		(roor, mod, infos) = model
+		(root, mod, infos) = model
 		for info in infos
 			try
 				path = joinpath(root, info)
@@ -55,7 +55,7 @@ function create_df(models)
 				push!(
 					df, 
 					[
-						path, 
+						mod, 
 						string(info[:parameters]),
 						info[:dataset], 
 						info[:anomaly_class], 
@@ -78,4 +78,4 @@ df = create_df(models)
 
 #df_mean = by(df, [:parameters, :dataset], :loss_val => mean)
 
-CSV.write("vae_tab.csv", df)
+CSV.write(datadir("vae_tab.csv"), df)
