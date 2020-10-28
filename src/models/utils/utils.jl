@@ -1,3 +1,6 @@
+using DataFrames
+using CSV
+
 """
 	function resize_images(images, isize::Int, channels=1)
 
@@ -106,3 +109,37 @@ function clip_weights!(ps::Flux.Zygote.Params,low::Real,high::Real)
 	end
 end
 clip_weights!(ps::Flux.Zygote.Params,c::Real) = clip_weights!(ps,-abs(c),abs(c))
+
+"""
+	helper functions for two stage models
+"""
+function return_best_10(df, dataset="MNIST")
+    df = df[df.dataset .== dataset, :]
+    top_10 = first(sort(by(df, :params, :loss_val => mean), :loss_val_mean), 10)
+    df_top_10 = []
+    for i=1:10
+        tmp = df[df.params .== top_10.params[i],:]
+        ind = i.*ones(size(tmp,1))
+        push!(df_top_10, hcat(tmp, DataFrame(ind=ind)))
+    end
+    return vcat(df_top_10...)
+end
+
+
+function load_encoding(;dataset::String="MNIST", anomaly_class::Int=1, seed::Int=1, model_index::Int=1)
+    # load csv
+    df = CSV.read(datadir("vae_tab.csv")) #??? hardcoded
+    df = return_best_10(df, dataset)
+    # checking if model configuration was trained on all classes and all seeds
+    n_comb = 500
+    check_comb = sum([sum(df.ind .== i) for i=1:10])
+    if check_comb < n_comb
+        @info "One of chosen models does not include all anomaly classes and all seeds!! $(check_comb) out of $(n_comb)"
+    end
+    # get correct model path
+    encoding_path = df[(df.ac .== anomaly_class) .& (df.seed .==1) .& (df.ind .==model_index),:][:path]
+    
+	model = BSON.load(encoding_path)
+	
+    return (model[:tr_encodings], model[:val_encodings], model[:test_encodings]), split(encoding_path, "/")[end]
+end
