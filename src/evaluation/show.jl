@@ -14,7 +14,12 @@ Last row of the dataframe contains average rank of each model.
 function rank_table(df::DataFrame, metric_col=:tst_auc)
 	# check if column names are present
 	(!(String(metric_col) in names(df)) || !("modelname" in names(df)) || !("dataset" in names(df))) && error("Incorrect column names.")
-	(!(String(metric_col)*"_std" in names(df))) && error("DataFrame does not contain std for the given metric.")
+	
+	std_column = String(metric_col)*"_std"
+	(!(std_column in names(df))) && error("DataFrame does not contain std for the given metric.")
+	
+	top_10_std_column = String(metric_col)*"_top_10_std"
+	(!(top_10_std_column in names(df))) && error("DataFrame does not contain std for the given metric.")
 
 	# get all the models that are present in the dataframe
 	all_models = unique(df.modelname)
@@ -39,22 +44,27 @@ function rank_table(df::DataFrame, metric_col=:tst_auc)
 	rt = vcat(results...)
 	sort!(rt, :dataset)
 	
-	# add average std
-	std_column = String(metric_col)*"_std"
-	# order must be the same as in the rt dataset
-	mean_std = [
-		mean(
-			filter(y -> ~isnan(y), 
-				filter(x -> (x.modelname == m), df)[std_column])) for m in names(rt[:,2:end])]
+	# add average std of the winning hyperparameter
+	mean_std = [mean(
+		filter(x -> (x.modelname == m), df)[std_column]) for m in names(rt[:,2:end])]
 	push!(rt, ["MEAN_STD", mean_std...])
 
+	# add top 10 std (more precisely mean over dataset)
+	top_10_std = [mean(
+		filter(x -> (x.modelname == m), df)[top_10_std_column]) for m in names(rt[:,2:end])]
+	push!(rt, ["MEAN_TOP10_STD", top_10_std...])
+	
+	# round all values in the table before computing rank
+	rt[:, 2:end] .= round.(rt[:, 2:end], digits=2)
+	
 	# add average rank
 	mask_nan_max = (x) -> (isnan(x) ? -Inf : x)
 	rs = zeros(size(rt, 2) - 1)
-	for row in eachrow(rt)
+	for row in eachrow(rt[1:end-2,:])
 		rs .+= StatsBase.competerank(mask_nan_max.(Vector(row[2:end])), rev = true)
 	end
 	rs ./= size(rt, 1)
+	rs = round.(rs, digits=2)
 	push!(rt, ["RANK", rs...])
 
 	rt
@@ -66,15 +76,15 @@ end
 	print_rank_table(io::IO, rt::DataFrame; backend=:text)
 
 Pretty prints the rank table created by `rank_table` function either into given io or to stdout.
-There are three backends to choose from `:text (default)`, `:latex` and `:html`.
+There are three backends to choose from `:txt (default)`, `:tex` and `:html`.
 """
-print_rank_table(rt::DataFrame; backend=:text) = print_rank_table(stdout, rt)
+print_rank_table(rt::DataFrame; backend=:txt) = print_rank_table(stdout, rt)
 
 function print_rank_table(io::IO, rt::DataFrame; backend=:txt)
 	mask_nan_max = (x) -> (isnan(x) ? -Inf : x)
 	
 	# horizontal lines to separate derived statistics from the rest of the table
-	hlines = [size(rt, 1) - 2, size(rt, 1) - 1]
+	hlines = [size(rt, 1) - 3, size(rt, 1) - 2, size(rt, 1) - 1]
 	
 	# highlight maximum values of metric in each row (i.e. per dataset)
 	f_hl_best = (data, i, j) -> (i < size(rt, 1)) && (data[i,j]  == maximum(mask_nan_max, rt[i, 2:end]))

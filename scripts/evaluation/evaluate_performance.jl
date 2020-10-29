@@ -45,19 +45,6 @@ s = ArgParseSettings()
 		help = "Stores CSV files for each model's best parameters."
 end
 
-function aggregate_experiments(df, criterion, metric)
-	std_col = _prefix_symbol(metric, :std)
-	df_agg = aggregate_stats(
-		df, 
-		Symbol(criterion), 
-		[Symbol(metric), std_col, :parameters]; 
-		undersample=Dict("ocsvm" => 100))
-
-	df_agg[:, metric] = round.(df_agg[:, metric], digits=2)
-	df_agg[:, std_col] = round.(df_agg[:, std_col], digits=2)
-	df_agg
-end
-
 function main(args)
 	f = datadir(args["filename"])
 	df = load(f)[:df]
@@ -67,12 +54,12 @@ function main(args)
 		ranks = []
 		if args["rank-metric"] != ""
 			for criterion in _prefix_symbol.("val", PAT_METRICS)
-				df_agg = aggregate_experiments(df, criterion, args["rank-metric"])
+				df_agg = aggregate_stats(df, criterion)
 				push!(ranks, rank_table(df_agg, args["rank-metric"])[end:end, :])
 			end
 		else # pat/pat scenario if no rank-metric is provided
 			for (criterion, metric) in zip(_prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
-				df_agg = aggregate_experiments(df, criterion, metric)
+				df_agg = aggregate_stats(df, criterion)
 				push!(ranks, rank_table(df_agg, metric)[end:end, :])
 			end
 		end
@@ -107,7 +94,7 @@ function main(args)
 				)
 		end
 	else
-		df_agg = aggregate_experiments(df, args["criterion-metric"], args["rank-metric"])
+		df_agg = aggregate_stats(df, Symbol(args["criterion-metric"]))
 		rt = rank_table(df_agg, args["rank-metric"])
 
 		@info "Best models chosen by $(args["criterion-metric"])"
