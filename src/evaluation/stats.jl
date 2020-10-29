@@ -116,10 +116,10 @@ columns of different types
 	+ `psamples` - number of runs of the best hyperparameter
 	+ `dsamples` - number of sampled hyperparameters
 	+ `dsamples_valid` - number of sampled hyperparameters with enough runs
-When nonempty `undersample` dictionary is specified, the entries of`("model" => #samples)`, specify
+When nonempty `downsample` dictionary is specified, the entries of`("model" => #samples)`, specify
 how many samples should be taken into acount. These are selected randomly with fixed seed.
 """
-function aggregate_stats(df::DataFrame, criterion_col=:val_auc; undersample=Dict("ocsvm" => 100))
+function aggregate_stats(df::DataFrame, criterion_col=:val_auc; downsample=Dict("ocsvm" => 100))
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 
@@ -128,9 +128,11 @@ function aggregate_stats(df::DataFrame, criterion_col=:val_auc; undersample=Dict
 	for (dkey, dg) in pairs(groupby(df, :dataset))
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
 			n = length(unique(mg.phash))
-			# undersample models given by the undersample dictionary
+			# downsample models given by the `downsample` dictionary
 			Random.seed!(42)
-			pg = (mkey.modelname in keys(undersample)) ? groupby(mg, :phash)[randperm(n)[1:undersample[mkey.modelname]]] : groupby(mg, :phash)
+			pg = (mkey.modelname in keys(downsample)) && (downsample[mkey.modelname] < n) ? 
+					groupby(mg, :phash)[randperm(n)[1:downsample[mkey.modelname]]] : 
+					groupby(mg, :phash)
 			Random.seed!()
 			
 			# filter only those hyperparameter that have sufficient number of samples
