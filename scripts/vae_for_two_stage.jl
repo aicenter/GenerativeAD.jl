@@ -34,15 +34,26 @@ function models_and_params(path_to_model)
 	return models
 end
 
-function create_df(models)
-	df = DataFrame(
-		path = String[], #path to model / encodings
-		params = String[],
-		dataset = String[], 
-		ac = Int64[], 
-		seed = Int64[], 
-		loss_val= Float32[]
-	)
+function create_df(models; images::Bool=true)
+
+	if images
+		df = DataFrame(
+			path = String[], #path to model / encodings
+			params = String[],
+			dataset = String[], 
+			ac = Int64[], 
+			seed = Int64[], 
+			loss_val= Float32[]
+		)
+	else
+		df = DataFrame(
+			path = String[], #path to model / encodings
+			params = String[],
+			dataset = String[], 
+			seed = Int64[], 
+			loss_val= Float32[]
+		)
+	end
 
 	i = 1
 
@@ -52,17 +63,28 @@ function create_df(models)
 			try
 				path = joinpath(root, info)
 				info = BSON.load(path)
-				push!(
-					df, 
-					[
-						mod, 
+
+				if images
+					update = [
+						joinpath(root,mod), 
 						string(info[:parameters]),
 						info[:dataset], 
 						info[:anomaly_class], 
 						info[:seed],
 						minimum(get(info[:history][:validation_likelihood])[2]) # early stopping in min
 					]
-				)
+				else
+					update = [
+						joinpath(root,mod), 
+						string(info[:parameters]),
+						info[:dataset], 
+						info[:seed],
+						minimum(get(info[:history][:validation_likelihood])[2]) # early stopping in min
+					]
+
+				end
+
+				push!(df, update)
 			catch e
 				println("info not found #$(i)")
 				i += 1
@@ -74,7 +96,7 @@ end
 
 path = "/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/images/vae/"
 models = models_and_params(path)
-df = create_df(models)
+df = create_df(models, images=true)
 
 #df_mean = by(df, [:parameters, :dataset], :loss_val => mean)
 

@@ -31,7 +31,7 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes, model_index = parsed_args
 
-modelname = "ocsvm"
+modelname = "vae+ocsvm"
 function sample_params()
 	par_vec = (round.([10^x for x in -4:0.1:2],digits=5), ["poly", "rbf", "sigmoid"], [0.01,0.5,0.99])
 	argnames = (:gamma,:kernel,:nu)
@@ -92,14 +92,16 @@ while try_counter < max_tries
 			savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 
 			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
-			encodings, encoding_name = GenerativeAD.load_encoding(dataset=dataset, anomaly_class=i, seed=seed, model_index=model_index)
-			data = (encodings[1], data[1][2]), (encodings[2], data[2][2]), (encodings[3], data[3][2])
+			data, encoding_name = GenerativeAD.Models.load_encoding("vae_img", data, dataset=dataset, anomaly_class=i, seed=seed, model_index=model_index)
 
 			# here, check if a model with the same parameters was already tested
 			if GenerativeAD.check_params(savepath, parameters)
 				training_info, results = fit(data, parameters)
 				# here define what additional info should be saved together with parameters, scores, labels and predict times
-				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i, encoding_name=encoding_name))
+				save_entries = merge(
+					training_info, 
+					(modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i, encoding_name=encoding_name)
+				)
 				# now loop over all anomaly score funs
 				for result in results
 					GenerativeAD.experiment(result..., data, savepath; save_entries...)
