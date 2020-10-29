@@ -86,7 +86,7 @@ function fit(data, parameters)
 	
 	# produce encodings
 	if model != nothing
-		encodings = map(x->cpu(GenerativeAD.Models.encode_mean_gpu(model, x, 128)), (data[1][1], data[2][1], data[3][1]))
+		encodings = map(x->cpu(GenerativeAD.Models.encode_mean_gpu(model, x, 32)), (data[1][1], data[2][1], data[3][1]))
 	else
 		encodings = (nothing, nothing, nothing)
 	end
