@@ -159,7 +159,7 @@ function load_encoding(model="vae_tabular", data; dataset::String="iris", seed::
     encoding_path = df[(df.seed .==1) .& (df.ind .==model_index),:][:path]
     # load model and encode data
 	model = BSON.load(encoding_path)
-	encodings = map(x->cpu(GenerativeAD.Models.encode_mean(model, x)), (data[1][1], data[2][1], data[3][1]))
+	encodings = map(x->cpu(GenerativeAD.Models.encode_mean(model[:model], x)), (data[1][1], data[2][1], data[3][1]))
 	data = (encodings[1], data[1][2]), (encodings[2], data[2][2]), (encodings[3], data[3][2])
 
     return data, split(encoding_path, "/")[end]
