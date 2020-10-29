@@ -94,6 +94,7 @@ function create_df(models; images::Bool=true)
 	return df
 end
 
+
 path = "/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/images/vae/"
 models = models_and_params(path)
 df = create_df(models, images=true)
