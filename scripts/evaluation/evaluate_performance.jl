@@ -14,7 +14,7 @@ using GenerativeAD.Evaluation: rank_table, print_rank_table
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-    "filename"
+	"filename"
 		arg_type = String
 		default = "evaluation/images_eval.bson"
 		help = "Location of cached DataFrame."
@@ -47,11 +47,11 @@ end
 
 function aggregate_experiments(df, criterion, metric)
 	std_col = _prefix_symbol(metric, :std)
-    df_agg = aggregate_stats(
-    	df, 
-    	Symbol(criterion), 
-    	[Symbol(metric), std_col, :parameters]; 
-    	undersample=Dict("ocsvm" => 100))
+	df_agg = aggregate_stats(
+		df, 
+		Symbol(criterion), 
+		[Symbol(metric), std_col, :parameters]; 
+		undersample=Dict("ocsvm" => 100))
 
 	df_agg[:, metric] = round.(df_agg[:, metric], digits=2)
 	df_agg[:, std_col] = round.(df_agg[:, std_col], digits=2)
