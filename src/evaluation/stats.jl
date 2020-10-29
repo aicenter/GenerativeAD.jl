@@ -103,39 +103,66 @@ function compute_stats(f::String)
 end
 
 """
-	aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc, :tst_auc_std]; undersample=Dict("ocsvm" => 100), verbose=false)
+	aggregate_stats(df::DataFrame, criterion_col=:val_auc; undersample=Dict("ocsvm" => 100))
 
-Agregates eval metrics by seed over a given hyperparameter and then chooses best
-model based on `criterion_col`. By default the output contains `dataset`, `modelname` and
-`samples` columns, where the last represents the number of hyperparameter combinations
-over which the maximum is computed. Addional comlumns can be specified using `output_cols`.
-Additionaly with `undersample` dictionary one can specify, which of the models should be undersampled.
-The dictionary's entries have the form of`("model" => #samples)`.
+Agregates eval metrics by seed/anomaly class over a given hyperparameter and then chooses best
+model based on `criterion_col`. The output is a DataFrame of maximum #datasets*#models rows with
+columns of different types
+- identifiers - `dataset`, `modelname`, `phash`, `parameters`
+- averaged metrics - both from test and validation data such as `tst_auc`, `val_pat_10`, etc.
+- std of best hyperparameter computed for each metric over different seeds, suffixed `_std`
+- std of best 10 hyperparameters computed over averaged metrics, suffixed `_top_10_std`
+- samples involved in the aggregation, 
+	+ `psamples` - number of runs of the best hyperparameter
+	+ `dsamples` - number of sampled hyperparameters
+	+ `dsamples_valid` - number of sampled hyperparameters with enough runs
+When nonempty `undersample` dictionary is specified, the entries of`("model" => #samples)`, specify
+how many samples should be taken into acount. These are selected randomly with fixed seed.
 """
-function aggregate_stats(df::DataFrame, criterion_col=:val_auc, output_cols=[:tst_auc, :tst_auc_std]; undersample=Dict("ocsvm" => 100), verbose=false)
+function aggregate_stats(df::DataFrame, criterion_col=:val_auc; undersample=Dict("ocsvm" => 100))
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 
 	# agregate by seed over given hyperparameter and then choose best
 	results = []
 	for (dkey, dg) in pairs(groupby(df, :dataset))
-		if verbose
-			@info "Processing $(dkey.dataset) with $(nrow(dg)) trained models."
-		end
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
 			n = length(unique(mg.phash))
+			# undersample models given by the undersample dictionary
 			Random.seed!(42)
 			pg = (mkey.modelname in keys(undersample)) ? groupby(mg, :phash)[randperm(n)[1:undersample[mkey.modelname]]] : groupby(mg, :phash)
 			Random.seed!()
-			pg_agg = combine(pg, :parameters => unique => :parameters, agg_cols .=> std, agg_cols .=> mean .=> agg_cols)
-			if verbose
-				@info "\t$(mkey.modelname) with $(nrow(pg_agg)) experiments."
+			
+			# filter only those hyperparameter that have sufficient number of samples
+			# with images at least 3*10 otherwise 3
+			threshold = ("anomaly_class" in names(df)) ? 30 : 3
+			mg_suff = reduce(vcat, [g for g in pg if nrow(g) >= threshold])
+			
+			# for some methods and threshold the data frame is empty
+			if nrow(mg_suff) > 0
+				# aggregate over the seeds
+				pg_agg = combine(groupby(mg_suff, :phash), 
+							nrow => :psamples, 
+							agg_cols .=> mean .=> agg_cols, 
+							agg_cols .=> std, 
+							:parameters => unique => :parameters) 
+				
+				# sort by criterion_col
+				sort!(pg_agg, order(criterion_col, rev=true))
+				best = first(pg_agg, 1)
+
+				# add std of top 10 models metrics
+				best_10_std = combine(first(pg_agg, 10), agg_cols .=> std .=> _prefix_symbol.(agg_cols, "top_10_std"))
+				best = hcat(best, best_10_std)
+				
+				# add grouping keys
+				best[:dataset] = dkey.dataset
+				best[:modelname] = mkey.modelname
+				best[:dsamples] = n
+				best[:dsamples_valid] = nrow(pg_agg)
+
+				push!(results, best)
 			end
-			best = first(sort!(pg_agg, order(criterion_col, rev=true)))
-			row = merge(
-				(dataset = dkey.dataset, modelname = mkey.modelname, samples=nrow(pg_agg)), 
-				(;zip(output_cols, [best[oc] for oc in output_cols])...))
-			push!(results, DataFrame([row]))
 		end
 	end
 	vcat(results...)
