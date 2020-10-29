@@ -113,23 +113,23 @@ clip_weights!(ps::Flux.Zygote.Params,c::Real) = clip_weights!(ps,-abs(c),abs(c))
 """
 	helper functions for two stage models
 """
-function return_best_10(df, dataset="MNIST")
+function return_best_n(df, n=10, dataset="MNIST")
     df = df[df.dataset .== dataset, :]
-    top_10 = first(sort(by(df, :params, :loss_val => mean), :loss_val_mean), 10)
-    df_top_10 = []
+    top = first(sort(by(df, :params, :loss_val => mean), :loss_val_mean), n)
+    df_top = []
     for i=1:10
-        tmp = df[df.params .== top_10.params[i],:]
+        tmp = df[df.params .== top.params[i],:]
         ind = i.*ones(size(tmp,1))
-        push!(df_top_10, hcat(tmp, DataFrame(ind=ind)))
+        push!(df_top, hcat(tmp, DataFrame(ind=ind)))
     end
-    return vcat(df_top_10...)
+    return vcat(df_top...)
 end
 
 
-function load_encoding(;dataset::String="MNIST", anomaly_class::Int=1, seed::Int=1, model_index::Int=1)
+function load_encoding(model="vae_img", data; dataset::String="MNIST", anomaly_class::Int=1, seed::Int=1, model_index::Int=1)
     # load csv
-    df = CSV.read(datadir("vae_tab.csv")) #??? hardcoded
-    df = return_best_10(df, dataset)
+	df = CSV.read(datadir("$(model)_tab.csv")) 
+	df = return_best_n(df, 10, dataset)
     # checking if model configuration was trained on all classes and all seeds
     n_comb = 500
     check_comb = sum([sum(df.ind .== i) for i=1:10])
@@ -138,8 +138,29 @@ function load_encoding(;dataset::String="MNIST", anomaly_class::Int=1, seed::Int
     end
     # get correct model path
     encoding_path = df[(df.ac .== anomaly_class) .& (df.seed .==1) .& (df.ind .==model_index),:][:path]
-    
+    # load model and encodings
 	model = BSON.load(encoding_path)
-	
-    return (model[:tr_encodings], model[:val_encodings], model[:test_encodings]), split(encoding_path, "/")[end]
+	data = (model[:tr_encodings], data[1][2]), (model[:val_encodings], data[2][2]), ( model[:test_encodings], data[3][2])
+
+    return data, split(encoding_path, "/")[end]
+end
+
+function load_encoding(model="vae_tabular", data; dataset::String="iris", seed::Int=1, model_index::Int=1)
+    # load csv
+	df = CSV.read(datadir("$(model)_tab.csv")) 
+	df = return_best_n(df, 10, dataset)
+    # checking if model configuration was trained on all classes and all seeds
+    n_comb = 500
+    check_comb = sum([sum(df.ind .== i) for i=1:10])
+    if check_comb < n_comb
+        @info "One of chosen models does not include all anomaly classes and all seeds!! $(check_comb) out of $(n_comb)"
+    end
+    # get correct model path
+    encoding_path = df[(df.seed .==1) .& (df.ind .==model_index),:][:path]
+    # load model and encode data
+	model = BSON.load(encoding_path)
+	encodings = map(x->cpu(GenerativeAD.Models.encode_mean(model, x)), (data[1][1], data[2][1], data[3][1]))
+	data = (encodings[1], data[1][2]), (encodings[2], data[2][2]), (encodings[3], data[3][2])
+
+    return data, split(encoding_path, "/")[end]
 end
