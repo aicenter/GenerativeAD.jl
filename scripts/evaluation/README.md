@@ -4,7 +4,7 @@ Due to the large number of files that need to be processed the main evaluation i
 - collection of previously generated files into one cached dataframe (parallel) - `collect_stats.jl`
 - printing of summary tables - `evaluate_performance.jl`
 
-The first two steps can be run as a batch job by running `sbatch run_eval.sh` script. By default this won't rewrite any precomputed files with the exception of the cached DataFrame in the second step. 
+The first two steps can be run as a batch job by running `sbatch --output ${HOME}/logs/eval-%J.out run_eval.sh {arg}` script with `images|tabular` argument, specifying which datasets to take into account. By default this won't rewrite any precomputed files with the exception of the cached DataFrame in the second step. 
 
 ```
     julia --threads 16 --project ./generate_stats.jl experiments/images evaluation/images 
