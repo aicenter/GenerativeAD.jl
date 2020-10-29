@@ -10,19 +10,19 @@ using StatsBase
 using Random
 
 """
-	gan_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, 
-		init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
+	gan_constructor(;idim::Int=1, zdim::Int=1, activation="relu", hdim=128, nlayers::Int=3, 
+		init_seed=nothing, kwargs...)
 
 Constructs a generative adversarial net.
 
 # Arguments
-- `idim::Int`: input dimension.
-- `zdim::Int`: latent space dimension.
-- `activation::String="relu"`: activation function.
-- `hdim::Int=128`: size of hidden dimension.
-- `nlayers::Int=3`: number of generator/discriminator layers, must be >= 2. 
-- `init_seed=nothing`: seed to initialize weights.
-- `last_linear=false`: is output of discriminator linear?
+	- `idim::Int`: input dimension.
+	- `zdim::Int`: latent space dimension.
+	- `activation::String="relu"`: activation function.
+	- `hdim::Int=128`: size of hidden dimension.
+	- `nlayers::Int=3`: number of generator/discriminator layers, must be >= 2. 
+	- `init_seed=nothing`: seed to initialize weights.
+	- `last_linear=false`: is output of discriminator linear?
 """
 function gan_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=2, 
 	init_seed=nothing, last_linear=false, kwargs...)
@@ -49,13 +49,58 @@ function gan_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=12
 end
 
 """
+	conv_gan_constructor(idim=(2,2,1), zdim::Int=1, activation="relu", hdim=1024, kernelsizes=(1,1), 
+		channels=(1,1), scalings=(1,1), init_seed=nothing, batchnorm=false, kwargs...)
+
+Constructs a convolutional GAN.
+
+# Arguments
+	- `idim::Int`: input dimension.
+	- `zdim::Int`: latent space dimension.
+	- `activation::String="relu"`: activation function.
+	- `hdim::Int=1024`: size of hidden dimension.
+	- `kernelsizes=(1,1)`: kernelsizes in consequent layers.
+	- `channels=(1,1)`: number of channels.
+	- `scalings=(1,1)`: scalings in subsequent layers.
+	- `init_seed=nothing`: seed to initialize weights.
+	- `batchnorm=false`: use batchnorm (discouraged). 
+"""
+function conv_gan_constructor(;idim=(2,2,1), zdim::Int=1, activation="relu", hdim=1024, 
+	kernelsizes=(1,1), channels=(1,1), scalings=(1,1),
+	init_seed=nothing,	batchnorm=false, kwargs...)
+	# if seed is given, set it
+	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
+	
+	# construct the model
+	# generator
+	generator_map = conv_decoder(idim, zdim, reverse(kernelsizes), reverse(channels), 
+		reverse(scalings); activation=activation, batchnorm=batchnorm)
+	generator = ConditionalMvNormal(generator_map)
+	
+	# decoder - we will optimize only a shared scalar variance for all dimensions
+	# also, the decoder output will be vectorized so the usual logpdfs vcan be used
+	vecdim = reduce(*,idim[1:3]) # size of vectorized data
+	discriminator_map = Chain(conv_encoder(idim, 1, kernelsizes, channels, scalings,
+			activation=activation, batchnorm=batchnorm)..., x->σ.(x))
+	discriminator = ConditionalMvNormal(discriminator_map)
+
+	# reset seed
+	(init_seed != nothing) ? Random.seed!() : nothing
+
+	# get the vanilla VAE
+	model = GAN(zdim, generator, discriminator)
+end
+
+"""
 	StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss:Function, dloss::Function; 
 		max_iter=10000, max_train_time=82800, lr=0.001, batchsize=64, patience=30, check_interval::Int=10, 
-		weight_clip=nothing, discriminator_advantage::Int=1, stop_threshold=0.01, kwargs...)
+		weight_clip=nothing, discriminator_advantage::Int=1, stop_threshold=0.01, usegpu=false,
+		kwargs...)
 """
 function StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss::Function, dloss::Function; 
 	max_iter=10000, max_train_time=82800, lr=0.001, batchsize=64, patience=30, check_interval::Int=10, 
-	weight_clip=nothing, discriminator_advantage::Int=1, stop_threshold=0.01, kwargs...)
+	weight_clip=nothing, discriminator_advantage::Int=1, stop_threshold=0.01, usegpu=false,
+	kwargs...)
 	history = MVHistory()
 	dopt = RMSProp(lr)
 	gopt = RMSProp(lr)
@@ -66,7 +111,13 @@ function StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss::Functio
 	_patience = patience
 
 	tr_x = data[1][1]
-	val_x = data[2][1][:,data[2][2] .== 0]
+	if ndims(tr_x) == 2
+		val_x = data[2][1][:,data[2][2] .== 0]
+	elseif ndims(tr_x) == 4
+		val_x = data[2][1][:,:,:,data[2][2] .== 0]
+	else
+		error("not implemented for other than 2D and 4D data")
+	end
 	val_N = size(val_x,2)
 
 	# on large datasets, batching loss is faster
@@ -75,6 +126,7 @@ function StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss::Functio
 	i = 1
 	start_time = time() # end the training loop after 23hrs
 	for xbatch in RandomBatches(tr_x, batchsize)
+		xbatch = usegpu ? gpu(Array(xbatch)) : xbatch
 		# disc loss
 		batch_dloss = 0f0
 		# some recommend training the discriminator mupltiple times

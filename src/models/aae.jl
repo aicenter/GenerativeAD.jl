@@ -90,7 +90,7 @@ end
 		channels=(1,1), scalings=(1,1), init_seed=nothing, prior="normal", pseudoinput_mean=nothing, 
 		k=1, batchnorm=false, kwargs...)
 
-Constructs a classical variational autoencoder.
+Constructs a convolutional adversarial autoencoder.
 
 # Arguments
 	- `idim::Int`: input dimension.
@@ -203,6 +203,9 @@ loss(m::AAE,x) = aeloss(m,x)
 loss(m::AAE,x,batchsize::Int) = aeloss(m,x,batchsize)
 #loss(m::AAE,x) = aeloss(m,x) + dloss(m,x) + gloss(m,x)
 #loss(m::AAE,x,batchsize::Int) = aeloss(m,x,batchsize) + dloss(m,x,batchsize) + gloss(m,x,batchsize)
+gpuloss(m::AAE,x) = loss(m,gpu(Array(x)))
+gpuloss(m::AAE,x, batchsize::Int) =
+	mean(map(y->gpuloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 
 """
 	StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, 
@@ -263,7 +266,11 @@ function StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, lr=0.001,
 	 	Flux.update!(gopt, gps, gs)
 
 		# validation
-		val_loss = (val_N > 5000) ? loss(tr_model, val_x, 256) : loss(tr_model, val_x)
+		if usegpu
+			val_loss = (val_N > 5000) ? gpuloss(tr_model, val_x, 256) : gpuloss(tr_model, val_x)
+		else
+			val_loss = (val_N > 5000) ? loss(tr_model, val_x, 256) : loss(tr_model, val_x)
+		end
 		(i%check_interval == 0) ? (@info "$i - loss: $(batch_aeloss) (autoencoder) $(batch_dloss) (discriminator) $(batch_gloss) (generator)  | $(val_loss) (validation)") : nothing
 		
 		# check nans

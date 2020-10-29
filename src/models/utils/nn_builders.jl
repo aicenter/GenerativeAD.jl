@@ -54,13 +54,13 @@ end
 Constructs a convolutional encoder.
 
 # Arguments
-- `idim`: size of input - (h,w,c)
-- `zdim`: latent space dimension
-- `kernelsizes`: kernelsizes for conv. layers (only odd numbers are allowed)
-- `channels`: channel numbers
-- `scalings`: scalings vector
-- `activation`: default relu
-- `densedims`: if set, more than one dense layers are used 
+	- `idim`: size of input - (h,w,c)
+	- `zdim`: latent space dimension
+	- `kernelsizes`: kernelsizes for conv. layers (only odd numbers are allowed)
+	- `channels`: channel numbers
+	- `scalings`: scalings vector
+	- `activation`: default relu
+	- `densedims`: if set, more than one dense layers are used 
 
 # Example
 ```julia-repl
