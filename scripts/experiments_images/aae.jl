@@ -28,7 +28,7 @@ parsed_args = parse_args(ARGS, s)
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "wae"
+modelname = "aae"
 # sample parameters, should return a Dict of model kwargs 
 """
 	sample_params()
@@ -43,9 +43,8 @@ function sample_params()
 	scalings = reverse((1,2,2,2)[1:nlayers])
 	
 	par_vec = (2 .^(3:8), 10f0 .^(-4:-3), 2 .^ (5:7), ["relu", "swish", "tanh"], 1:Int(1e8),
-				["imq", "gauss", "rq"], 10f0 .^ (-3:0), 10f0 .^(-1:0), 2 .^ (1:6))
-	argnames = (:zdim, :lr, :batchsize, :activation, :init_seed, :kernel, :sigma, :lambda,
-		:k)
+						10f0 .^(-1:0), 1:3)
+	argnames = (:zdim, :lr, :batchsize, :activation, :init_seed, :lambda, :dnlayers)
 	parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 	return merge(parameters, (nlayers=nlayers, kernelsizes=kernelsizes,
 		channels=channels, scalings=scalings))
@@ -69,28 +68,14 @@ function fit(data, parameters)
 	idim = size(X)[1:3]
 
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.conv_vae_constructor(;idim=idim, prior="vamp", 
+	model = GenerativeAD.Models.conv_aae_constructor(;idim=idim, prior="vamp", 
 		pseudoinput_mean=pseudoinput_mean, parameters...) |> gpu
-
-	# construct loss function
-	if parameters.kernel == "imq"
-		k = IMQKernel(parameters.sigma)
-	elseif parameters.kernel == "gauss"
-		k = GaussianKernel(parameters.sigma)
-	elseif parameters.kernel == "rq"
-		k = RQKernel(parameters.sigma)
-	else
-		error("given kernel not known")
-	end
-	loss(m::GenerativeModels.VAE,x) = parameters.lambda*mmd_mean(m, gpu(Array(x)), k) .- 
-		mean(logpdf(m.decoder, gpu(Array(x)), rand(m.encoder, gpu(Array(x)))))
-	loss(m::GenerativeModels.VAE, x, batchsize::Int) = 
-		mean(map(y->loss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 
 	# fit train data
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data, loss; max_train_time=23*3600/max_seed/anomaly_classes, 
-			patience=200, check_interval=10, parameters...)
+		global info, fit_t, _, _, _ = @timed fit!(model, data; 
+			max_train_time=23*3600/max_seed/anomaly_classes, patience=200, check_interval=10,
+			usegpu=true, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
@@ -120,6 +105,8 @@ function fit(data, parameters)
 	training_info, [
 		(x -> batch_score(GenerativeAD.Models.reconstruction_score, model, x), merge(parameters, (score = "reconstruction",))),
 		(x -> batch_score(GenerativeAD.Models.reconstruction_score_mean, model, x), merge(parameters, (score = "reconstruction-mean",))),
+		(x -> batch_score(GenerativeAD.Models.latent_score, model, x), merge(parameters, (score = "latent",))),
+		(x -> batch_score(GenerativeAD.Models.latent_score_mean, model, x), merge(parameters, (score = "latent-mean",))),
 		]
 end
 

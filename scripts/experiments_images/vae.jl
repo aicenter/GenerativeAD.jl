@@ -58,6 +58,8 @@ loss(model::GenerativeModels.VAE, x) = -elbo(model,gpu(Array(x)))
 # version of loss for large datasets
 loss(model::GenerativeModels.VAE, x, batchsize::Int) = 
 	mean(map(y->loss(model,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
+batch_score(scoref, model, x, batchsize=512) =
+	vcat(map(y->cpu(scoref(model, gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 """
 	fit(data, parameters)
 
@@ -104,10 +106,10 @@ function fit(data, parameters)
 
 	# now return the different scoring functions
 	training_info, [
-		(x -> cpu(GenerativeAD.Models.reconstruction_score(model, gpu(Array(x)))), merge(parameters, (score = "reconstruction",))),
-		(x -> cpu(GenerativeAD.Models.reconstruction_score_mean(model, gpu(Array(x)))), merge(parameters, (score = "reconstruction-mean",))),
-		(x -> cpu(GenerativeAD.Models.latent_score(info.model, gpu(Array(x)))), merge(parameters, (score = "latent",))),
-		(x -> cpu(GenerativeAD.Models.latent_score_mean(info.model, gpu(Array(x)))), merge(parameters, (score = "latent-mean",))),
+		(x -> batch_score(GenerativeAD.Models.reconstruction_score, model, x), merge(parameters, (score = "reconstruction",))),
+		(x -> batch_score(GenerativeAD.Models.reconstruction_score_mean, model, x), merge(parameters, (score = "reconstruction-mean",))),
+		(x -> batch_score(GenerativeAD.Models.latent_score, model, x), merge(parameters, (score = "latent",))),
+		(x -> batch_score(GenerativeAD.Models.latent_score_mean, model, x), merge(parameters, (score = "latent-mean",))),
 		]
 end
 
