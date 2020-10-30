@@ -6,7 +6,9 @@ import StatsBase: fit!, predict
 using StatsBase
 using BSON
 using Flux
+using IPMeasures
 using GenerativeModels
+using Distributions
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -93,6 +95,7 @@ function fit(data, parameters)
 			patience=200, check_interval=10, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
+		rethrow(e)
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
 	end
