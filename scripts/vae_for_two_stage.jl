@@ -6,11 +6,21 @@ using ValueHistories
 using Statistics
 using CSV
 
-function fix_info_name(name)
+
+function according_score(name, score="latent")
+	par = DrWatson.parse_savename("_"*name)[2]
+	parts = ["$(k)=$(v)" for (k,v) in par]
+	push!(parts, "score=$(score)")
+	parts = sort!(parts)
+
+end
+
+function fix_info_name(name, score="latent")
 	spl = split(name, "lr=0_")
 	name = (length(spl)==2) ? spl[1]*"lr=0.0001_"*spl[2] : name
-	spl = split(name, "zdim")
-	name = spl[1]*"score=latent_zdim"*spl[2]
+	params = DrWatson.parse_savename("_"*name)[2]
+	params = merege(params, Dict("score"=>score))
+	name = DrWatson.savename(params)*".bson"
 	return name
 end
 
@@ -58,8 +68,8 @@ function create_df(models; images::Bool=true)
 	i = 1
 
 	for model in models
-		(root, mod, infos) = model
-		for info in infos
+		(root, mod_path, infos) = model
+		for (mod,info) in zip(mod_path, infos)
 			try
 				path = joinpath(root, info)
 				info = BSON.load(path)
