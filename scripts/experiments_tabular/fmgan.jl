@@ -63,7 +63,6 @@ function fit(data, parameters)
 	# set number of max iterations apropriatelly
 	max_iter = 5000 # this should be enough
 
-	println(max_iter)
 	# fit train data
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data, gloss, dloss; 
