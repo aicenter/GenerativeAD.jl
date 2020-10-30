@@ -25,6 +25,7 @@ parsed_args = parse_args(ARGS, s)
 path = abspath(path)
 files = GenerativeAD.Evaluation.collect_files(path)
 mfiles = filter(f->occursin("model", f), files)
+sfiles = filter(f->!occursin("model", f), files)
 @info "storing modelfiles in $path"
 
 function fix_modelfile(mf) 
@@ -36,16 +37,16 @@ function fix_modelfile(mf)
 	# get additional fit info
 	# zdim is empty since there was a bug that saved it incorrectly in model file
 	#infopars = merge(parameters, (score="latent", zdim="",lr=""))
-	try
-		infof = filter(x->occursin("$(parameters.init_seed)", x), files)[1]
-		global info = load(infof)
-	catch e
-		#@info "data for $mf not found"
+	sfs = filter(x->occursin("$(parameters.init_seed)", x), sfiles)
+	if length(sfs) == 0
+#		@info "data for $mf not found"
 		return ""
+	else 
+		sd = load(sfs[1]) # score data
 	end
 
 	# now create the new parameters
-	outpars = merge(parameters, (zdim=info[:parameters].zdim,lr=info[:parameters].lr))
+	outpars = merge(parameters, (zdim=sd[:parameters].zdim,lr=sd[:parameters].lr))
 
 	# now save the fixed model data and delete the old model
 	sn = joinpath(savepath, savename("model", outpars, "bson",digits=5))
@@ -53,9 +54,9 @@ function fix_modelfile(mf)
 		# get model data
 		model_data = load(mf)
 		# also add the additional fields
-		model_data["history"] = info[:history]
-		model_data["fit_t"] = info[:fit_t]
-		model_data["parameters"] = Base.structdiff(info[:parameters], (score=nothing,))
+		model_data["history"] = sd[:history]
+		model_data["fit_t"] = sd[:fit_t]
+		model_data["parameters"] = Base.structdiff(sd[:parameters], (score=nothing,))
 
 		rm(mf)
 		save(sn, model_data)
@@ -64,7 +65,7 @@ function fix_modelfile(mf)
 	return sn
 end
 
-newfiles = @showprogress map(fix_modelfile, mfiles)
+newfiles = map(fix_modelfile, mfiles)
 
 # print files that were not modified
 @info "these files were not updated, probably missing the corresponding score files:"
