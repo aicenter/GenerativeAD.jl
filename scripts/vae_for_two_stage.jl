@@ -7,12 +7,12 @@ using Statistics
 using CSV
 
 
-function fix_info_name(name, score="latent")
+function fix_info_name(name, score="reconstruction")
 	spl = split(name, "lr=0_")
 	name = (length(spl)==2) ? spl[1]*"lr=0.0001_"*spl[2] : name
 	params = DrWatson.parse_savename("_"*name)[2]
-	params = merege(params, Dict("score"=>score))
-	name = DrWatson.savename(params)*".bson"
+	params = merge(params, Dict("score"=>score))
+	name = DrWatson.savename(param, digits=5)*".bson"
 	return name
 end
 
@@ -65,7 +65,6 @@ function create_df(models; images::Bool=true)
 			try
 				path = joinpath(root, info)
 				info = BSON.load(path)
-
 				if images
 					update = [
 						joinpath(root,mod), 
@@ -83,9 +82,7 @@ function create_df(models; images::Bool=true)
 						info[:seed],
 						minimum(get(info[:history][:validation_likelihood])[2]) # early stopping in min
 					]
-
 				end
-
 				push!(df, update)
 			catch e
 				println("info not found #$(i)")
@@ -96,11 +93,17 @@ function create_df(models; images::Bool=true)
 	return df
 end
 
+#path = "/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/images/vae/"
+#models = models_and_params(path)
+#df = create_df(models, images=true)
+#CSV.write(datadir("vae_tab.csv"), df)
 
-path = "/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/images/vae/"
-models = models_and_params(path)
-df = create_df(models, images=true)
-
-#df_mean = by(df, [:parameters, :dataset], :loss_val => mean)
-
-CSV.write(datadir("vae_tab.csv"), df)
+encoders = ["vae","wae", "wae_vamp"]
+for type in ["images", "tabular"]
+	for encoder in encoders
+		models = models_and_params(datadir("experiments/$(type)/$(encoder)"))
+		df = create_df(models, images=(type=="images"))
+		CSV.write(datadir("$(encoder)_$(type)_tab.csv"), df)
+		println("$(encoder)-$(type) ... done")
+	end
+end
