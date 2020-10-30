@@ -80,7 +80,6 @@ function fit(data, parameters)
 		global info, fit_t, _, _, _ = @timed fit!(model, data, loss; max_train_time=23*3600/max_seed/anomaly_classes, 
 			patience=200, check_interval=10, parameters...)
 	catch e
-		rethrow(e)
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 

@@ -104,7 +104,6 @@ function fit(data, parameters)
 			usegpu=true, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
-		rethrow(e)
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
 	end
