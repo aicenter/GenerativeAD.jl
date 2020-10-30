@@ -7,14 +7,6 @@ using Statistics
 using CSV
 
 
-function according_score(name, score="latent")
-	par = DrWatson.parse_savename("_"*name)[2]
-	parts = ["$(k)=$(v)" for (k,v) in par]
-	push!(parts, "score=$(score)")
-	parts = sort!(parts)
-
-end
-
 function fix_info_name(name, score="latent")
 	spl = split(name, "lr=0_")
 	name = (length(spl)==2) ? spl[1]*"lr=0.0001_"*spl[2] : name
