@@ -54,7 +54,8 @@ function loss(model::F, X) where {F <: TabularFlow}
 end
 
 function StatsBase.fit!(model::F, data::Tuple, p) where F <: TabularFlow
-	opt = Flux.ADAM(p.lr)
+	# add regularization through weight decay in optimizer
+	opt = (p.wreg > 0) ? ADAMW(p.lr, (0.9, 0.999), p.wreg) : Flux.ADAM(p.lr)
 	
 	trn_model = deepcopy(model)
 	ps = Flux.params(trn_model);
@@ -65,14 +66,13 @@ function StatsBase.fit!(model::F, data::Tuple, p) where F <: TabularFlow
 
 	history = MVHistory()
 	patience = p.patience
-	reg = (p.wreg > 0) ? l2_reg : _ -> 0.0
 	
 	best_val_loss = loss(trn_model, X_val)
 	i = 1
 	start_time = time()
 	for batch in RandomBatches(X, p.batchsize)
 		l = 0.0f0
-		gs = gradient(() -> begin l = loss(trn_model, batch) + p.wreg*reg(ps) end, ps)
+		gs = gradient(() -> begin l = loss(trn_model, batch) end, ps)
 		Flux.update!(opt, ps, gs)
 
 		# validation/early stopping
