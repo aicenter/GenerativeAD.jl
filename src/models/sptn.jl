@@ -36,27 +36,6 @@ function Base.show(io::IO, sptn::SPTN)
 	print(io, "SPTN(...)")
 end
 
-# function StatsBase.fit!(model::SPTN, data::Tuple; max_train_time=82800,
-# 						batchsize=64, max_iter=Int(1e4), max_path=100, kwargs...)
-# 	# split data
-# 	tr_x = data[1][1]
-# 	val_x = data[2][1][:, data[2][2] .== 0]
-	
-# 	# fit using SumProductTransform fit of the model
-# 	history = StatsBase.fit!(
-# 				model.m, 
-# 				tr_x, 
-# 				batchsize, 
-# 				max_iter, 
-# 				max_path; 
-# 				gradmethod = :exact, 
-# 				minimum_improvement = -1e8, 
-# 				xval = val_x, 
-# 				opt = ADAM()
-# 			)
-	
-# 	(history=history, iterations=length(history, :likelihood), model=model, npars=sum(map(p->length(p), Flux.params(model))))
-# end
 function StatsBase.predict(model::SPTN, x)
 	-logpdf(model.m, x)
 end
@@ -69,26 +48,33 @@ function StatsBase.fit!(model::SPTN, data::Tuple; max_train_time=82800,
 	ps = Flux.params(tr_model)
 	_patience = patience
 
- 	# split data
- 	tr_x = data[1][1]
- 	val_x = data[2][1][:, data[2][2] .== 0]
+	# split data
+	tr_x = data[1][1]
+	val_x = data[2][1][:, data[2][2] .== 0]
 		
 	best_val_loss = Inf
 	i = 1
 	start_time = time()
+	val_lkl_time = 0.0
+	train_time = 0.0
+	frmt = (v) -> round(v, digits=4)
 	for batch in RandomBatches(tr_x, batchsize)
 		# batch loss
 		batch_loss = 0f0
-		gs = gradient(() -> begin 
-			batch_loss = -mean(logpdf(tr_model.m, batch))
-		end, ps)
-	 	Flux.update!(opt, ps, gs)
+		train_time += @elapsed begin
+			gs = gradient(() -> begin 
+				batch_loss = -mean(logpdf(tr_model.m, batch))
+			end, ps)
+			Flux.update!(opt, ps, gs)
+		end
 
 		# validation/early stopping
-		val_loss = -mean(batchlogpdf(tr_model.m, val_x, batchsize))
+		val_lkl_time += @elapsed val_loss = -mean(batchlogpdf(tr_model.m, val_x, batchsize))
 		
-		(i%check_interval == 0) ? (@info "$i - loss: $(batch_loss) (batch) | $(val_loss) (validation)") : nothing
-			
+		if (i%check_interval == 0) 
+			@info "$i - loss: $(frmt(batch_loss)) (batch) | $(frmt(val_loss)) (validation) || $(frmt(train_time/i)) (t_grad) | $(frmt(val_lkl_time/i)) (t_val)")
+		end
+
 		if isnan(val_loss) || isnan(batch_loss)
 			error("Encountered invalid values in loss function.")
 		end
@@ -112,12 +98,12 @@ function StatsBase.fit!(model::SPTN, data::Tuple; max_train_time=82800,
 		else # else stop if the model has not improved for `patience` iterations
 			_patience -= 1
 			if _patience == 0
-				@info "Stopped training after $(i) iterations."
+				@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
 				break
 			end
 		end
 		i += 1
 	end
 	
- 	(history=history, iterations=i, model=model, npars=sum(map(p -> length(p), ps)))
+	(history=history, iterations=i, grad_time=train_time/i, val_time=val_lkl_time/i, model=model, npars=sum(map(p -> length(p), ps)))
 end
