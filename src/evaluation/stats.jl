@@ -119,7 +119,9 @@ columns of different types
 When nonempty `downsample` dictionary is specified, the entries of`("model" => #samples)`, specify
 how many samples should be taken into acount. These are selected randomly with fixed seed.
 """
-function aggregate_stats(df::DataFrame, criterion_col=:val_auc; downsample=Dict("ocsvm" => 100))
+function aggregate_stats(df::DataFrame, criterion_col=:val_auc; 
+							min_samples=("anomaly_class" in names(df)) ? 30 : 3, 
+							downsample=Dict("ocsvm" => 100))
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 
@@ -137,8 +139,7 @@ function aggregate_stats(df::DataFrame, criterion_col=:val_auc; downsample=Dict(
 			
 			# filter only those hyperparameter that have sufficient number of samples
 			# with images at least 3*10 otherwise 3
-			threshold = ("anomaly_class" in names(df)) ? 30 : 3
-			mg_suff = reduce(vcat, [g for g in pg if nrow(g) >= threshold])
+			mg_suff = reduce(vcat, [g for g in pg if nrow(g) >= min_samples])
 			
 			# for some methods and threshold the data frame is empty
 			if nrow(mg_suff) > 0
