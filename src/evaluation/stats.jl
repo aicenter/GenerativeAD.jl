@@ -60,6 +60,9 @@ function compute_stats(f::String)
 		labels = r[_prefix_symbol(splt, :labels)]
 
 		if length(scores) > 1
+			# in cases where scores is not an 1D array
+			scores = scores[:]
+
 			invalid = isnan.(scores)
 			ninvalid = sum(invalid)
 
@@ -73,9 +76,6 @@ function compute_stats(f::String)
 				labels = labels[.~invalid]
 				(invrat > 0.5) && error("$(splt)_scores contain too many NaN")
 			end
-			
-			# in cases where the score is not 1D array
-			scores = scores[:]
 
 			roc = EvalMetrics.roccurve(labels, scores)
 			auc = EvalMetrics.auc_trapezoidal(roc...)
