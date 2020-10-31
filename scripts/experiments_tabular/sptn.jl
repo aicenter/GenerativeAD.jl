@@ -1,11 +1,10 @@
 using DrWatson
 @quickactivate
 using ArgParse
-using GenerativeAD
-import StatsBase: fit!, predict
-using StatsBase
 using BSON
 using Flux
+using GenerativeAD
+using StatsBase: fit!, predict, sample
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -25,9 +24,7 @@ modelname = "sptn"
 
 function sample_params()
 	parameter_rng = (
-		# max_path = [100], 
 		firstdense = [true, false], 
-		# max_iter = [Int(1e4)],
 		batchsize = 2 .^ (5:7), 
 		ncomp = 2 .^ (1:4), 
 		nlayers = 1:3, 
@@ -46,7 +43,7 @@ function fit(data, parameters)
 
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data; max_train_time=82800/max_seed, 
-			patience=200, check_interval=10, parameters...)
+			patience=20, check_interval=10, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"

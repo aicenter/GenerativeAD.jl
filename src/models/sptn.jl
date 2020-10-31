@@ -41,7 +41,7 @@ function StatsBase.predict(model::SPTN, x)
 end
 
 function StatsBase.fit!(model::SPTN, data::Tuple; max_train_time=82800,
-						batchsize=64, patience=30, check_interval::Int=10, kwargs...)
+						batchsize=64, patience=20, check_interval::Int=10, kwargs...)
 	opt = ADAM()
 	history = MVHistory()
 	tr_model = deepcopy(model)
@@ -55,55 +55,54 @@ function StatsBase.fit!(model::SPTN, data::Tuple; max_train_time=82800,
 	best_val_loss = Inf
 	i = 1
 	start_time = time()
-	val_lkl_time = 0.0
-	train_time = 0.0
 	frmt = (v) -> round(v, digits=4)
 	for batch in RandomBatches(tr_x, batchsize)
 		# batch loss
 		batch_loss = 0f0
-		train_time += @elapsed begin
+		grad_time = @elapsed begin
 			gs = gradient(() -> begin 
 				batch_loss = -mean(logpdf(tr_model.m, batch))
 			end, ps)
 			Flux.update!(opt, ps, gs)
 		end
 
-		# validation/early stopping
-		val_lkl_time += @elapsed val_loss = -mean(batchlogpdf(tr_model.m, val_x, batchsize))
-		
-		if (i%check_interval == 0) 
-			@info "$i - loss: $(frmt(batch_loss)) (batch) | $(frmt(val_loss)) (validation) || $(frmt(train_time/i)) (t_grad) | $(frmt(val_lkl_time/i)) (t_val)")
-		end
-
-		if isnan(val_loss) || isnan(batch_loss)
-			error("Encountered invalid values in loss function.")
-		end
-
 		push!(history, :training_loss, i, batch_loss)
-		push!(history, :validation_likelihood, i, val_loss)
+		push!(history, :grad_time, i, grad_time)
+		
+		# validation/early stopping
+		if (i%check_interval == 0) 
+			val_lkl_time = @elapsed val_loss = -mean(batchlogpdf(tr_model.m, val_x, batchsize))
+			@info "$i - loss: $(frmt(batch_loss)) (batch) | $(frmt(val_loss)) (validation) || $(frmt(grad_time)) (t_grad) | $(frmt(val_lkl_time)) (t_val)"
 			
-		if val_loss < best_val_loss
-			best_val_loss = val_loss
-			_patience = patience
-
-			# this should save the model at least once
-			# when the validation loss is decreasing 
-			if mod(i, 10) == 0
-				model = deepcopy(tr_model)
+			if isnan(val_loss) || isnan(batch_loss)
+				error("Encountered invalid values in loss function.")
 			end
-		elseif time() - start_time > max_train_time # stop early if time is running out
+
+			push!(history, :validation_likelihood, i, val_loss)
+			push!(history, :val_lkl_time, i, val_lkl_time)
+
+			if val_loss < best_val_loss
+				best_val_loss = val_loss
+				_patience = patience
+
+				model = deepcopy(tr_model)
+			else # else stop if the model has not improved for `patience` iterations
+				_patience -= 1
+				if _patience == 0
+					@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
+					break
+				end
+			end
+		end
+
+		if time() - start_time > max_train_time # stop early if time is running out
 			model = deepcopy(tr_model)
 			@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
 			break
-		else # else stop if the model has not improved for `patience` iterations
-			_patience -= 1
-			if _patience == 0
-				@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
-				break
-			end
 		end
+
 		i += 1
 	end
 	
-	(history=history, iterations=i, grad_time=train_time/i, val_time=val_lkl_time/i, model=model, npars=sum(map(p -> length(p), ps)))
+	(history=history, iterations=i, model=model, npars=sum(map(p -> length(p), ps)))
 end
