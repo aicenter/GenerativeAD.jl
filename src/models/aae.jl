@@ -86,6 +86,72 @@ function aae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=12
 end
 
 """
+	conv_aae_constructor(idim=(2,2,1), zdim::Int=1, activation="relu", hdim=1024, kernelsizes=(1,1), 
+		channels=(1,1), scalings=(1,1), init_seed=nothing, prior="normal", pseudoinput_mean=nothing, 
+		k=1, batchnorm=false, kwargs...)
+
+Constructs a convolutional adversarial autoencoder.
+
+# Arguments
+	- `idim::Int`: input dimension.
+	- `zdim::Int`: latent space dimension.
+	- `activation::String="relu"`: activation function.
+	- `hdim::Int=1024`: size of hidden dimension.
+	- `dnlayers::Int=1`: number of discriminator layers.
+	- `kernelsizes=(1,1)`: kernelsizes in consequent layers.
+	- `channels=(1,1)`: number of channels.
+	- `scalings=(1,1)`: scalings in subsewuent layers.
+	- `init_seed=nothing`: seed to initialize weights.
+	- `prior="normal"`: one of ["normal", "vamp"].
+	- `pseudoinput_mean=nothing`: mean of data used to initialize the VAMP prior.
+	- `k::Int=1`: number of VAMP components.
+	- `batchnorm=false`: use batchnorm (discouraged). 
+"""
+function conv_aae_constructor(;idim=(2,2,1), zdim::Int=1, activation="relu", dnlayers::Int=1, 
+	hdim=1024, kernelsizes=(1,1), channels=(1,1), scalings=(1,1),
+	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, 
+	batchnorm=false, kwargs...)
+	# if seed is given, set it
+	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
+	
+	# construct the model
+	# encoder - diagonal covariance
+	encoder_map = Chain(
+		conv_encoder(idim, hdim, kernelsizes, channels, scalings; activation=activation, 
+			batchnorm=batchnorm)...,
+		ConditionalDists.SplitLayer(hdim, [zdim, zdim], [identity, safe_softplus])
+		)
+	encoder = ConditionalMvNormal(encoder_map)
+	
+	# decoder - we will optimize only a shared scalar variance for all dimensions
+	# also, the decoder output will be vectorized so the usual logpdfs vcan be used
+	vecdim = reduce(*,idim[1:3]) # size of vectorized data
+	decoder_map = Chain(
+		conv_decoder(idim, zdim, reverse(kernelsizes), reverse(channels), reverse(scalings),
+			activation=activation, vec_output=true, vec_output_dim=nothing, batchnorm=batchnorm)...,
+		ConditionalDists.SplitLayer(vecdim, [vecdim, 1], [identity, safe_softplus])
+		)
+	decoder = ConditionalMvNormal(decoder_map)
+
+	# discriminator
+	discriminator = build_mlp(zdim, hdim, 1, dnlayers, activation=activation, lastlayer="σ")
+
+	# prior
+	if prior == "normal"
+		prior_arg = zdim
+	elseif prior == "vamp"
+		(pseudoinput_mean == nothing) ? error("if `prior=vamp`, supply pseudoinput array") : nothing
+		prior_arg = init_vamp(pseudoinput_mean, k)
+	end
+
+	# reset seed
+	(init_seed != nothing) ? Random.seed!() : nothing
+
+	# get the vanilla VAE
+	model = AAE(prior_arg, encoder, decoder, discriminator)
+end
+
+"""
 	dloss(d,g,x,z)
 
 Discriminator loss.
@@ -137,13 +203,16 @@ loss(m::AAE,x) = aeloss(m,x)
 loss(m::AAE,x,batchsize::Int) = aeloss(m,x,batchsize)
 #loss(m::AAE,x) = aeloss(m,x) + dloss(m,x) + gloss(m,x)
 #loss(m::AAE,x,batchsize::Int) = aeloss(m,x,batchsize) + dloss(m,x,batchsize) + gloss(m,x,batchsize)
+gpuloss(m::AAE,x) = loss(m,gpu(Array(x)))
+gpuloss(m::AAE,x, batchsize::Int) =
+	mean(map(y->gpuloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 
 """
 	StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, 
 	lr=0.001, batchsize=64, patience=30, check_interval::Int=10, kwargs...)
 """
 function StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, lr=0.001, 
-	batchsize=64, patience=30, check_interval::Int=10, kwargs...)
+	batchsize=64, patience=30, check_interval::Int=10, usegpu=false, kwargs...)
 	history = MVHistory()
 	aeopt = ADAM(lr)
 	dopt = ADAM(lr)
@@ -158,14 +227,23 @@ function StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, lr=0.001,
 	_patience = patience
 
 	tr_x = data[1][1]
-	val_x = data[2][1][:,data[2][2] .== 0]
-	val_N = size(val_x,2)
+	if ndims(tr_x) == 2
+		val_x = data[2][1][:,data[2][2] .== 0]
+	elseif ndims(tr_x) == 4
+		val_x = data[2][1][:,:,:,data[2][2] .== 0]
+	else
+		error("not implemented for other than 2D and 4D data")
+	end
+	val_N = size(val_x,ndims(val_x))
+	val_x = usegpu ? gpu(Array(val_x)) : val_x
 
 	# on large datasets, batching loss is faster
 	best_val_loss = Inf
 	i = 1
 	start_time = time() # end the training loop after 23hrs
 	for batch in RandomBatches(tr_x, batchsize)
+		batch = usegpu ? gpu(Array(batch)) : batch
+
 		# ae loss
 		batch_aeloss = 0f0
 		gs = gradient(() -> begin 
@@ -188,7 +266,11 @@ function StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, lr=0.001,
 	 	Flux.update!(gopt, gps, gs)
 
 		# validation
-		val_loss = (val_N > 5000) ? loss(tr_model, val_x, 256) : loss(tr_model, val_x)
+		if usegpu
+			val_loss = (val_N > 5000) ? gpuloss(tr_model, val_x, 256) : gpuloss(tr_model, val_x)
+		else
+			val_loss = (val_N > 5000) ? loss(tr_model, val_x, 256) : loss(tr_model, val_x)
+		end
 		(i%check_interval == 0) ? (@info "$i - loss: $(batch_aeloss) (autoencoder) $(batch_dloss) (discriminator) $(batch_gloss) (generator)  | $(val_loss) (validation)") : nothing
 		
 		# check nans
