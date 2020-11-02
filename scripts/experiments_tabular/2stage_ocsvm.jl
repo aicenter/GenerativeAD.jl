@@ -9,6 +9,7 @@ using BSON
 using DataFrames
 using CSV
 using ValueHistories
+using Flux
 using ConditionalDists
 using GenerativeModels
 import GenerativeModels: VAE

@@ -9,6 +9,7 @@ using BSON
 using DataFrames
 using CSV
 using ValueHistories
+using Flux
 using ConditionalDists
 using GenerativeModels
 import GenerativeModels: VAE
@@ -114,8 +115,8 @@ while try_counter < max_tries
                                                          dataset = dataset, 
                                                          anomaly_class = i, 
                                                          encoding_name=encoding_name,
-                                                         )
-                    )
+                                                         model_index=mi,
+                                                         criterion=criterion))
                     # now loop over all anomaly score funs
                     for result in results
                         GenerativeAD.experiment(result..., data, savepath; save_entries...)
