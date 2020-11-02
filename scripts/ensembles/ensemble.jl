@@ -39,18 +39,6 @@ s = ArgParseSettings()
         help = "Number of anomaly_classes to go through with each dataset."
 end
 
-
-### testing
-DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
-modelname = "MAF"
-dataset = "iris"
-seed = 1
-dataset_type = "tabular"
-criterion = :val_auc
-select_top = 10
-method = :max
-###
-
 function ensemble_experiment(eval_directory, exp_directory, out_directory)
     eval_files = readdir(eval_directory, join=true)
     if length(eval_files) == 0
