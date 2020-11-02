@@ -7,6 +7,31 @@ using Statistics
 using CSV
 
 
+function compute_score(info, score="AUC")
+	(scores, labels) = (info[:val_scores], info[:val_labels])
+	if score == "AUC"
+		roc = EvalMetrics.roccurve(labels, scores)
+		auc = EvalMetrics.auc_trapezoidal(roc...)
+		return auc
+	elseif score == "AUPRC"
+		prc = EvalMetrics.prcurve(labels, scores)
+		auprc = EvalMetrics.auc_trapezoidal(prc...)
+		return auprc
+	elseif score == "TPR@5"
+		t5 = EvalMetrics.threshold_at_fpr(labels, scores, 0.05)
+		cm5 = ConfusionMatrix(labels, scores, t5)
+		tpr5 = EvalMetrics.true_positive_rate(cm5)
+		return tpr5
+	elseif score == "F1@5"
+		t5 = EvalMetrics.threshold_at_fpr(labels, scores, 0.05)
+		cm5 = ConfusionMatrix(labels, scores, t5)
+		f5 = EvalMetrics.f1_score(cm5)
+		return f5
+	else 
+		@error "unknown score"
+	end 
+end
+
 function fix_info_name(name, score="reconstruction")
 	spl = split(name, "lr=0_")
 	name = (length(spl)==2) ? spl[1]*"lr=0.0001_"*spl[2] : name
@@ -36,7 +61,7 @@ function models_and_params(path_to_model)
 	return models
 end
 
-function create_df(models; images::Bool=true)
+function create_df(models; score::String="val_loss", images::Bool=true)
 
 	if images
 		df = DataFrame(
@@ -45,7 +70,7 @@ function create_df(models; images::Bool=true)
 			dataset = String[], 
 			ac = Int64[], 
 			seed = Int64[], 
-			loss_val= Float32[]
+			criterion = Float32[]
 		)
 	else
 		df = DataFrame(
@@ -53,7 +78,7 @@ function create_df(models; images::Bool=true)
 			params = String[],
 			dataset = String[], 
 			seed = Int64[], 
-			loss_val= Float32[]
+			criterion = Float32[]
 		)
 	end
 
@@ -72,7 +97,7 @@ function create_df(models; images::Bool=true)
 						info[:dataset], 
 						info[:anomaly_class], 
 						info[:seed],
-						minimum(get(info[:history][:validation_likelihood])[2]) # early stopping in min
+						(score=="val_loss") ? minimum(get(info[:history][:validation_likelihood])[2]) : compute_score(info, score)
 					]
 				else
 					update = [
@@ -80,7 +105,7 @@ function create_df(models; images::Bool=true)
 						string(info[:parameters]),
 						info[:dataset], 
 						info[:seed],
-						minimum(get(info[:history][:validation_likelihood])[2]) # early stopping in min
+						(score=="val_loss") ? minimum(get(info[:history][:validation_likelihood])[2]) : compute_score(info, score)
 					]
 				end
 				push!(df, update)
@@ -99,11 +124,14 @@ end
 #CSV.write(datadir("vae_tab.csv"), df)
 
 encoders = ["vae","wae", "wae_vamp"]
+
 for type in ["images", "tabular"]
 	for encoder in encoders
-		models = models_and_params(datadir("experiments/$(type)/$(encoder)"))
-		df = create_df(models, images=(type=="images"))
-		CSV.write(datadir("$(encoder)_$(type)_tab.csv"), df)
-		println("$(encoder)-$(type) ... done")
+		for score in ["val_loss", "AUC", "AUPRC", "TPR@5", "F1@5"]
+			models = models_and_params(datadir("experiments/$(type)/$(encoder)"))
+			df = create_df(models, score=score, images=(type=="images"))
+			CSV.write(datadir("$(encoder)_$(score)_$(type)_tab.csv"), df)
+			println("$(encoder)-$(score)-$(type) ... done")
+		end
 	end
 end
