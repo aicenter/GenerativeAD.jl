@@ -4,6 +4,7 @@ using BSON
 using DataFrames
 using ValueHistories
 using Statistics
+using EvalMetrics
 using CSV
 
 
@@ -37,7 +38,7 @@ function fix_info_name(name, score="reconstruction")
 	name = (length(spl)==2) ? spl[1]*"lr=0.0001_"*spl[2] : name
 	params = DrWatson.parse_savename("_"*name)[2]
 	params = merge(params, Dict("score"=>score))
-	name = DrWatson.savename(param, digits=5)*".bson"
+	name = DrWatson.savename(params, digits=5)*".bson"
 	return name
 end
 
@@ -118,6 +119,21 @@ function create_df(models; score::String="val_loss", images::Bool=true)
 	return df
 end
 
+function return_best_n(df, rev=false, n=10)
+    #df = df[df.dataset .== dataset, :]
+    dff = sort(by(df, [:params, :dataset], :criterion => mean), :criterion_mean, rev=rev)
+	df_top = []
+	for dataset in unique(dff.dataset)
+		top = first(dff[dff.dataset .== dataset, :], n)
+		for i=1:n
+			tmp = df[df.params .== top.params[i],:]
+			ind = i.*ones(size(tmp,1))
+			push!(df_top, hcat(tmp, DataFrame(ind=ind)))
+		end
+	end
+    return vcat(df_top...)
+end
+
 #path = "/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/images/vae/"
 #models = models_and_params(path)
 #df = create_df(models, images=true)
@@ -131,6 +147,7 @@ for type in ["images", "tabular"]
 			models = models_and_params(datadir("experiments/$(type)/$(encoder)"))
 			df = create_df(models, score=score, images=(type=="images"))
 			CSV.write(datadir("$(encoder)_$(score)_$(type)_tab.csv"), df)
+			CSV.write(datadir("$(encoder)_$(score)_$(type)_best_tab.csv"), return_best_n(df, score!="val_loss", 10))
 			println("$(encoder)-$(score)-$(type) ... done")
 		end
 	end
