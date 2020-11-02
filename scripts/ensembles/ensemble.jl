@@ -72,7 +72,7 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
             scores, ensemble = _init_ensemble(results)
             for method in [:max, :mean]
                 eagg = aggregate_score!(deepcopy(ensemble), scores, method=method)
-                parameters = (modelname=modelname, criterion=criterion, size=select_top, method=method)
+                parameters = (modelname=ensemble[:modelname], criterion=criterion, size=select_top, method=method)
 
                 savef = joinpath(out_directory, savename("ensemble", parameters, "bson"))
                 @info "Saving ensemble experiment to $savef"
@@ -134,10 +134,10 @@ function main(args)
     @unpack modelname, dataset, dataset_type, max_seed, anomaly_classes = args
     if dataset_type == "tabular"
         for s in 1:max_seed
-            eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
-            exp_directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
+            eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/seed=$(s)/")
+            exp_directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/seed=$(s)/")
             # for now the ensemble outputs are kept in separate directory
-            out_directory = datadir("experiments_ensembles/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
+            out_directory = datadir("experiments_ensembles/$(dataset_type)/$(modelname)/$(dataset)/seed=$(s)/")
             
             # run experiment
             @info "Generating ensemble scores of $(modelname) on $(dataset):$(s)"
@@ -146,10 +146,10 @@ function main(args)
     elseif dataset_type == "images"
         for s in 1:max_seed
             for ac in 1:anomaly_classes
-                eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/ac=$(anomaly_class)/seed=$(seed)/")
-                exp_directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/ac=$(anomaly_class)/seed=$(seed)/")
+                eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(s)/")
+                exp_directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(s)/")
                 # for now the ensemble outputs are kept in separate directory
-                out_directory = datadir("experiments_ensembles/$(dataset_type)/$(modelname)/$(dataset)/ac=$(anomaly_class)/seed=$(seed)/")
+                out_directory = datadir("experiments_ensembles/$(dataset_type)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(s)/")
                 
                 # run experiment
                 @info "Generating ensemble scores of $(modelname) on $(dataset):$(ac):$(s)"
