@@ -51,7 +51,7 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
 
     # select best based on criterion
     for criterion in [:val_auc, :val_tpr_5, :val_pat_10]
-        for select_top in [0, 5, 10] # 0 ... automatic ensemble size
+        for select_top in [5, 10] # 0 ... automatic ensemble size
             best = sortperm(df, order(criterion, rev=true))
             
             if (select_top > 0) && (length(best) > select_top)
@@ -70,7 +70,7 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
             results = load.(joinpath.(exp_directory, exp_files))
 
             scores, ensemble = _init_ensemble(results)
-            for method in [:max, :mean, :wsum]
+            for method in [:max, :mean]
                 eagg = aggregate_score!(deepcopy(ensemble), scores, method=method)
                 parameters = (modelname=modelname, criterion=criterion, size=select_top, method=method)
 
@@ -131,7 +131,7 @@ function aggregate_score!(ensemble, scores, weights=nothing;
 end
 
 function main(args)
-    modelname, dataset, dataset_type, max_seed, anomaly_classes = @unpack args
+    @unpack modelname, dataset, dataset_type, max_seed, anomaly_classes = args
     if dataset_type == "tabular"
         for s in 1:max_seed
             eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
@@ -161,4 +161,4 @@ function main(args)
     end
 end
 
-main(parse_args(ARGS))
+main(parse_args(ARGS, s))
