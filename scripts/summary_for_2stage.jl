@@ -150,8 +150,10 @@ for type in ["images", "tabular"]
 			#models = models_and_params("/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/$(type)/$(encoder)") #shortcut
 			models = models_and_params(datadir("experiments/$(type)/$(encoder)"))
 			df = create_df(models, score=score, images=(type=="images"))
-			CSV.write(datadir("$(encoder)_$(score)_$(type)_tab.csv"), df)
-			CSV.write(datadir("$(encoder)_$(score)_$(type)_best_tab.csv"), return_best_n(df, score!="LOSS", 10))
+			# change name just because i would be easier to separater model name later
+			#encoder = (encoder == "wae_vamp") ? "wae-vamp" : encoder
+			CSV.write(datadir("$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_tab.csv"), df)
+			CSV.write(datadir("$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_best_tab.csv"), return_best_n(df, score!="LOSS", 10))
 			println("$(encoder)-$(score)-$(type) ... done")
 		end
 	end
