@@ -123,11 +123,11 @@ clip_weights!(ps::Flux.Zygote.Params,c::Real) = clip_weights!(ps,-abs(c),abs(c))
 """
 	helper functions for two stage models
 """
-function return_best_n(df, n=10, dataset="MNIST")
+function return_best_n(df, rev=false, n=10, dataset="MNIST")
     df = df[df.dataset .== dataset, :]
-    top = first(sort(by(df, :params, :loss_val => mean), :loss_val_mean), n)
+    top = first(sort(by(df, :params, :criterion => mean), :criterion_mean, rev=rev), n)
     df_top = []
-    for i=1:10
+    for i=1:n
         tmp = df[df.params .== top.params[i],:]
         ind = i.*ones(size(tmp,1))
         push!(df_top, hcat(tmp, DataFrame(ind=ind)))
@@ -139,7 +139,8 @@ end
 function load_encoding(model="vae_tabular", data; dataset::String="iris", seed::Int=1, model_index::Int=1)
     # load csv
 	df = CSV.read(datadir("$(model)_tab.csv")) 
-	df = return_best_n(df, 10, dataset)
+	df = df[df.dataset .== dataset, :]
+	#df = return_best_n(df, 10, dataset)
     # checking if model configuration was trained on all classes and all seeds
     n_comb = 50
     check_comb = sum([sum(df.ind .== i) for i=1:10])
@@ -160,9 +161,10 @@ end
 function load_encoding(model="vae_images", data, anomaly_class; dataset::String="MNIST", seed::Int=1, model_index::Int=1)
     # load csv
 	df = CSV.read(datadir("$(model)_tab.csv")) 
-	df = return_best_n(df, 10, dataset)
+	#df = return_best_n(df, 10, dataset)
+	df = df[df.dataset .== dataset, :]
     # checking if model configuration was trained on all classes and all seeds
-    n_comb = 500
+    n_comb = 100
     check_comb = sum([sum(df.ind .== i) for i=1:10])
     if check_comb < n_comb
         @info "One of chosen models does not include all anomaly classes and all seeds!! $(check_comb) out of $(n_comb)"

@@ -144,6 +144,8 @@ encoders = ["vae","wae", "wae_vamp"]
 for type in ["images", "tabular"]
 	for encoder in encoders
 		for score in ["val_loss", "AUC", "AUPRC", "TPR@5", "F1@5"]
+			@info "working on $(type)-$(encoder)-$(score)"
+			#models = models_and_params("/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/$(type)/$(encoder)") #shortcut
 			models = models_and_params(datadir("experiments/$(type)/$(encoder)"))
 			df = create_df(models, score=score, images=(type=="images"))
 			CSV.write(datadir("$(encoder)_$(score)_$(type)_tab.csv"), df)
