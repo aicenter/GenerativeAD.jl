@@ -5,6 +5,15 @@ using GenerativeAD
 import StatsBase: fit!, predict
 using StatsBase
 using BSON
+# because of vae and 2stage
+using DataFrames
+using CSV
+using ValueHistories
+using ConditionalDists
+using GenerativeModels
+import GenerativeModels: VAE
+using Distributions
+using DistributionsAD
 
 s = ArgParseSettings()
 @add_arg_table! s begin
