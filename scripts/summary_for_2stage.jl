@@ -28,7 +28,9 @@ function compute_score(info, score="AUC")
 		cm5 = ConfusionMatrix(labels, scores, t5)
 		f5 = EvalMetrics.f1_score(cm5)
 		return f5
-	else 
+	elseif score == "LOSS"
+		return minimum(get(info[:history][:validation_likelihood])[2])
+	else
 		@error "unknown score"
 	end 
 end
@@ -62,7 +64,7 @@ function models_and_params(path_to_model)
 	return models
 end
 
-function create_df(models; score::String="val_loss", images::Bool=true)
+function create_df(models; score::String="VAL", images::Bool=true)
 
 	if images
 		df = DataFrame(
@@ -98,7 +100,7 @@ function create_df(models; score::String="val_loss", images::Bool=true)
 						info[:dataset], 
 						info[:anomaly_class], 
 						info[:seed],
-						(score=="val_loss") ? minimum(get(info[:history][:validation_likelihood])[2]) : compute_score(info, score)
+						compute_score(info, score)
 					]
 				else
 					update = [
@@ -106,7 +108,7 @@ function create_df(models; score::String="val_loss", images::Bool=true)
 						string(info[:parameters]),
 						info[:dataset], 
 						info[:seed],
-						(score=="val_loss") ? minimum(get(info[:history][:validation_likelihood])[2]) : compute_score(info, score)
+						compute_score(info, score)
 					]
 				end
 				push!(df, update)
@@ -143,13 +145,13 @@ encoders = ["vae","wae", "wae_vamp"]
 
 for type in ["images", "tabular"]
 	for encoder in encoders
-		for score in ["val_loss", "AUC", "AUPRC", "TPR@5", "F1@5"]
+		for score in ["VAL", "AUC", "AUPRC", "TPR@5", "F1@5"] # VAL->validation_likelihood
 			@info "working on $(type)-$(encoder)-$(score)"
 			#models = models_and_params("/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/$(type)/$(encoder)") #shortcut
 			models = models_and_params(datadir("experiments/$(type)/$(encoder)"))
 			df = create_df(models, score=score, images=(type=="images"))
 			CSV.write(datadir("$(encoder)_$(score)_$(type)_tab.csv"), df)
-			CSV.write(datadir("$(encoder)_$(score)_$(type)_best_tab.csv"), return_best_n(df, score!="val_loss", 10))
+			CSV.write(datadir("$(encoder)_$(score)_$(type)_best_tab.csv"), return_best_n(df, score!="VAL", 10))
 			println("$(encoder)-$(score)-$(type) ... done")
 		end
 	end
