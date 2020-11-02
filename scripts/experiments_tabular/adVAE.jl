@@ -85,7 +85,7 @@ function fit(data, parameters)
 		)
 
 	return training_info, 
-	[(x -> GenerativeAD.Models.anomaly_score(advae|>cpu, x; dims=1, L=100), merge(parameters, (L=100, )))]
+	[(x -> GenerativeAD.Models.anomaly_score(advae|>cpu, x; dims=1, L=100)[:], merge(parameters, (L=100, )))]
 	# L = samples for one x in anomaly_score computation
 end
 
