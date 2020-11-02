@@ -136,7 +136,7 @@ function return_best_n(df, rev=false, n=10, dataset="MNIST")
 end
 
 
-function load_encoding(model="vae_tabular", data; dataset::String="iris", seed::Int=1, model_index::Int=1)
+function load_encoding(model="vae_AUC_tabular_best", data; dataset::String="iris", seed::Int=1, model_index::Int=1)
     # load csv
 	df = CSV.read(datadir("$(model)_tab.csv")) 
 	df = df[df.dataset .== dataset, :]
@@ -158,7 +158,7 @@ function load_encoding(model="vae_tabular", data; dataset::String="iris", seed::
 end
 
 
-function load_encoding(model="vae_images", data, anomaly_class; dataset::String="MNIST", seed::Int=1, model_index::Int=1)
+function load_encoding(model="vae_AUC_images_best", data, anomaly_class; dataset::String="MNIST", seed::Int=1, model_index::Int=1)
     # load csv
 	df = CSV.read(datadir("$(model)_tab.csv")) 
 	#df = return_best_n(df, 10, dataset)
