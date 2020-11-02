@@ -4,8 +4,8 @@ using DrWatson
 using BSON
 using Random
 using FileIO
+using Statistics
 using DataFrames
-using Base.Threads: @threads
 using GenerativeAD
 
 using GenerativeAD.Evaluation: _prefix_symbol, compute_stats
@@ -42,49 +42,56 @@ modelname = "MAF"
 dataset = "iris"
 seed = 1
 dataset_type = "tabular"
+criterion = :val_auc
+select_top = 10
+method = :max
 ###
 
+# this has to change for images
 function ensemble_experiment(modelname, dataset, dataset_type, seed; kwargs...)
-    # this has to change for images
-    # would be simpler if loaded from evaluation
-    # filenames are preserved there so the lookup is fast
-    failed = zeros(Bool, length(files))
-    directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
-    files = readdir(directory, join=true)
-    filter!(x -> !startswith(basename(x), "model_"), files)
+    # add some info log
 
-    rows = []
-    for (i,f) in enumerate(files)
-        try 
-            push!(rows, compute_stats(f))
-        catch
-            failed[i] = true
-        end
-    end
+    eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
+    exp_directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
 
-    # group rows and files maintain the same ordering
-    group = reduce(vcat, rows)
-    files = files[.~failed]
-    
-    if length(files) == 0
+    eval_files = readdir(eval_directory, join=true)
+    if length(eval_files) == 0
         @warn "There are no valid files for $(modelname)/$(dataset)/seed=$(seed)"
         return
     end
-    
+
+    # load the dataframe
+    df = reduce(vcat, map(f -> load(f)[:df], eval_files))
+
     # select best based on criterion
-    for criterion in [:val_auc, :val_tpr5, :val_pat_10]
-        for select_top in [5, 10] # 0 could be automatic heuristic
-            best = sortperm(group, order(criterion, rev=true))
-            top = best[1:select_top]
-            results = load.(files[top])
+    for criterion in [:val_auc, :val_tpr_5, :val_pat_10]
+        for select_top in [0, 5, 10] # 0 ... automatic ensemble size
+            best = sortperm(df, order(criterion, rev=true))
+            
+            if (select_top > 0) && (length(best) > select_top)
+                top = best[1:select_top]
+            elseif (length(best) <= select_top)
+                top = best
+            else
+                @warn "Automatic ensemble size is not yet implemented."
+                continue
+            end
+
+            # get rid of the "eval_" prefix
+            exp_files = replace.(basename.(eval_files[top]), "eval_" => "")
+            # this assumes that evaluation and experiments files are in sync
+            # more precisely for every evaluation file there exist it's exp.
+            results = load.(joinpath.(exp_directory, exp_files))
 
             scores, ensemble = _init_ensemble(results)
             for method in [:max, :mean, :wsum]
-                ensemble = aggregate_score!(scores, deepcopy(ensemble), method=method)
+                eagg = aggregate_score!(deepcopy(ensemble), scores, method=method)
                 parameters = (modelname=modelname, criterion=criterion, size=select_top, method=method)
 
-                savepath = replace(directory, "experiments" => "experiments_ensembles")
-                tagsave(joinpath(savepath, savename("ensemble", parameters, "bson")), ensemble, safe = true)
+                savepath = replace(exp_directory, "experiments" => "experiments_ensembles")
+                savef = joinpath(savepath, savename("ensemble", parameters, "bson"))
+                @info "Saving ensemble experiment to $savef"
+                tagsave(savef, eagg, safe = true)
             end            
         end
     end
@@ -114,15 +121,18 @@ function _init_ensemble(results)
     scores, ensemble
 end
 
-# should probably go thorough all the methods while having the ensemble dictionary initialized
-function aggregate_score(scores, ensemble, weights=ones(length(results))./length(results); 
+function aggregate_score!(ensemble, scores, weights=nothing; 
                             method=:max)
     for (k, s) in scores
         if method == :max
             ensemble[k] = maximum(s, dims=2)[:]
         elseif method == :mean
             ensemble[k] = mean(s, dims=2)[:]
-        elseif methods == :wsum
+        elseif method == :wsum
+            # placeholder
+            ss = size(s, 2)
+            weights = ones(eltype(s), (1, ss))./ss
+            # placeholder
             ensemble[k] = sum(weights .* s, dims=2)[:]
         else
             error("Unsupported ensemble aggregation.")
