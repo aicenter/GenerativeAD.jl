@@ -33,6 +33,10 @@ s = ArgParseSettings()
         arg_type = Int
         default = 5
         help = "Number of seeds to go through with each dataset."
+    "anomaly_classes"
+        arg_type = Int
+        default = 10
+        help = "Number of anomaly_classes to go through with each dataset."
 end
 
 
@@ -47,16 +51,10 @@ select_top = 10
 method = :max
 ###
 
-# this has to change for images
-function ensemble_experiment(modelname, dataset, dataset_type, seed; kwargs...)
-    # add some info log
-
-    eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
-    exp_directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
-
+function ensemble_experiment(eval_directory, exp_directory, out_directory)
     eval_files = readdir(eval_directory, join=true)
     if length(eval_files) == 0
-        @warn "There are no valid files for $(modelname)/$(dataset)/seed=$(seed)"
+        @warn "There are no valid files in $eval_directory"
         return
     end
 
@@ -88,8 +86,7 @@ function ensemble_experiment(modelname, dataset, dataset_type, seed; kwargs...)
                 eagg = aggregate_score!(deepcopy(ensemble), scores, method=method)
                 parameters = (modelname=modelname, criterion=criterion, size=select_top, method=method)
 
-                savepath = replace(exp_directory, "experiments" => "experiments_ensembles")
-                savef = joinpath(savepath, savename("ensemble", parameters, "bson"))
+                savef = joinpath(out_directory, savename("ensemble", parameters, "bson"))
                 @info "Saving ensemble experiment to $savef"
                 tagsave(savef, eagg, safe = true)
             end            
@@ -104,12 +101,16 @@ function _init_ensemble(results)
     ensemble = Dict{Symbol, Any}()      # new ensemble experiment dictionary
     r = first(results)                  # reference dictionary
 
-    # add anomaly class
     for key in vcat([:dataset, :modelname, :seed, :model], _prefix_symbol.(SPLITS, :labels))
         ensemble[key] = r[key]
     end
+    # add anomaly class if present
+    if :anomaly_class in keys(r)
+        ensemble[:anomaly_class] = r[:anomaly_class]
+    end
+
     ensemble[:ensemble_parameters] = [r[:parameters] for r in results]
-    
+
     scores = Dict()
     for key in _prefix_symbol.(SPLITS, :scores)
         kscores = similar(r[key], (length(r[key]), length(results)))
@@ -141,3 +142,35 @@ function aggregate_score!(ensemble, scores, weights=nothing;
     ensemble
 end
 
+function main(args)
+    modelname, dataset, dataset_type, max_seed, anomaly_classes = @unpack args
+    if dataset_type == "tabular"
+        for s in 1:max_seed
+            eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
+            exp_directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
+            # for now the ensemble outputs are kept in separate directory
+            out_directory = datadir("experiments_ensembles/$(dataset_type)/$(modelname)/$(dataset)/seed=$(seed)/")
+            
+            # run experiment
+            @info "Generating ensemble scores of $(modelname) on $(dataset):$(s)"
+            ensemble_experiment(eval_directory, exp_directory, out_directory)
+        end
+    elseif dataset_type == "images"
+        for s in 1:max_seed
+            for ac in 1:anomaly_classes
+                eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/ac=$(anomaly_class)/seed=$(seed)/")
+                exp_directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/ac=$(anomaly_class)/seed=$(seed)/")
+                # for now the ensemble outputs are kept in separate directory
+                out_directory = datadir("experiments_ensembles/$(dataset_type)/$(modelname)/$(dataset)/ac=$(anomaly_class)/seed=$(seed)/")
+                
+                # run experiment
+                @info "Generating ensemble scores of $(modelname) on $(dataset):$(ac):$(s)"
+                ensemble_experiment(eval_directory, exp_directory, out_directory)
+            end
+        end
+    else
+        @error "Unsupported dataset type."
+    end
+end
+
+main(parse_args(ARGS))
