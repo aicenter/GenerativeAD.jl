@@ -42,7 +42,7 @@ sp = split(tab_name, "_")
 enc = sp[1]
 criterion = lowercase(sp[2])
 
-modelname = "$(enc)+ocsvm"
+modelname = "$(enc)_ocsvm"
 
 function sample_params()
 	par_vec = (round.([10^x for x in -4:0.1:2],digits=5),["poly", "rbf", "sigmoid"],[0.01,0.5,0.99])

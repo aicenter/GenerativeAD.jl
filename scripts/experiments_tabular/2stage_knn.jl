@@ -41,7 +41,7 @@ sp = split(tab_name, "_")
 enc = sp[1]
 criterion = lowercase(sp[2])
 
-modelname = "$(enc)+knn"
+modelname = "$(enc)_knn"
 
 """
 	sample_params()

@@ -45,7 +45,7 @@ sp = split(tab_name, "_")
 enc = sp[1]
 criterion = lowercase(sp[2])
 
-modelname = "$(enc)+knn"
+modelname = "$(enc)_knn"
 
 function sample_params()
 	par_vec = (1:2:101,)
