@@ -28,7 +28,7 @@ s = ArgParseSettings()
         help = "dataset"
     "tab_name"
         required = true
-        arg_type = "string"
+        arg_type = String
         help = "name of tab -> example: vae_LOSS_images, wae-vamp_AUC_images"
     "anomaly_classes"
 		arg_type = Int
