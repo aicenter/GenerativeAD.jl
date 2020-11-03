@@ -100,7 +100,8 @@ end
 ####################################################################
 ################ THIS PART IS COMMON FOR ALL MODELS ################
 # set a maximum for parameter sampling retries
-
+try_counter = 0
+max_tries = 10*max_seed
 while try_counter < max_tries
 	parameters = sample_params()
 
@@ -110,7 +111,7 @@ while try_counter < max_tries
 			for mi =1:10
 				aux_info = (model_index=mi, criterion=criterion)
 				data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
-				data, encoding_name = GenerativeAD.Models.load_encoding(tab_name, data, dataset=dataset, anomaly_class=i, seed=seed, model_index=mi)
+				data, encoding_name = GenerativeAD.Models.load_encoding(tab_name, data, i, dataset=dataset, seed=seed, model_index=mi)
 
 				# here, check if a model with the same parameters was already tested
 				@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
