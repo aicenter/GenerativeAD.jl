@@ -122,8 +122,8 @@ function create_df(models; score::String="LOSS", images::Bool=true)
 end
 
 function return_best_n(df, rev=false, n=10)
-    #df = df[df.dataset .== dataset, :]
-    dff = sort(by(df, [:params, :dataset], :criterion => mean), :criterion_mean, rev=rev)
+	#df = df[df.dataset .== dataset, :]
+	dff = sort(by(df, [:params, :dataset], :criterion => mean), :criterion_mean, rev=rev)
 	df_top = []
 	for dataset in unique(dff.dataset)
 		top = first(dff[dff.dataset .== dataset, :], n)
@@ -133,7 +133,7 @@ function return_best_n(df, rev=false, n=10)
 			push!(df_top, hcat(tmp, DataFrame(ind=ind)))
 		end
 	end
-    return vcat(df_top...)
+	return vcat(df_top...)
 end
 
 #path = "/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/images/vae/"

@@ -20,17 +20,17 @@ using DistributionsAD
 s = ArgParseSettings()
 @add_arg_table! s begin
    "max_seed"
-        required = true
-        arg_type = Int
-        help = "seed"
-    "dataset"
-        required = true
-        arg_type = String
-        help = "dataset"
-    "tab_name"
-        required = true
-        arg_type = String
-        help = "name of tab -> example: vae_LOSS_tabular, wae-vamp_AUC_tabular"
+		required = true
+		arg_type = Int
+		help = "seed"
+	"dataset"
+		required = true
+		arg_type = String
+		help = "dataset"
+	"tab_name"
+		required = true
+		arg_type = String
+		help = "name of tab -> example: vae_LOSS_tabular, wae-vamp_AUC_tabular"
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, tab_name = parsed_args
@@ -82,42 +82,42 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 while try_counter < max_tries
-    parameters = sample_params()
+	parameters = sample_params()
 
-    for seed in 1:max_seed
+	for seed in 1:max_seed
 		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
-        for mi = 1:10 # iteration through encodings
-            aux_info = (model_index=mi, criterion=criterion)
-            # get data
-            data = GenerativeAD.load_data(dataset, seed=seed)
-            data, encoding_name = GenerativeAD.Models.load_encoding(tab_name, data, dataset=dataset, seed=seed, model_index=mi)
-                
-            # edit parameters
-            edited_parameters = GenerativeAD.edit_params(data, parameters)
-            
-            @info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
-            # check if a combination of parameters and seed alread exists
-            if GenerativeAD.check_params(savepath, merge(edited_parameters, aux_info))
-                # fit
-                training_info, results = fit(data, edited_parameters, aux_info)
-                # here define what additional info should be saved together with parameters, scores, labels and predict times
-                save_entries = merge(training_info, (modelname = modelname, 
-                                                     seed = seed, 
-                                                     dataset = dataset, 
-                                                     encoding_name=encoding_name, 
-                                                     model_index=mi,
-                                                     criterion=criterion))
+		for mi = 1:10 # iteration through encodings
+			aux_info = (model_index=mi, criterion=criterion)
+			# get data
+			data = GenerativeAD.load_data(dataset, seed=seed)
+			data, encoding_name = GenerativeAD.Models.load_encoding(tab_name, data, dataset=dataset, seed=seed, model_index=mi)
+				
+			# edit parameters
+			edited_parameters = GenerativeAD.edit_params(data, parameters)
+			
+			@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
+			# check if a combination of parameters and seed alread exists
+			if GenerativeAD.check_params(savepath, merge(edited_parameters, aux_info))
+				# fit
+				training_info, results = fit(data, edited_parameters, aux_info)
+				# here define what additional info should be saved together with parameters, scores, labels and predict times
+				save_entries = merge(training_info, (modelname = modelname, 
+													 seed = seed, 
+													 dataset = dataset, 
+													 encoding_name=encoding_name, 
+													 model_index=mi,
+													 criterion=criterion))
 
-                # now loop over all anomaly score funs
-                for result in results
-                    GenerativeAD.experiment(result..., data, savepath; save_entries...)
-                end
-                global try_counter = max_tries + 1
-            else
-                @info "Model already present, trying new hyperparameters..."
-                global try_counter += 1
-            end
-        end
+				# now loop over all anomaly score funs
+				for result in results
+					GenerativeAD.experiment(result..., data, savepath; save_entries...)
+				end
+				global try_counter = max_tries + 1
+			else
+				@info "Model already present, trying new hyperparameters..."
+				global try_counter += 1
+			end
+		end
 	end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
