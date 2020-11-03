@@ -104,7 +104,7 @@ function _init_ensemble(results)
     for key in _prefix_symbol.(SPLITS, :scores)
         kscores = similar(r[key], (length(r[key]), length(results)))
         for (i, rr) in enumerate(values(results))
-            kscores[:,i] .= rr[key]
+            kscores[:,i] .= rr[key][:]
         end
         scores[key] = kscores
     end    
