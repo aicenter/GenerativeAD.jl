@@ -19,21 +19,21 @@ using DistributionsAD
 s = ArgParseSettings()
 @add_arg_table! s begin
    "max_seed"
-        required = true
-        arg_type = Int
-        help = "seed"
-    "dataset"
-        required = true
-        arg_type = String
-        help = "dataset"
-    "tab_name"
-        required = true
-        arg_type = String
-        help = "name of tab -> example: vae_LOSS_images, wae-vamp_AUC_images"
-    "anomaly_classes"
+		required = true
+		arg_type = Int
+		help = "seed"
+	"dataset"
+		required = true
+		arg_type = String
+		help = "dataset"
+	"tab_name"
+		required = true
+		arg_type = String
+		help = "name of tab -> example: vae_LOSS_images, wae-vamp_AUC_images"
+	"anomaly_classes"
 		arg_type = Int
 		default = 10
-        help = "number of anomaly classes"
+		help = "number of anomaly classes"
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, tab_name, anomaly_classes = parsed_args
@@ -69,7 +69,7 @@ function joint_prediction(models, data)
 	return vec(mean(joint_pred, dims=1))
 end
 
-function StatsBase.fit(data, parameters, n_models=10, aux_info)
+function StatsBase.fit(data, parameters, n_models, aux_info)
 	# construct model - constructor should only accept kwargs
 	models = [GenerativeAD.Models.OCSVM(;parameters...) for _ = 1:n_models]
 	
@@ -107,34 +107,34 @@ while try_counter < max_tries
 	for seed in 1:max_seed
 		for i in 1:anomaly_classes
 			savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
-            for mi =1:10
-                aux_info = (model_index=mi, criterion=criterion)
-                data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
-                data, encoding_name = GenerativeAD.Models.load_encoding(tab_name, data, dataset=dataset, anomaly_class=i, seed=seed, model_index=mi)
-                
-                # here, check if a model with the same parameters was already tested
-                @info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
-                if GenerativeAD.check_params(savepath, merge(parameters, aux_info))
-                    training_info, results = fit(data, parameters, 10, aux_info)
-                    # here define what additional info should be saved together with parameters, scores, labels and predict times
-                    save_entries = merge(training_info, (modelname = modelname, 
-                                                         seed = seed, 
-                                                         dataset = dataset, 
-                                                         anomaly_class = i, 
-                                                         encoding_name=encoding_name,
-                                                         model_index=mi,
-                                                         criterion=criterion))
-                    # now loop over all anomaly score funs
-                    for result in results
-                        GenerativeAD.experiment(result..., data, savepath; save_entries...)
-                    end
-                    global try_counter = max_tries + 1
-                else
-                    @info "Model already present, sampling new hyperparameters..."
-                    global try_counter += 1
-                end
-            end
-        end
+			for mi =1:10
+				aux_info = (model_index=mi, criterion=criterion)
+				data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
+				data, encoding_name = GenerativeAD.Models.load_encoding(tab_name, data, dataset=dataset, anomaly_class=i, seed=seed, model_index=mi)
+
+				# here, check if a model with the same parameters was already tested
+				@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
+				if GenerativeAD.check_params(savepath, merge(parameters, aux_info))
+					training_info, results = fit(data, parameters, 10, aux_info)
+					# here define what additional info should be saved together with parameters, scores, labels and predict times
+					save_entries = merge(training_info, (modelname = modelname, 
+														 seed = seed, 
+														 dataset = dataset, 
+														 anomaly_class = i, 
+														 encoding_name=encoding_name,
+														 model_index=mi,
+														 criterion=criterion))
+					# now loop over all anomaly score funs
+					for result in results
+						GenerativeAD.experiment(result..., data, savepath; save_entries...)
+					end
+					global try_counter = max_tries + 1
+				else
+					@info "Model already present, sampling new hyperparameters..."
+					global try_counter += 1
+				end
+			end
+		end
 	end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
