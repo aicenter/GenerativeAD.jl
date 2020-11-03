@@ -70,6 +70,7 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
             results = load.(joinpath.(exp_directory, exp_files))
 
             scores, ensemble = _init_ensemble(results)
+            ensemble[:ensemble_files] = exp_files
             for method in [:max, :mean]
                 eagg = aggregate_score!(deepcopy(ensemble), scores, method=method)
                 parameters = (modelname=ensemble[:modelname], criterion=criterion, size=select_top, method=method)
@@ -97,7 +98,7 @@ function _init_ensemble(results)
         ensemble[:anomaly_class] = r[:anomaly_class]
     end
 
-    ensemble[:ensemble_parameters] = [r[:parameters] for r in results]
+    ensemble[:ensemble_phash] = [hash(r[:parameters]) for r in results]
 
     scores = Dict()
     for key in _prefix_symbol.(SPLITS, :scores)
