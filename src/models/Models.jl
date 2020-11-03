@@ -12,6 +12,7 @@ using MLDataPattern
 using ProgressMeter: Progress, next!
 
 include("utils/utils.jl")
+include("utils/2stage.jl")
 include("utils/losses.jl")
 include("utils/nn_builders.jl")
 
