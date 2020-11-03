@@ -74,6 +74,7 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
             for method in [:max, :mean]
                 eagg = aggregate_score!(deepcopy(ensemble), scores, method=method)
                 parameters = (modelname=ensemble[:modelname], criterion=criterion, size=select_top, method=method)
+                eagg[:parameters] = parameters
 
                 savef = joinpath(out_directory, savename("ensemble", parameters, "bson"))
                 @info "Saving ensemble experiment to $savef"
