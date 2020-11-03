@@ -94,11 +94,10 @@ while try_counter < max_tries
                 
             # edit parameters
             edited_parameters = GenerativeAD.edit_params(data, parameters)
-            edited_parameters =  merge(edited_parameters, aux_info)
             
             @info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
             # check if a combination of parameters and seed alread exists
-            if GenerativeAD.check_params(savepath, edited_parameters)
+            if GenerativeAD.check_params(savepath, merge(edited_parameters, aux_info))
                 # fit
                 training_info, results = fit(data, edited_parameters, aux_info)
                 # here define what additional info should be saved together with parameters, scores, labels and predict times
