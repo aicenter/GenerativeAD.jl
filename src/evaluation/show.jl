@@ -63,7 +63,7 @@ function rank_table(df::DataFrame, metric_col=:tst_auc)
 	for row in eachrow(rt[1:end-2,:])
 		rs .+= StatsBase.competerank(mask_nan_max.(Vector(row[2:end])), rev = true)
 	end
-	rs ./= size(rt, 1)
+	rs ./= (size(rt, 1) - 2)
 	rs = round.(rs, digits=2)
 	push!(rt, ["RANK", rs...])
 
