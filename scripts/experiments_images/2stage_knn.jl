@@ -29,7 +29,7 @@ s = ArgParseSettings()
     "tab_name"
         required = true
         arg_type = "string"
-        help = "name of tab -> example: vae_LOSS_images_best, wae-vamp_AUC_images_best"
+        help = "name of tab -> example: vae_LOSS_images, wae-vamp_AUC_images"
     "anomaly_classes"
 		arg_type = Int
 		default = 10

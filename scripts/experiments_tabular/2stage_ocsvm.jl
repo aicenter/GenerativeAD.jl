@@ -29,7 +29,7 @@ s = ArgParseSettings()
     "tab_name"
         required = true
         arg_type = "string"
-        help = "name of tab -> example: vae_LOSS_tabular_best, wae-vamp_AUC_tabular_best"
+        help = "name of tab -> example: vae_LOSS_tabular, wae-vamp_AUC_tabular"
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, tab_name = parsed_args
