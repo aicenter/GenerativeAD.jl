@@ -5,6 +5,7 @@ using BSON
 using ValueHistories
 # because of vae
 using GenerativeAD
+using GenerativeAD.Models
 using ConditionalDists
 using GenerativeModels
 import GenerativeModels: VAE
@@ -136,7 +137,8 @@ function return_best_n(df, rev=false, n=10, dataset="MNIST")
 end
 
 
-function load_encoding(model="vae_AUC_tabular", data; dataset::String="iris", seed::Int=1, model_index::Int=1)
+function load_encoding(model, data; dataset::String="iris", seed::Int=1, model_index::Int=1)
+	# model = "vae_AUC_tabular"
     # load csv
 	df = CSV.read(datadir("$(model)_best_tab.csv")) 
 	df = df[df.dataset .== dataset, :]
@@ -158,7 +160,8 @@ function load_encoding(model="vae_AUC_tabular", data; dataset::String="iris", se
 end
 
 
-function load_encoding(model="vae_AUC_images", data, anomaly_class; dataset::String="MNIST", seed::Int=1, model_index::Int=1)
+function load_encoding(model, data, anomaly_class; dataset::String="MNIST", seed::Int=1, model_index::Int=1)
+	# model ="vae_AUC_images"
     # load csv
 	df = CSV.read(datadir("$(model)_best_tab.csv")) 
 	#df = return_best_n(df, 10, dataset)

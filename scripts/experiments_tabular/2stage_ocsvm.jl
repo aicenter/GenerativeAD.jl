@@ -2,6 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
+using GenerativeAD.Models
 import StatsBase: fit!, predict
 using StatsBase
 using BSON
@@ -28,7 +29,7 @@ s = ArgParseSettings()
         help = "dataset"
     "tab_name"
         required = true
-        arg_type = "string"
+        arg_type = String
         help = "name of tab -> example: vae_LOSS_tabular, wae-vamp_AUC_tabular"
 end
 parsed_args = parse_args(ARGS, s)
