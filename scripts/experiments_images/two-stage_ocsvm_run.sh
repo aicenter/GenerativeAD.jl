@@ -13,4 +13,4 @@ TAB_NAME=$4
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-julia ./2stage_ocsvm.jl ${MAX_SEED} $DATASET $TAB_NAME ${ANOMALY_CLASSES}
+julia ./two-stage_ocsvm.jl ${MAX_SEED} $DATASET $TAB_NAME ${ANOMALY_CLASSES}

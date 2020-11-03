@@ -1,16 +1,13 @@
 #!/bin/bash
 #SBATCH --time=24:00:00
 #SBATCH --nodes=1 --ntasks-per-node=2 --cpus-per-task=1
-#SBATCH --gres=gpu:1
-#SBATCH --partition=gpu
-#SBATCH --mem=80G
+#SBATCH --mem=40G
 
 MAX_SEED=$1
 DATASET=$2
-ANOMALY_CLASSES=$3
-TAB_NAME=$4
+TAB_NAME=$3
 
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-julia ./2stage_knn.jl ${MAX_SEED} $DATASET $TAB_NAME ${ANOMALY_CLASSES}
+julia ./two-stage_knn.jl ${MAX_SEED} $DATASET $TAB_NAME
