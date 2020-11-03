@@ -111,11 +111,10 @@ while try_counter < max_tries
                 aux_info = (model_index=mi, criterion=criterion)
                 data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
                 data, encoding_name = GenerativeAD.Models.load_encoding(tab_name, data, dataset=dataset, anomaly_class=i, seed=seed, model_index=mi)
-
-                parameters =  merge(parameters, aux_info)
+                
                 # here, check if a model with the same parameters was already tested
                 @info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
-                if GenerativeAD.check_params(savepath, parameters)
+                if GenerativeAD.check_params(savepath, merge(parameters, aux_info))
                     training_info, results = fit(data, parameters, 10, aux_info)
                     # here define what additional info should be saved together with parameters, scores, labels and predict times
                     save_entries = merge(training_info, (modelname = modelname, 
