@@ -69,7 +69,7 @@ function load_encoding(model, data; dataset::String="iris", seed::Int=1, model_i
 	encodings = map(x->cpu(GenerativeAD.Models.encode_mean(model["model"], x)), (data[1][1], data[2][1], data[3][1]))
 	data = (encodings[1], data[1][2]), (encodings[2], data[2][2]), (encodings[3], data[3][2])
 
-	return data, split(encoding_path, "/")[end], encoder_params
+	return data, split(encoding_path, "/")[end], encoder_params, model["fit_t"]
 end
 
 
@@ -92,5 +92,5 @@ function load_encoding(model, data, anomaly_class; dataset::String="MNIST", seed
 	model = BSON.load(encoding_path)
 	data = (model["tr_encodings"], data[1][2]), (model["val_encodings"], data[2][2]), ( model["tst_encodings"], data[3][2])
 
-	return data, split(encoding_path, "/")[end], encoder_params
+	return data, split(encoding_path, "/")[end], encoder_params, model["fit_t"]
 end
