@@ -44,6 +44,12 @@ if anomaly_class != nothing
 	filter!(x->occursin("/ac=$(anomaly_class)/", x), mfiles)
 end
 
+jacodeco_batched(m,x,batchsize) = 
+	vcat(map(y-> -GenerativeAD.Models.jacodeco(m, y), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+# gpu version of jacodeco does not work
+#jacodeco_batched_gpu(m,x,batchsize) = 
+#	vcat(map(y-> cpu(-GenerativeAD.Models.jacodeco(gpu(m), gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+
 function save_jacodeco(f::String, data, seed::Int, ac=nothing)
 	# get model
 	savepath = dirname(f)
@@ -61,8 +67,8 @@ function save_jacodeco(f::String, data, seed::Int, ac=nothing)
 		seed = seed
 		)
 	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (ac=ac,))
-	result = (x -> -GenerativeAD.Models.jacodeco(model, x), 
-		merge(mdata["parameters"], (score = "jacodeco",)))
+	result = (x -> jacodeco_batched(model, x, 512), 
+			merge(mdata["parameters"], (score = "jacodeco",)))
 
 	# if the file does not exist already, compute the scores
 	savef = joinpath(savepath, savename(result[2], "bson", digits=5))

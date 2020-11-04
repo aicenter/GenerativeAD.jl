@@ -126,10 +126,10 @@ end
 Jacobian decomposition JJ(m,x).
 """
 function lJacoD(m,x)
-	JJ = zeros(eltype(x),size(x,2));
+	JJ = zeros(eltype(x),size(x,ndims(x)));
 	zg = mean(m.encoder,x);
-	for i=1:size(x,2)
-		jj,J = jacobian(y->mean(m.decoder,y)[:],zg[:,i]);
+	for i=1:size(x,ndims(x))
+		jj,J = jacobian(y->mean(m.decoder,reshape(y,:,1))[:],zg[:,i]);
 		(U,S,V) = svd(J);
 		JJ[i]= sum(2*log.(S));
 	end
