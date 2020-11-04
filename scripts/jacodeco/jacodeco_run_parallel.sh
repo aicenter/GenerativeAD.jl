@@ -5,6 +5,8 @@
 MODEL=$1 		# which model to run
 DATATYPE=$2			# tabular/image
 DATASET_FILE=$3	# file with dataset list
+SEED=$4
+AC=$5
 
 LOG_DIR="${HOME}/logs/jacodeco"
 
@@ -16,5 +18,5 @@ while read d; do
 	# submit to slurm
     sbatch \
     --output="${LOG_DIR}/${DATATYPE}_${MODEL}_${d}-%A.out" \
-    ./jacodeco_run.sh $MODEL $DATATYPE $d
+    ./jacodeco_run.sh $MODEL $DATATYPE $d $SEED $AC
 done < ${DATASET_FILE}
