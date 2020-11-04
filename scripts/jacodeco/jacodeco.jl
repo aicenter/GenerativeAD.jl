@@ -24,14 +24,25 @@ s = ArgParseSettings()
 		default = "iris"
 		arg_type = String
 		help = "dataset"
-	
+	"--seed"
+		default = nothing
+		help = "if specified, only results for a given seed will be recomputed"
+	"--anomaly_class"
+		default = nothing
+		help = "if specified, only results for a given anomaly class will be recomputed"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, datatype, modelname = parsed_args
+@unpack dataset, datatype, modelname, seed, anomaly_class = parsed_args
 
 masterpath = datadir("experiments/$(datatype)/$(modelname)/$(dataset)")
 files = GenerativeAD.Evaluation.collect_files(masterpath)
 mfiles = filter(f->occursin("model", f), files)
+if seed != nothing
+	filter!(x->occursin("/seed=$seed/", x), mfiles)
+end
+if anomaly_class != nothing
+	filter!(x->occursin("/ac=$(anomaly_class)/", x), mfiles)
+end
 
 function save_jacodeco(f::String, data, seed::Int, ac=nothing)
 	# get model
@@ -53,19 +64,23 @@ function save_jacodeco(f::String, data, seed::Int, ac=nothing)
 	result = (x -> -GenerativeAD.Models.jacodeco(model, x), 
 		merge(mdata["parameters"], (score = "jacodeco",)))
 
-	GenerativeAD.experiment(result..., data, savepath; save_entries...)
+	# if the file does not exist already, compute the scores
+	savef = joinpath(savepath, savename(result[2], "bson", digits=5))
+	if !isfile(savef)
+		@info "computing jacodeco for $f"
+		GenerativeAD.experiment(result..., data, savepath; save_entries...)
+	end
 end
 
 for f in mfiles
 	# get data
 	savepath = dirname(f)
-	seed = parse(Int, replace(basename(savepath), "seed=" => ""))
+	local seed = parse(Int, replace(basename(savepath), "seed=" => ""))
 	ac = occursin("ac=", savepath) ? parse(Int, replace(basename(dirname(savepath)), "ac=" => "")) : nothing
 	data = (ac == nothing) ? 
 		GenerativeAD.load_data(dataset, seed=seed) : 
 		GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac)
 		
 	# compute and save the score
-	@info "computing jacodeco for $f"
 	save_jacodeco(f, data, seed, ac)
 end
