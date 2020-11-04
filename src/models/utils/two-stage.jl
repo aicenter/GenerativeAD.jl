@@ -92,5 +92,5 @@ function load_encoding(model, data, anomaly_class; dataset::String="MNIST", seed
 	model = BSON.load(encoding_path)
 	data = (model["tr_encodings"], data[1][2]), (model["val_encodings"], data[2][2]), ( model["tst_encodings"], data[3][2])
 
-	return data, split(encoding_path, "/")[end], encoder_params, model["fit_t"]
+	return data, split(encoding_path, "/")[end], encoder_params
 end
