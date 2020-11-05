@@ -90,8 +90,8 @@ while try_counter < max_tries
 			aux_info = (model_index=mi, criterion=criterion)
 			# get data
 			data = GenerativeAD.load_data(dataset, seed=seed)
-			output, encode_t, _, _, _ = @timed GenerativeAD.Models.load_encoding(tab_name, data, dataset=dataset, seed=seed, model_index=mi)
-			data, encoding_name, encoder_params, encoder_fit_t = output
+			info, encode_t, _, _, _ = @timed GenerativeAD.Models.load_encoding(tab_name, data, dataset=dataset, seed=seed, model_index=mi)
+			data, encoding_name, encoder_params, fit_t = info
 				
 			# edit parameters
 			edited_parameters = GenerativeAD.edit_params(data, parameters)
@@ -106,7 +106,7 @@ while try_counter < max_tries
 													 seed = seed, 
 													 dataset = dataset, 
 													 encoder=encoding_name,
-													 encoder_fit_t = encoder_fit_t,
+													 encoder_fit_t = fit_t,
 													 encoder_params=encoder_params, 
 													 encode_t = encode_t,
 													 model_index=mi,
