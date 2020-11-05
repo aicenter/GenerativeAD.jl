@@ -45,7 +45,7 @@ if anomaly_class != nothing
 end
 
 jacodeco_batched(m,x,batchsize) = 
-	vcat(map(y-> -GenerativeAD.Models.jacodeco(m, y), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+	vcat(map(y-> - Base.invokelatest(GenerativeAD.Models.jacodeco, m, y), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 # gpu version of jacodeco does not work
 #jacodeco_batched_gpu(m,x,batchsize) = 
 #	vcat(map(y-> cpu(-GenerativeAD.Models.jacodeco(gpu(m), gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)

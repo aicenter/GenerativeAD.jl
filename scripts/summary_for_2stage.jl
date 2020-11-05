@@ -143,7 +143,7 @@ end
 
 encoders = ["vae","wae", "wae_vamp"]
 
-for type in ["images", "tabular"]
+for type in ["tabular"] #["images", "tabular"]
 	for encoder in encoders
 		for score in ["LOSS", "AUC", "AUPRC", "TPR@5", "F1@5"] # LOSS->validation_likelihood
 			@info "working on $(type)-$(encoder)-$(score)"
@@ -152,8 +152,8 @@ for type in ["images", "tabular"]
 			df = create_df(models, score=score, images=(type=="images"))
 			# change name just because i would be easier to separater model name later
 			#encoder = (encoder == "wae_vamp") ? "wae-vamp" : encoder
-			CSV.write(datadir("$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_tab.csv"), df)
-			CSV.write(datadir("$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_best_tab.csv"), return_best_n(df, score!="LOSS", 10))
+			CSV.write(datadir("tables/$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_tab.csv"), df)
+			CSV.write(datadir("tables/$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_best_tab.csv"), return_best_n(df, score!="LOSS", 10))
 			println("$(encoder)-$(score)-$(type) ... done")
 		end
 	end

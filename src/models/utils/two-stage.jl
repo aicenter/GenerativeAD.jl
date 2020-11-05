@@ -52,7 +52,7 @@ end
 function load_encoding(model, data; dataset::String="iris", seed::Int=1, model_index::Int=1)
 	# model = "vae_AUC_tabular"
 	# load csv
-	df = CSV.read(datadir("$(model)_best_tab.csv")) 
+	df = CSV.read(datadir("tables/$(model)_best_tab.csv")) 
 	df = df[df.dataset .== dataset, :]
 	#df = return_best_n(df, 10, dataset)
 	# checking if model configuration was trained on all classes and all seeds
@@ -76,7 +76,7 @@ end
 function load_encoding(model, data, anomaly_class; dataset::String="MNIST", seed::Int=1, model_index::Int=1)
 	# model ="vae_AUC_images"
 	# load csv
-	df = CSV.read(datadir("$(model)_best_tab.csv")) 
+	df = CSV.read(datadir("tables/$(model)_best_tab.csv")) 
 	#df = return_best_n(df, 10, dataset)
 	df = df[df.dataset .== dataset, :]
 	# checking if model configuration was trained on all classes and all seeds
