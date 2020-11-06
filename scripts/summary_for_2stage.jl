@@ -70,6 +70,7 @@ function create_df(models; score::String="LOSS", images::Bool=true)
 		df = DataFrame(
 			path = String[], #path to model / encodings
 			params = String[],
+			info_path = String[],
 			dataset = String[], 
 			ac = Int64[], 
 			seed = Int64[], 
@@ -79,6 +80,7 @@ function create_df(models; score::String="LOSS", images::Bool=true)
 		df = DataFrame(
 			path = String[], #path to model / encodings
 			params = String[],
+			info_path = String[],
 			dataset = String[], 
 			seed = Int64[], 
 			criterion = Float32[]
@@ -97,6 +99,7 @@ function create_df(models; score::String="LOSS", images::Bool=true)
 					update = [
 						joinpath(root,mod), 
 						string(info[:parameters]),
+						path,
 						info[:dataset], 
 						info[:anomaly_class], 
 						info[:seed],
@@ -106,6 +109,7 @@ function create_df(models; score::String="LOSS", images::Bool=true)
 					update = [
 						joinpath(root,mod), 
 						string(info[:parameters]),
+						path,
 						info[:dataset], 
 						info[:seed],
 						compute_score(info, score)
@@ -141,9 +145,9 @@ end
 #df = create_df(models, images=true)
 #CSV.write(datadir("vae_tab.csv"), df)
 
-encoders = ["vae","wae", "wae_vamp"]
+encoders =["vae"]  # ["vae","wae", "wae_vamp"]
 
-for type in ["tabular"] #["images", "tabular"]
+for type in ["images"] #["images", "tabular"]
 	for encoder in encoders
 		for score in ["LOSS", "AUC", "AUPRC", "TPR@5", "F1@5"] # LOSS->validation_likelihood
 			@info "working on $(type)-$(encoder)-$(score)"
@@ -152,7 +156,7 @@ for type in ["tabular"] #["images", "tabular"]
 			df = create_df(models, score=score, images=(type=="images"))
 			# change name just because i would be easier to separater model name later
 			#encoder = (encoder == "wae_vamp") ? "wae-vamp" : encoder
-			CSV.write(datadir("tables/$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_tab.csv"), df)
+			#CSV.write(datadir("tables/$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_tab.csv"), df)
 			CSV.write(datadir("tables/$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_best_tab.csv"), return_best_n(df, score!="LOSS", 10))
 			println("$(encoder)-$(score)-$(type) ... done")
 		end

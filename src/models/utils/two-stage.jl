@@ -63,7 +63,9 @@ function load_encoding(model, data; dataset::String="iris", seed::Int=1, model_i
 	end
 	# get correct model path
 	encoding_path = df[(df.seed .==seed) .& (df.ind .==model_index),:][:path][1]
-	encoder_params = string2dict(df[(df.seed .==seed) .& (df.ind .==model_index),:][:params][1])
+	encoding_info = df[(df.seed .==seed) .& (df.ind .==model_index),:][:info_path][1]
+	#encoder_params = string2dict(df[(df.seed .==seed) .& (df.ind .==model_index),:][:params][1])
+	encoder_params = BSON.load(encoding_info)[:parameters]
 	# load model and encode data
 	model = BSON.load(encoding_path)
 	encodings = map(x->cpu(GenerativeAD.Models.encode_mean(model["model"], x)), (data[1][1], data[2][1], data[3][1]))
@@ -87,7 +89,9 @@ function load_encoding(model, data, anomaly_class; dataset::String="MNIST", seed
 	end
 	# get correct model path
 	encoding_path = df[(df.ac .== anomaly_class) .& (df.seed .==seed) .& (df.ind .==model_index),:][:path][1]
-	encoder_params = string2dict(df[(df.ac .== anomaly_class) .& (df.seed .==seed) .& (df.ind .==model_index),:][:params][1])
+	encoding_info = df[(df.ac .== anomaly_class) .& (df.seed .==seed) .& (df.ind .==model_index),:][:info_path][1]
+	#encoder_params = string2dict(df[(df.ac .== anomaly_class) .& (df.seed .==seed) .& (df.ind .==model_index),:][:params][1])
+	encoder_params = BSON.load(encoding_info)[:parameters]
 	# load model and encodings
 	model = BSON.load(encoding_path)
 	data = (model["tr_encodings"], data[1][2]), (model["val_encodings"], data[2][2]), ( model["tst_encodings"], data[3][2])
