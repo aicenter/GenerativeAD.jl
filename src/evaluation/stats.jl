@@ -195,47 +195,46 @@ TODO: Optional arg `min_samples` specifies how many seed/anomaly_class combinati
 in order for the hyperparameter's results be considered statistically significant.
 """
 function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; 
-                        min_samples=("anomaly_class" in names(df)) ? 30 : 3, 
-                        downsample=Dict("ocsvm" => 100))
-agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
-agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
-top10_std_cols = _prefix_symbol.(agg_cols, "top_10_std")
+                        min_samples=("anomaly_class" in names(df)) ? 30 : 3)
+	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
+	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
+	top10_std_cols = _prefix_symbol.(agg_cols, "top_10_std")
 
-agg_keys = ("anomaly_class" in names(df)) ? [:seed, :anomaly_class] : [:seed]
-# choose best for each seed/anomaly_class cobination and average over them
-results = []
-for (dkey, dg) in pairs(groupby(df, :dataset))
-    for (mkey, mg) in pairs(groupby(dg, :modelname))
-        partial_results = []
-        for (skey, sg) in pairs(groupby(mg, agg_keys))
-            # @info "$(dkey.dataset) - $(mkey.modelname) - $(skey)"
-            n = nrow(sg)
-            Random.seed!(42)
-            ssg = (mkey.modelname in keys(downsample)) && (downsample[mkey.modelname] < n) ? 
-                    sg[randperm(n)[1:downsample[mkey.modelname]], :] : sg
-            Random.seed!()
-            
-            sssg = sort(ssg, order(criterion_col, rev=true))
-            best = first(sssg, 1)
-            
-            best_10_std = combine(first(sssg, 10), agg_cols .=> std .=> top10_std_cols)
-            best = hcat(best, best_10_std)
-            
-            push!(partial_results, best)
-        end
+	agg_keys = ("anomaly_class" in names(df)) ? [:seed, :anomaly_class] : [:seed]
+	# choose best for each seed/anomaly_class cobination and average over them
+	results = []
+	for (dkey, dg) in pairs(groupby(df, :dataset))
+		for (mkey, mg) in pairs(groupby(dg, :modelname))
+			partial_results = []
+			for (skey, sg) in pairs(groupby(mg, agg_keys))
+				# @info "$(dkey.dataset) - $(mkey.modelname) - $(skey)"
+				n = nrow(sg)
+				Random.seed!(42)
+				ssg = (mkey.modelname in keys(downsample)) && (downsample[mkey.modelname] < n) ? 
+						sg[randperm(n)[1:downsample[mkey.modelname]], :] : sg
+				Random.seed!()
+				
+				sssg = sort(ssg, order(criterion_col, rev=true))
+				best = first(sssg, 1)
+				
+				best_10_std = combine(first(sssg, 10), agg_cols .=> std .=> top10_std_cols)
+				best = hcat(best, best_10_std)
+				
+				push!(partial_results, best)
+			end
 
-        best_per_seed = reduce(vcat, partial_results)
-        best = combine(best_per_seed, 
-                    nrow => :psamples, 
-                    agg_cols .=> mean .=> agg_cols, 
-                    top10_std_cols .=> mean .=> top10_std_cols,
-                    agg_cols .=> std) 
-        
-        best[:dataset] = dkey.dataset
-        best[:modelname] = mkey.modelname
-    
-        push!(results, best)
-    end
-end
-vcat(results...)
+			best_per_seed = reduce(vcat, partial_results)
+			best = combine(best_per_seed, 
+						nrow => :psamples, 
+						agg_cols .=> mean .=> agg_cols, 
+						top10_std_cols .=> mean .=> top10_std_cols,
+						agg_cols .=> std) 
+			
+			best[:dataset] = dkey.dataset
+			best[:modelname] = mkey.modelname
+		
+			push!(results, best)
+		end
+	end
+	vcat(results...)
 end
