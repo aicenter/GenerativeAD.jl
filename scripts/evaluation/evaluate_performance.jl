@@ -9,7 +9,7 @@ using DataFrames
 using PrettyTables
 using PrettyTables.Crayons
 
-using GenerativeAD.Evaluation: _prefix_symbol, PAT_METRICS, aggregate_stats
+using GenerativeAD.Evaluation: _prefix_symbol, PAT_METRICS, aggregate_stats_mean_max
 using GenerativeAD.Evaluation: rank_table, print_rank_table
 
 s = ArgParseSettings()
@@ -54,12 +54,12 @@ function main(args)
 		ranks = []
 		if args["rank-metric"] != ""
 			for criterion in _prefix_symbol.("val", PAT_METRICS)
-				df_agg = aggregate_stats(df, criterion)
+				df_agg = aggregate_stats_mean_max(df, criterion)
 				push!(ranks, rank_table(df_agg, args["rank-metric"])[end:end, :])
 			end
 		else # pat/pat scenario if no rank-metric is provided
 			for (criterion, metric) in zip(_prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
-				df_agg = aggregate_stats(df, criterion)
+				df_agg = aggregate_stats_mean_max(df, criterion)
 				push!(ranks, rank_table(df_agg, metric)[end:end, :])
 			end
 		end
@@ -94,7 +94,7 @@ function main(args)
 				)
 		end
 	else
-		df_agg = aggregate_stats(df, Symbol(args["criterion-metric"]))
+		df_agg = aggregate_stats_mean_max(df, Symbol(args["criterion-metric"]))
 		rt = rank_table(df_agg, args["rank-metric"])
 
 		@info "Best models chosen by $(args["criterion-metric"])"
