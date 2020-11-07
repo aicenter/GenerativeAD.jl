@@ -103,7 +103,9 @@ function compute_stats(f::String)
 end
 
 """
-	aggregate_stats(df::DataFrame, criterion_col=:val_auc; undersample=Dict("ocsvm" => 100))
+	aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc; 
+								min_samples=("anomaly_class" in names(df)) ? 10 : 3, 
+								downsample=Dict())
 
 Agregates eval metrics by seed/anomaly class over a given hyperparameter and then chooses best
 model based on `criterion_col`. The output is a DataFrame of maximum #datasets*#models rows with
@@ -121,9 +123,9 @@ how many samples should be taken into acount. These are selected randomly with f
 Optional arg `min_samples` specifies how many seed/anomaly_class combinations should be present
 in order for the hyperparameter's results be considered statistically significant.
 """
-function aggregate_stats(df::DataFrame, criterion_col=:val_auc; 
-							min_samples=("anomaly_class" in names(df)) ? 30 : 3, 
-							downsample=Dict("ocsvm" => 100))
+function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc; 
+							min_samples=("anomaly_class" in names(df)) ? 10 : 3, 
+							downsample=Dict())
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 
@@ -140,7 +142,6 @@ function aggregate_stats(df::DataFrame, criterion_col=:val_auc;
 			Random.seed!()
 			
 			# filter only those hyperparameter that have sufficient number of samples
-			# with images at least 3*10 otherwise 3
 			mg_suff = reduce(vcat, [g for g in pg if nrow(g) >= min_samples])
 			
 			# for some methods and threshold the data frame is empty
@@ -175,27 +176,23 @@ end
 
 
 """
-aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; undersample=Dict("ocsvm" => 100))
+aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; 
+							downsample=Dict())
 
 Chooses the best hyperparameters for each seed/anomaly_class combination by `criterion_col`
 and then aggregates the metrics over seed/anomaly_class to get the final results. The output 
 is a DataFrame of maximum #datasets*#models rows with
 columns of different types
-- identifiers - `dataset`, `modelname`, `phash`, `parameters`
+- identifiers - `dataset`, `modelname`
 - averaged metrics - both from test and validation data such as `tst_auc`, `val_pat_10`, etc.
-- std of best hyperparameter computed for each metric over different seeds, suffixed `_std`
-- std of best 10 hyperparameters computed over averaged metrics, suffixed `_top_10_std`
-- samples involved in the aggregation, 
-+ `psamples` - number of runs of the best hyperparameter
-+ `dsamples` - number of sampled hyperparameters
-+ `dsamples_valid` - number of sampled hyperparameters with enough runs
+- std of best hyperparameters computed for each metric over different seeds, suffixed `_std`
+- std of best 10 hyperparameters in each seed then averaged over seeds, suffixed `_top_10_std`
 When nonempty `downsample` dictionary is specified, the entries of`("model" => #samples)`, specify
 how many samples should be taken into acount. These are selected randomly with fixed seed.
-TODO: Optional arg `min_samples` specifies how many seed/anomaly_class combinations should be present
-in order for the hyperparameter's results be considered statistically significant.
+As oposed to mean-max aggregation the output does not contain 
 """
 function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; 
-                        min_samples=("anomaly_class" in names(df)) ? 30 : 3)
+									downsample=Dict())
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 	top10_std_cols = _prefix_symbol.(agg_cols, "top_10_std")
@@ -206,17 +203,21 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc;
 	for (dkey, dg) in pairs(groupby(df, :dataset))
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
 			partial_results = []
+
+			# iterate over seed-anomaly_class groups
 			for (skey, sg) in pairs(groupby(mg, agg_keys))
-				# @info "$(dkey.dataset) - $(mkey.modelname) - $(skey)"
 				n = nrow(sg)
+				# downsample the number of hyperparameter if needed
 				Random.seed!(42)
 				ssg = (mkey.modelname in keys(downsample)) && (downsample[mkey.modelname] < n) ? 
 						sg[randperm(n)[1:downsample[mkey.modelname]], :] : sg
 				Random.seed!()
 				
 				sssg = sort(ssg, order(criterion_col, rev=true))
+				# best hyperparameter after sorting by criterion_col
 				best = first(sssg, 1)
 				
+				# add std of top 10 models metrics
 				best_10_std = combine(first(sssg, 10), agg_cols .=> std .=> top10_std_cols)
 				best = hcat(best, best_10_std)
 				
@@ -224,12 +225,13 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc;
 			end
 
 			best_per_seed = reduce(vcat, partial_results)
-			best = combine(best_per_seed, 
-						nrow => :psamples, 
+			# average over seed-anomaly_class groups
+			best = combine(best_per_seed,  
 						agg_cols .=> mean .=> agg_cols, 
 						top10_std_cols .=> mean .=> top10_std_cols,
 						agg_cols .=> std) 
 			
+			# add grouping keys
 			best[:dataset] = dkey.dataset
 			best[:modelname] = mkey.modelname
 		
