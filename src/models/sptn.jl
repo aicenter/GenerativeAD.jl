@@ -11,7 +11,7 @@ end
 
 Flux.@functor SPTN
 
-function SPTN(;idim::Int=1, zdim::Int=1, activation=identity, ncomp=4, nlayers::Int=2, 
+function SPTN(;idim::Int=1, activation=identity, ncomp=4, nlayers::Int=2, 
 							init_seed=nothing, unitary=:butterfly, sharing=:dense, firstdense=false, kwargs...)
 	# if seed is given, set it
 	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
@@ -97,7 +97,7 @@ function StatsBase.fit!(model::SPTN, data::Tuple; max_train_time=82800,
 
 		if time() - start_time > max_train_time # stop early if time is running out
 			model = deepcopy(tr_model)
-			@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
+			@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours due to time constraints."
 			break
 		end
 
