@@ -64,7 +64,7 @@ function rank_table(df::DataFrame, metric_col=:tst_auc)
 		rs .+= StatsBase.competerank(mask_nan_max.(Vector(row[2:end])), rev = true)
 	end
 	rs ./= (size(rt, 1) - 2)
-	rs = round.(rs, digits=2)
+	rs = round.(rs, digits=1)
 	push!(rt, ["RANK", rs...])
 
 	rt
@@ -92,13 +92,16 @@ function print_rank_table(io::IO, rt::DataFrame; backend=:txt)
 	# highlight minimum rank in last row
 	f_hl_best_rank = (data, i, j) -> i == size(rt, 1) && (data[i,j] == minimum(rt[i, 2:end]))	
 
+	# format metrics to 2 digits and rank to 1
+	f_float = (v, i, j) -> (i == size(rt, 1)) ? ft_printf("%.1f")(v,i,j) : ft_printf("%.2f")(v,i,j)
+
 	if backend == :html
 		hl_best = HTMLHighlighter(f_hl_best, HTMLDecoration(color = "blue", font_weight = "bold"))
 		hl_best_rank = HTMLHighlighter(f_hl_best_rank, HTMLDecoration(color = "red", font_weight = "bold"))
 
 		pretty_table(
 			io,	rt,
-			formatters=ft_round(2),
+			formatters=f_float,
 			highlighters=(hl_best, hl_best_rank),
 			nosubheader=true,
 			tf=html_minimalist
@@ -110,7 +113,7 @@ function print_rank_table(io::IO, rt::DataFrame; backend=:txt)
 		pretty_table(
 			io,	rt, 
 			backend=:latex,
-			formatters=ft_round(2),
+			formatters=f_float,
 			highlighters=(hl_best, hl_best_rank),
 			hlines=hlines
 		)
@@ -120,7 +123,7 @@ function print_rank_table(io::IO, rt::DataFrame; backend=:txt)
 
 		pretty_table(
 			io, rt,
-			formatters=ft_round(2),
+			formatters=f_float,
 			highlighters=(hl_best, hl_best_rank),
 			body_hlines=hlines
 		)
