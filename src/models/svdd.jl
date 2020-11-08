@@ -112,7 +112,8 @@ function conv_ae_constructor(
 	# decoder 
 	decoder = Chain(
 		conv_decoder(idim, zdim, reverse(kernelsizes), reverse(channels), reverse(scalings),
-			activation=activation, vec_output=false, vec_output_dim=nothing, batchnorm=batchnorm)...
+			activation=activation, vec_output=false, vec_output_dim=nothing, batchnorm=batchnorm)...,
+			x->sigmoid.(x) # our dataset images are scaled from 0-1
 	)
 	# reset seed
 	(init_seed !== nothing) ? Random.seed!() : nothing
