@@ -86,7 +86,7 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
                         criterion=criterion, 
                         size=select_top, 
                         method=method,
-                        ignore_nan=true)
+                        ignore_nan=ignore)
                     eagg[:parameters] = parameters
 
                     savef = joinpath(out_directory, savename("ensemble", parameters, "bson"))
