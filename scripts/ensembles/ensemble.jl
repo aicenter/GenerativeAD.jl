@@ -40,7 +40,7 @@ s = ArgParseSettings()
 end
 
 function ensemble_experiment(eval_directory, exp_directory, out_directory)
-    eval_files = readdir(eval_directory, join=true)
+    eval_files = isdir(eval_directory) ? readdir(eval_directory, join=true) : String[]
     if length(eval_files) == 0
         @warn "There are no valid files in $eval_directory"
         return
@@ -51,9 +51,8 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
 
     # select best based on criterion
     for criterion in [:val_auc, :val_tpr_5, :val_pat_10]
+        best = sortperm(df, order(criterion, rev=true))
         for select_top in [5, 10] # 0 ... automatic ensemble size
-            best = sortperm(df, order(criterion, rev=true))
-            
             if (select_top > 0) && (length(best) > select_top)
                 top = best[1:select_top]
             elseif (length(best) <= select_top)
@@ -65,20 +64,35 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
 
             # get rid of the "eval_" prefix
             exp_files = replace.(basename.(eval_files[top]), "eval_" => "")
+            
             # this assumes that evaluation and experiments files are in sync
             # more precisely for every evaluation file there exist it's exp.
-            results = load.(joinpath.(exp_directory, exp_files))
+            files_to_load = joinpath.(exp_directory, exp_files)
+            results = if all(isfile.(files_to_load))
+                load.(files_to_load)
+            else
+                @warn "Discrepancy between $exp_directory and $eval_directory"
+                return
+            end
 
             scores, ensemble = _init_ensemble(results)
             ensemble[:ensemble_files] = exp_files
             for method in [:max, :mean]
-                eagg = aggregate_score!(deepcopy(ensemble), scores, method=method)
-                parameters = (modelname=ensemble[:modelname], criterion=criterion, size=select_top, method=method)
-                eagg[:parameters] = parameters
+                for ignore in [true, false]
+                    eagg = aggregate_score!(deepcopy(ensemble), scores;
+                                        method=method, ignore_nan=ignore)
+                    parameters = (
+                        modelname=ensemble[:modelname], 
+                        criterion=criterion, 
+                        size=select_top, 
+                        method=method,
+                        ignore_nan=true)
+                    eagg[:parameters] = parameters
 
-                savef = joinpath(out_directory, savename("ensemble", parameters, "bson"))
-                @info "Saving ensemble experiment to $savef"
-                tagsave(savef, eagg, safe = true)
+                    savef = joinpath(out_directory, savename("ensemble", parameters, "bson"))
+                    @info "Saving ensemble experiment to $savef"
+                    tagsave(savef, eagg, safe = true)
+                end
             end            
         end
     end
@@ -113,18 +127,19 @@ function _init_ensemble(results)
 end
 
 function aggregate_score!(ensemble, scores, weights=nothing; 
-                            method=:max)
+                            method=:max, ignore_nan=true)
     for (k, s) in scores
         if method == :max
-            ensemble[k] = maximum(s, dims=2)[:]
+            mask_nan_max = (x) -> (isnan(x) ? -Inf : x)
+            ensemble[k] = ignore_nan ? 
+                        maximum(mask_nan_max, s, dims=2)[:] : 
+                        maximum(s, dims=2)[:]
         elseif method == :mean
-            ensemble[k] = mean(s, dims=2)[:]
+            ensemble[k] = ignore_nan ? 
+                        [mean(filter(x -> !isnan(x), s[i,:])) for i in 1:size(s, 1)] :
+                        mean(s, dims=2)[:]
         elseif method == :wsum
-            # placeholder
-            ss = size(s, 2)
-            weights = ones(eltype(s), (1, ss))./ss
-            # placeholder
-            ensemble[k] = sum(weights .* s, dims=2)[:]
+            ensemble[k] = sum(weights' .* s, dims=2)[:]
         else
             error("Unsupported ensemble aggregation.")
         end
