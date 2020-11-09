@@ -36,53 +36,11 @@ function basic_tables_tabular(df; suffix="")
     end
 end
 
-f = datadir("evaluation/tabular_eval.bson")
-df = load(f)[:df];
-basic_tables_tabular(copy(df))
+df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
+basic_tables_tabular(copy(df_tabular))
 
-f = datadir("evaluation_ensembles/tabular_eval.bson")
-df = load(f)[:df];
-basic_tables_tabular(copy(df), suffix="_ensembles")
-
-
-function basic_tables_images(df; suffix="")
-    dff = filter(x -> x.seed == 1, df)
-    apply_aliases!(dff, col="modelname", d=MODEL_MERGE)
-
-    for metric in [:auc, :tpr_5]
-        for (name, agg) in zip(
-                    ["maxmean", "meanmax"], 
-                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
-            val_metric = _prefix_symbol("val", metric)
-            tst_metric = _prefix_symbol("tst", metric)    
-
-            df_agg = agg(dff, val_metric)
-
-            df_agg["model_type"] = copy(df_agg["modelname"])
-            apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
-            apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
-            apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
-
-            sort!(df_agg, (:dataset, :model_type, :modelname))
-            rt = rank_table(df_agg, tst_metric)
-            rt[end-2, 1] = "\$\\sigma_1\$"
-            rt[end-1, 1] = "\$\\sigma_{10}\$"
-            rt[end, 1] = "rnk"
-
-            open("./paper/tables/images_$(metric)_$(metric)_$(name)$(suffix).tex", "w") do io
-                print_rank_table(io, rt; backend=:tex)
-            end
-        end
-    end
-end
-
-f = datadir("evaluation/images_eval.bson")
-df = load(f)[:df];
-basic_tables_images(copy(df))
-
-f = datadir("evaluation_ensembles/images_eval.bson")
-df = load(f)[:df];
-basic_tables_images(copy(df), suffix="_ensembles")
+df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
+basic_tables_tabular(copy(df_tabular_ens), suffix="_ensembles")
 
 
 import PGFPlots
@@ -128,13 +86,205 @@ function plot_knowledge_tabular(df; suffix="", format="pdf")
 end
 
 
-f = datadir("evaluation/tabular_eval.bson")
-df = load(f)[:df];
-plot_knowledge_tabular(copy(df); format="svg")
-plot_knowledge_tabular(copy(df); format="tex")
+plot_knowledge_tabular(copy(df_tabular); format="svg")
+plot_knowledge_tabular(copy(df_tabular); format="tex")
 
-f = datadir("evaluation_ensembles/tabular_eval.bson")
-df = load(f)[:df];
-plot_knowledge_tabular(copy(df), suffix="_ensembles", format="pdf")
-plot_knowledge_tabular(copy(df), suffix="_ensembles", format="tex")
+plot_knowledge_tabular(copy(df_tabular_ens), suffix="_ensembles", format="pdf")
+plot_knowledge_tabular(copy(df_tabular_ens), suffix="_ensembles", format="tex")
 
+
+using PrettyTables
+function rank_comparison_agg(df, tm=("AUC", :auc); suffix="")
+    mn, metric = tm
+    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
+
+    ranks = []
+    for (name, agg) in zip(
+                ["maxmean", "meanmax"], 
+                [aggregate_stats_max_mean, aggregate_stats_mean_max])
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric)    
+
+        df_agg = agg(df, val_metric)
+
+        df_agg["model_type"] = copy(df_agg["modelname"])
+        apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+        apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
+        apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
+
+        sort!(df_agg, (:dataset, :model_type, :modelname))
+        
+        rt = rank_table(df_agg, tst_metric)
+        models = names(rt)[2:end]
+        rt["agg"] = name
+
+        select!(rt, vcat(["agg"], models))
+        push!(ranks, rt[end:end,:])
+    end
+    df_ranks = reduce(vcat, ranks)
+
+    hl_best_rank = LatexHighlighter(
+                    (data, i, j) -> (data[i,j] == minimum(df_ranks[i, 2:end])),
+                    ["color{red}","textbf"])
+        
+    filename = "./paper/tables/tabular_aggcomp_$(metric)$(suffix).tex"
+    open(filename, "w") do io
+        pretty_table(
+            io, df_ranks,
+            backend=:latex,
+            formatters=ft_printf("%.1f"),
+            highlighters=(hl_best_rank),
+            nosubheader=true
+        )
+    end
+end
+
+
+rank_comparison_agg(copy(df_tabular), ("AUC", :auc))
+rank_comparison_agg(copy(df_tabular), ("TPR@5", :tpr_5))
+
+function rank_comparison_metric(df, ta=("maxmean", aggregate_stats_max_mean); suffix="")
+    name, agg = ta
+    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
+
+    ranks = []
+    for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric)    
+
+        df_agg = agg(df, val_metric)
+
+        df_agg["model_type"] = copy(df_agg["modelname"])
+        apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+        apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
+        apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
+
+        sort!(df_agg, (:dataset, :model_type, :modelname))
+        
+        rt = rank_table(df_agg, tst_metric)
+        models = names(rt)[2:end]
+        rt["crit"] = mn
+
+        select!(rt, vcat(["crit"], models))
+        push!(ranks, rt[end:end,:])
+    end
+    df_ranks = reduce(vcat, ranks)
+
+    hl_best_rank = LatexHighlighter(
+                    (data, i, j) -> (data[i,j] == minimum(df_ranks[i, 2:end])),
+                    ["color{red}","textbf"])
+        
+    filename = "./paper/tables/tabular_metriccomp_$(name)$(suffix).tex"
+    open(filename, "w") do io
+        pretty_table(
+            io, df_ranks,
+            backend=:latex,
+            formatters=ft_printf("%.1f"),
+            highlighters=(hl_best_rank),
+            nosubheader=true
+        )
+    end
+end
+
+
+rank_comparison_metric(copy(df_tabular), ("maxmean", aggregate_stats_max_mean))
+rank_comparison_metric(copy(df_tabular), ("meanmax", aggregate_stats_mean_max))
+
+
+using Statistics
+function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc))
+    mn, metric = tm
+ 
+    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
+    apply_aliases!(df_ensemble, col="modelname", d=MODEL_MERGE)
+
+    models = unique(df_ensemble.modelname)
+    filter!(x -> x.modelname in models, df)
+
+    val_metric = _prefix_symbol("val", metric)
+    tst_metric = _prefix_symbol("tst", metric)
+
+    function _rank(d)
+        df_agg = aggregate_stats_max_mean(d, val_metric)
+        df_agg["model_type"] = copy(df_agg["modelname"])
+        apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+        apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
+        apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
+        sort!(df_agg, (:dataset, :model_type, :modelname))
+        rank_table(df_agg, tst_metric)
+    end
+        
+    rt = _rank(df)
+    rt[end, 1] = "baseline"
+    rt_ensemble = _rank(df_ensemble)
+    rt_ensemble[end, 1] = "ensembles"
+
+
+    df_ranks = vcat(rt[end:end, :], rt_ensemble[end:end, :])
+    dif = mean(Matrix(rt[1:end-3, 2:end]) - Matrix(rt_ensemble[1:end-3, 2:end]), dims=1)
+    push!(df_ranks, ["avg. change", dif...])
+    
+    hl_best_rank = LatexHighlighter(
+                    (data, i, j) -> (i < 3) && (data[i,j] == minimum(df_ranks[i, 2:end])),
+                    ["color{red}","textbf"])
+
+    hl_best_dif = LatexHighlighter(
+                    (data, i, j) -> (i == 3) && (data[i,j] == maximum(df_ranks[i, 2:end])),
+                    ["color{blue}","textbf"])
+        
+    f_float = (v, i, j) -> (i == 3) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
+
+    filename = "./paper/tables/tabular_ensemblecomp_$(metric).tex"
+    open(filename, "w") do io
+        pretty_table(
+            io, df_ranks,
+            backend=:latex,
+            formatters=ft_printf("%.1f"),
+            highlighters=(hl_best_rank, hl_best_dif),
+            nosubheader=true
+        )
+    end
+end
+
+
+comparison_tabular_ensemble(df_tabular, df_tabular_ens, ("AUC", :auc))
+comparison_tabular_ensemble(df_tabular, df_tabular_ens, ("TPR@5", :tpr_5))
+
+
+# and almost the same for images
+function basic_tables_images(df; suffix="")
+    dff = filter(x -> x.seed == 1, df)
+    apply_aliases!(dff, col="modelname", d=MODEL_MERGE)
+
+    for metric in [:auc, :tpr_5]
+        for (name, agg) in zip(
+                    ["maxmean", "meanmax"], 
+                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
+            val_metric = _prefix_symbol("val", metric)
+            tst_metric = _prefix_symbol("tst", metric)    
+
+            df_agg = agg(dff, val_metric)
+
+            df_agg["model_type"] = copy(df_agg["modelname"])
+            apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+            apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
+            apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
+
+            sort!(df_agg, (:dataset, :model_type, :modelname))
+            rt = rank_table(df_agg, tst_metric)
+            rt[end-2, 1] = "\$\\sigma_1\$"
+            rt[end-1, 1] = "\$\\sigma_{10}\$"
+            rt[end, 1] = "rnk"
+
+            open("./paper/tables/images_$(metric)_$(metric)_$(name)$(suffix).tex", "w") do io
+                print_rank_table(io, rt; backend=:tex)
+            end
+        end
+    end
+end
+
+df_images = load(datadir("evaluation/images_eval.bson"))[:df];
+basic_tables_images(copy(df_images))
+
+df_images_ens = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
+basic_tables_images(copy(df_images_ens), suffix="_ensembles")
