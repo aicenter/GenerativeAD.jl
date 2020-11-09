@@ -99,7 +99,7 @@ function fit(data, parameters)
 	# fit train data
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data, gloss, dloss; 
-			max_train_time=23*3600/max_seed/anomaly_classes, patience=200, 
+			max_train_time=23*3600/max_seed/anomaly_classes/4, patience=200, 
 			check_interval=10,
 			usegpu=true, parameters...)
 	catch e

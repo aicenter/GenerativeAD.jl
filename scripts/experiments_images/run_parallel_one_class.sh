@@ -1,7 +1,7 @@
 #!/bin/bash
 # This runs parallel experiments over all datasets, but just for a single anomaly class.
 # USAGE EXAMPLE
-# ./run_parallel_one_class.sh knn 10 1 10 dataset_svhn.txt --seed=1 --anomaly_class=1 
+# ./run_parallel_one_class.sh knn 10 1 10 dataset_svhn.txt 1 
 # Run from this folder only.
 MODEL=$1 		# which model to run
 NUM_SAMPLES=$2	# how many repetitions
