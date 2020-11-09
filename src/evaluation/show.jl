@@ -115,6 +115,7 @@ function print_rank_table(io::IO, rt::DataFrame; backend=:txt)
 			backend=:latex,
 			formatters=f_float,
 			highlighters=(hl_best, hl_best_rank),
+			nosubheader=true,
 			hlines=hlines
 		)
 	else
@@ -125,6 +126,7 @@ function print_rank_table(io::IO, rt::DataFrame; backend=:txt)
 			io, rt,
 			formatters=f_float,
 			highlighters=(hl_best, hl_best_rank),
+			nosubheader=true,
 			body_hlines=hlines
 		)
 	end
