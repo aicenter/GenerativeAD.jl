@@ -30,7 +30,8 @@ const MODEL_TYPE = Dict{String, String}(
 	"wae_vamp" 		=> "autoencoders",
 	"vae_simple"	=> "autoencoders",
 	"vae_ocsvm" 	=> "two-stage",
-	"vae_knn"	 	=> "two-stage"
+	"vae_knn"	 	=> "two-stage",
+	"DeepSVDD" 		=> "two-stage"
 )
 
 const MODEL_ALIAS = Dict{String, String}(
@@ -44,7 +45,7 @@ const MODEL_ALIAS = Dict{String, String}(
 	"hbos" 				=> "hbos",
 	"if" 				=> "if",
 	"knn" 				=> "knn",
-	"loda" 				=> "load",
+	"loda" 				=> "loda",
 	"lof" 				=> "lof", 
 	"ocsvm" 			=> "osvm",
 	"pidforest" 		=> "pidf", 
@@ -59,7 +60,8 @@ const MODEL_ALIAS = Dict{String, String}(
 	"Conv-SkipGANomaly" => "skip",
 	"vae_simple" 		=> "vaes",
 	"vae_ocsvm" 		=> "vaeo",
-	"vae_knn"			=> "vaek"
+	"vae_knn"			=> "vaek",
+	"DeepSVDD"			=> "dsvd"
 )
 
 const DATASET_ALIAS = Dict{String, String}(
