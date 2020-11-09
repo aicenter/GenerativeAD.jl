@@ -26,7 +26,7 @@ include("tabular_flows.jl")
 include("vae.jl")
 include("aae.jl")
 include("adVAE.jl")
-include("svdd.jl")
+include("DeepSVDD.jl")
 include("gan.jl")
 include("sptn.jl")
 
