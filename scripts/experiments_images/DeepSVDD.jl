@@ -27,7 +27,7 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes = parsed_args
 
-modelname ="svdd"
+modelname ="DeepSVDD"
 
 function sample_params()
 	# first sample the number of layers
@@ -39,21 +39,25 @@ function sample_params()
 	par_vec = (
 		2 .^(3:8), 
 		10f0 .^(-4:-3), 
-		10f0 .^(-4:-3), 
-		2 .^ (5:7), 
+		10f0 .^(-4:-3),
+		[true, false], 
+		2 .^ (6:7), 
 		["relu", "swish", "tanh"], 
 		["soft-boundary", "one-class"],
-		[0.01, 0.1, 0.5, 0.99], # paper 0.1
+		[0.01f0, 0.1f0, 0.5f0, 0.99f0], # paper 0.1
+		[1e-6], # from paper
 		1:Int(1e8)
 	)
 	argnames = (
 		:zdim, 
 		:lr_ae, 
 		:lr_svdd, 
+		:batchnorm,
 		:batch_size, 
 		:activation, 
 		:objective,
 		:nu,
+		:decay,
 		:init_seed
 	)
 	parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
@@ -64,23 +68,22 @@ end
 
 function fit(data, parameters)
 	# define models (Generator, Discriminator)
-	parameters = merge(
+	all_parameters = merge(
 		parameters, 
 		(
 			idim=size(data[1][1])[1:3], 
-			batchnorm=true,
-			decay=1e-6, # from paper
 			iters=5000, 
 			check_every=30, 
+			ae_check_every = 200,
 			patience=10, 
 			ae_iters=10000
 		)
 	)
-	svdd = GenerativeAD.Models.conv_ae_constructor(;parameters...) |> gpu
+	svdd = GenerativeAD.Models.conv_ae_constructor(;all_parameters...) |> gpu
 
 	# define optimiser
 	try
-		global info, fit_t, _, _, _ = @timed fit!(svdd, data, parameters)
+		global info, fit_t, _, _, _ = @timed fit!(svdd, data, all_parameters)
 	catch e
 		println("Error caught => $(e).")
 		return (fit_t = NaN, model = nothing, history = nothing, n_parameters = NaN), []
@@ -109,11 +112,17 @@ while try_counter < max_tries
 	for seed in 1:max_seed
 		for i in 1:anomaly_classes
 			savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
+			mkpath(savepath)
 
 			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
 
+			@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
+			@info "Train/validation/test splits: $(size(data[1][1], 4)) | $(size(data[2][1], 4)) | $(size(data[3][1], 4))"
+			@info "Number of features: $(size(data[1][1])[1:3])"
+
 			# here, check if a model with the same parameters was already tested
 			if GenerativeAD.check_params(savepath, parameters)
+				# fit model
 				training_info, results = fit(data, parameters)
 				# saving model separately
 				if training_info.model !== nothing

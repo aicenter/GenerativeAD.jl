@@ -154,7 +154,7 @@ function fit_ae(svdd::DeepSVDD, optim, data, params)
 			(:ae_loss, loss_ae)
 			])
 
-		if mod(iter, params.check_every) == 0
+		if mod(iter, params.ae_check_every) == 0
 			total_val_loss = 0
 			Flux.testmode!(svdd)
 			for X_val in val_loader
