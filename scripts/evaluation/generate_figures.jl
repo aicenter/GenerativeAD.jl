@@ -194,7 +194,7 @@ rank_comparison_metric(copy(df_tabular), ("maxmean", aggregate_stats_max_mean))
 rank_comparison_metric(copy(df_tabular), ("meanmax", aggregate_stats_mean_max))
 
 
-function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc))
+function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="")
     mn, metric = tm
  
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
@@ -236,7 +236,7 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc))
         
     f_float = (v, i, j) -> (j > 1) && (i == 3) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
 
-    filename = "./paper/tables/tabular_ensemblecomp_$(metric).tex"
+    filename = "./paper/tables/tabular_ensemblecomp_$(metric)$(suffix).tex"
     open(filename, "w") do io
         pretty_table(
             io, df_ranks,
@@ -252,7 +252,7 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc))
     rt[1:end-3, 2:end] .= dif
     rt[end-2, 1] = "σ"
     rt[end-1, 1] = "σ_1"
-    filename = "./paper/tables/tabular_ensemblecomp_$(metric)_detail.html"
+    filename = "./paper/tables/tabular_ensemblecomp_$(metric)_detail$(suffix).html"
     open(filename, "w") do io
         print_rank_table(io, rt; backend=:html)
     end
@@ -263,8 +263,25 @@ end
 comparison_tabular_ensemble(df_tabular, df_tabular_ens, ("AUC", :auc))
 comparison_tabular_ensemble(df_tabular, df_tabular_ens, ("TPR@5", :tpr_5))
 
+# join baseline and ensembles, allows to dig into where they help
+# compare only those models for which ensembles are computed
+baseline = copy(df_tabular);
+models = unique(df_tabular_ens.modelname);
+ensembles = vcat(filter(x -> (x.modelname in models), df_tabular), df_tabular_ens);
+comparison_tabular_ensemble(
+    baseline, 
+    ensembles, ("AUC", :auc); 
+    suffix="_only_improve")
+comparison_tabular_ensemble(
+    baseline, 
+    ensembles, ("TPR@5", :tpr_5);
+    suffix="_only_improve")
+
 
 # and almost the same for images
+df_images = load(datadir("evaluation/images_eval.bson"))[:df];
+df_images_ens = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
+
 function basic_tables_images(df; suffix="")
     dff = filter(x -> x.seed == 1, df)
     apply_aliases!(dff, col="modelname", d=MODEL_MERGE)
@@ -296,14 +313,11 @@ function basic_tables_images(df; suffix="")
     end
 end
 
-df_images = load(datadir("evaluation/images_eval.bson"))[:df];
 basic_tables_images(copy(df_images))
-
-df_images_ens = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
 basic_tables_images(copy(df_images_ens), suffix="_ensembles")
 
 
-function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc))
+function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="")
     mn, metric = tm
  
     filter!(x -> (x.seed == 1), df)
@@ -348,12 +362,12 @@ function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc))
         
     f_float = (v, i, j) -> (i == 3) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
 
-    filename = "./paper/tables/images_ensemblecomp_$(metric).tex"
+    filename = "./paper/tables/images_ensemblecomp_$(metric)$(suffix).tex"
     open(filename, "w") do io
         pretty_table(
             io, df_ranks,
             backend=:latex,
-            formatters=ft_printf("%.1f"),
+            formatters=f_float,
             highlighters=(hl_best_rank, hl_best_dif),
             nosubheader=true,
             tf=latex_booktabs
@@ -364,7 +378,7 @@ function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc))
     rt[1:end-3, 2:end] .= dif
     rt[end-2, 1] = "σ"
     rt[end-1, 1] = "σ_1"
-    filename = "./paper/tables/images_ensemblecomp_$(metric)_detail.html"
+    filename = "./paper/tables/images_ensemblecomp_$(metric)_detail$(suffix).html"
     open(filename, "w") do io
         print_rank_table(io, rt; backend=:html)
     end
@@ -373,3 +387,17 @@ end
 
 comparison_images_ensemble(df_images, df_images_ens, ("AUC", :auc))
 comparison_images_ensemble(df_images, df_images_ens, ("TPR@5", :tpr_5))
+
+# join baseline and ensembles, allows to dig into where they help
+# compare only those models for which ensembles are computed
+baseline_img = copy(df_images);
+models_img = unique(df_images_ens.modelname);
+ensembles_img = vcat(filter(x -> (x.modelname in models), df_images), df_images_ens);
+comparison_images_ensemble(
+    baseline_img, 
+    ensembles_img, ("AUC", :auc); 
+    suffix="_only_improve")
+comparison_images_ensemble(
+    baseline_img, 
+    ensembles_img, ("TPR@5", :tpr_5);
+    suffix="_only_improve")
