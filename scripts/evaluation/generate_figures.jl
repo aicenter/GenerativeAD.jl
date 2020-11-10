@@ -222,7 +222,7 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc))
     rt_ensemble[end, 1] = "ensembles"
 
     df_ranks = vcat(rt[end:end, :], rt_ensemble[end:end, :])
-    dif = Matrix(rt[1:end-3, 2:end]) - Matrix(rt_ensemble[1:end-3, 2:end])
+    dif = Matrix(rt_ensemble[1:end-3, 2:end]) - Matrix(rt[1:end-3, 2:end])
     mean_dif = mean(dif, dims=1)
     push!(df_ranks, ["avg. change", mean_dif...])
 
@@ -251,8 +251,8 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc))
     ### shows better the difference
     rt[1:end-3, 2:end] .= dif
     rt[end-2, 1] = "σ"
-    rt[end-1, 1] = "σ_1\$"
-    filename = "./paper/tables/tabular_ensemblecomp_detail_$(metric).html"
+    rt[end-1, 1] = "σ_1"
+    filename = "./paper/tables/tabular_ensemblecomp_$(metric)_detail.html"
     open(filename, "w") do io
         print_rank_table(io, rt; backend=:html)
     end
@@ -334,8 +334,9 @@ function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc))
 
 
     df_ranks = vcat(rt[end:end, :], rt_ensemble[end:end, :])
-    dif = mean(Matrix(rt[1:end-3, 2:end]) - Matrix(rt_ensemble[1:end-3, 2:end]), dims=1)
-    push!(df_ranks, ["avg. change", dif...])
+    dif = Matrix(rt_ensemble[1:end-3, 2:end]) - Matrix(rt[1:end-3, 2:end])
+    mean_dif = mean(dif, dims=1)
+    push!(df_ranks, ["avg. change", mean_dif...])
     
     hl_best_rank = LatexHighlighter(
                     (data, i, j) -> (i < 3) && (data[i,j] == minimum(df_ranks[i, 2:end])),
@@ -358,6 +359,16 @@ function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc))
             tf=latex_booktabs
         )
     end
+
+    ### shows better the difference
+    rt[1:end-3, 2:end] .= dif
+    rt[end-2, 1] = "σ"
+    rt[end-1, 1] = "σ_1"
+    filename = "./paper/tables/images_ensemblecomp_$(metric)_detail.html"
+    open(filename, "w") do io
+        print_rank_table(io, rt; backend=:html)
+    end
+    ###
 end
 
 comparison_images_ensemble(df_images, df_images_ens, ("AUC", :auc))
