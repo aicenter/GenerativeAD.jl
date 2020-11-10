@@ -4,6 +4,18 @@ using StatsBase
 using PrettyTables
 using PrettyTables.Crayons
 
+const latex_booktabs = LatexTableFormat(
+    top_line       = "\\toprule",
+    header_line    = "\\midrule",
+    mid_line       = "\\midrule",
+    bottom_line    = "\\bottomrule",
+    left_vline     = "|",
+    mid_vline      = "|",
+    right_vline    = "|",
+    header_envs    = ["textbf"],
+    subheader_envs = ["texttt"]
+)
+
 """
 	print_table(df::DataFrame, metric_col=:tst_auc)
 
@@ -116,7 +128,8 @@ function print_rank_table(io::IO, rt::DataFrame; backend=:txt)
 			formatters=f_float,
 			highlighters=(hl_best, hl_best_rank),
 			nosubheader=true,
-			hlines=hlines
+			hlines=hlines,
+			tf=latex_booktabs
 		)
 	else
 		hl_best = Highlighter(f=f_hl_best, crayon=crayon"yellow bold")
