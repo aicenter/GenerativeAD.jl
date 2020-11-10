@@ -1,9 +1,14 @@
 using DrWatson
 using FileIO, BSON, DataFrames
+using PrettyTables
+using Statistics
 
 using GenerativeAD.Evaluation: MODEL_MERGE, MODEL_ALIAS, DATASET_ALIAS, MODEL_TYPE, apply_aliases!
 using GenerativeAD.Evaluation: _prefix_symbol, PAT_METRICS, aggregate_stats_mean_max, aggregate_stats_max_mean
-using GenerativeAD.Evaluation: rank_table, print_rank_table
+using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs
+
+df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
+df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
 
 function basic_tables_tabular(df; suffix="")
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
@@ -36,10 +41,7 @@ function basic_tables_tabular(df; suffix="")
     end
 end
 
-df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
 basic_tables_tabular(copy(df_tabular))
-
-df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
 basic_tables_tabular(copy(df_tabular_ens), suffix="_ensembles")
 
 
@@ -86,14 +88,13 @@ function plot_knowledge_tabular(df; suffix="", format="pdf")
 end
 
 
-plot_knowledge_tabular(copy(df_tabular); format="svg")
+# plot_knowledge_tabular(copy(df_tabular); format="svg")
 plot_knowledge_tabular(copy(df_tabular); format="tex")
 
-plot_knowledge_tabular(copy(df_tabular_ens), suffix="_ensembles", format="pdf")
+# plot_knowledge_tabular(copy(df_tabular_ens), suffix="_ensembles", format="pdf")
 plot_knowledge_tabular(copy(df_tabular_ens), suffix="_ensembles", format="tex")
 
 
-using PrettyTables
 function rank_comparison_agg(df, tm=("AUC", :auc); suffix="")
     mn, metric = tm
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
@@ -134,7 +135,8 @@ function rank_comparison_agg(df, tm=("AUC", :auc); suffix="")
             backend=:latex,
             formatters=ft_printf("%.1f"),
             highlighters=(hl_best_rank),
-            nosubheader=true
+            nosubheader=true,
+            tf=latex_booktabs
         )
     end
 end
@@ -181,7 +183,8 @@ function rank_comparison_metric(df, ta=("maxmean", aggregate_stats_max_mean); su
             backend=:latex,
             formatters=ft_printf("%.1f"),
             highlighters=(hl_best_rank),
-            nosubheader=true
+            nosubheader=true,
+            tf=latex_booktabs
         )
     end
 end
@@ -191,7 +194,6 @@ rank_comparison_metric(copy(df_tabular), ("maxmean", aggregate_stats_max_mean))
 rank_comparison_metric(copy(df_tabular), ("meanmax", aggregate_stats_mean_max))
 
 
-using Statistics
 function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc))
     mn, metric = tm
  
@@ -219,11 +221,11 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc))
     rt_ensemble = _rank(df_ensemble)
     rt_ensemble[end, 1] = "ensembles"
 
-
     df_ranks = vcat(rt[end:end, :], rt_ensemble[end:end, :])
-    dif = mean(Matrix(rt[1:end-3, 2:end]) - Matrix(rt_ensemble[1:end-3, 2:end]), dims=1)
-    push!(df_ranks, ["avg. change", dif...])
-    
+    dif = Matrix(rt[1:end-3, 2:end]) - Matrix(rt_ensemble[1:end-3, 2:end])
+    mean_dif = mean(dif, dims=1)
+    push!(df_ranks, ["avg. change", mean_dif...])
+
     hl_best_rank = LatexHighlighter(
                     (data, i, j) -> (i < 3) && (data[i,j] == minimum(df_ranks[i, 2:end])),
                     ["color{red}","textbf"])
@@ -232,18 +234,29 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc))
                     (data, i, j) -> (i == 3) && (data[i,j] == maximum(df_ranks[i, 2:end])),
                     ["color{blue}","textbf"])
         
-    f_float = (v, i, j) -> (i == 3) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
+    f_float = (v, i, j) -> (j > 1) && (i == 3) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
 
     filename = "./paper/tables/tabular_ensemblecomp_$(metric).tex"
     open(filename, "w") do io
         pretty_table(
             io, df_ranks,
             backend=:latex,
-            formatters=ft_printf("%.1f"),
+            formatters=f_float,
             highlighters=(hl_best_rank, hl_best_dif),
-            nosubheader=true
+            nosubheader=true,
+            tf=latex_booktabs
         )
     end
+
+    ### shows better the difference
+    rt[1:end-3, 2:end] .= dif
+    rt[end-2, 1] = "σ"
+    rt[end-1, 1] = "σ_1\$"
+    filename = "./paper/tables/tabular_ensemblecomp_detail_$(metric).html"
+    open(filename, "w") do io
+        print_rank_table(io, rt; backend=:html)
+    end
+    ###
 end
 
 
@@ -288,3 +301,64 @@ basic_tables_images(copy(df_images))
 
 df_images_ens = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
 basic_tables_images(copy(df_images_ens), suffix="_ensembles")
+
+
+function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc))
+    mn, metric = tm
+ 
+    filter!(x -> (x.seed == 1), df)
+    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
+    filter!(x -> (x.seed == 1), df_ensemble)
+    apply_aliases!(df_ensemble, col="modelname", d=MODEL_MERGE)
+
+    models = unique(df_ensemble.modelname)
+    filter!(x -> x.modelname in models, df)
+
+    val_metric = _prefix_symbol("val", metric)
+    tst_metric = _prefix_symbol("tst", metric)
+
+    function _rank(d)
+        df_agg = aggregate_stats_max_mean(d, val_metric)
+        df_agg["model_type"] = copy(df_agg["modelname"])
+        apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+        apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
+        apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
+        sort!(df_agg, (:dataset, :model_type, :modelname))
+        rank_table(df_agg, tst_metric)
+    end
+        
+    rt = _rank(df)
+    rt[end, 1] = "baseline"
+    rt_ensemble = _rank(df_ensemble)
+    rt_ensemble[end, 1] = "ensembles"
+
+
+    df_ranks = vcat(rt[end:end, :], rt_ensemble[end:end, :])
+    dif = mean(Matrix(rt[1:end-3, 2:end]) - Matrix(rt_ensemble[1:end-3, 2:end]), dims=1)
+    push!(df_ranks, ["avg. change", dif...])
+    
+    hl_best_rank = LatexHighlighter(
+                    (data, i, j) -> (i < 3) && (data[i,j] == minimum(df_ranks[i, 2:end])),
+                    ["color{red}","textbf"])
+
+    hl_best_dif = LatexHighlighter(
+                    (data, i, j) -> (i == 3) && (data[i,j] == maximum(df_ranks[i, 2:end])),
+                    ["color{blue}","textbf"])
+        
+    f_float = (v, i, j) -> (i == 3) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
+
+    filename = "./paper/tables/images_ensemblecomp_$(metric).tex"
+    open(filename, "w") do io
+        pretty_table(
+            io, df_ranks,
+            backend=:latex,
+            formatters=ft_printf("%.1f"),
+            highlighters=(hl_best_rank, hl_best_dif),
+            nosubheader=true,
+            tf=latex_booktabs
+        )
+    end
+end
+
+comparison_images_ensemble(df_images, df_images_ens, ("AUC", :auc))
+comparison_images_ensemble(df_images, df_images_ens, ("TPR@5", :tpr_5))
