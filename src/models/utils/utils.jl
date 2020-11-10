@@ -1,3 +1,10 @@
+using DrWatson
+using DataFrames
+using CSV
+using BSON
+using ValueHistories
+
+
 """
 	function resize_images(images, isize::Int, channels=1)
 
@@ -72,14 +79,13 @@ function update_val_history(history, vgl, vdl)
 end
 
 """
-	function prepare_dataloaders(data, params)
+	function prepare_dataloaders(data; batch_size::Int=64, iters::Int=10000)
 
 Extracts normal data from validation dataset and returns training MLDataPattern.RandomBatches and 
 validation Flux.Data.DataLoader.
 """
-function prepare_dataloaders(data, params)
-	train_loader = MLDataPattern.RandomBatches(data[1][1], size=params.batch_size, count=params.iters)
-	#train_loader = Flux.Data.DataLoader(data[1][1], batchsize=params.batch_size, shuffle=true)
+function prepare_dataloaders(data; batch_size::Int=64, iters::Int=10000)
+	train_loader = MLDataPattern.RandomBatches(data[1][1], size=batch_size, count=iters)
 	# for cheching convergence I need to drop anomal samples from validation data
 	val_data_ind = findall(x->x==0, data[2][2])
 	if length(size(data[2][1]))==4
@@ -87,8 +93,18 @@ function prepare_dataloaders(data, params)
 	else
 		val_data = data[2][1][:,val_data_ind]
 	end
-	val_loader = Flux.Data.DataLoader(val_data, batchsize=params.batch_size)
+	val_loader = Flux.Data.DataLoader(val_data, batchsize=batch_size)
 	return train_loader, val_loader
+end
+
+"""
+	function prepare_dataloaders(data, params)
+
+Extracts normal data from validation dataset and returns training MLDataPattern.RandomBatches and 
+validation Flux.Data.DataLoader.
+"""
+function prepare_dataloaders(data, params)
+	return prepare_dataloaders(data, batch_size=params.batch_size, iters=params.iters)
 end
 
 """
@@ -106,3 +122,4 @@ function clip_weights!(ps::Flux.Zygote.Params,low::Real,high::Real)
 	end
 end
 clip_weights!(ps::Flux.Zygote.Params,c::Real) = clip_weights!(ps,-abs(c),abs(c))
+

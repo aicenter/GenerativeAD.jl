@@ -104,3 +104,10 @@ function load_datam(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contami
 	# now do the train/validation/test split
 	train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
 end
+
+"""
+	vectorize(data)
+
+Vectorizes the 4D image data returned from `load_data`.
+"""
+vectorize(data) = map(d->(reshape(d[1], :, size(d[1],4)), d[2]),data)

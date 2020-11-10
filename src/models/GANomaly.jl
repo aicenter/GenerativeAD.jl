@@ -188,7 +188,7 @@ Flux.@functor Generator
 """ Definition of Generators's forward pass """
 function (g::Generator)(x)
 	latent_i = g.encoder1(x)
-	gen_imag = tanh.(g.decoder(latent_i))
+	gen_imag = g.decoder(latent_i)
 	latent_o = g.encoder2(gen_imag)
 	return gen_imag, latent_i, latent_o
 end
@@ -249,7 +249,12 @@ end
 	function validation_loss(g::Generator, d::Discriminator, real_input, weights=[1,50,1])
 computes generator and discriminator loss without additional pass through model
 """
-function validation_loss(g::Generator, d::Discriminator, real_input; weights=[1,50,1])
+function validation_loss(g::Generator, d::Discriminator, real_input; weights=[1,50,1], to_testmode::Bool=true)
+	(to_testmode == true) ? begin 
+			Flux.testmode!(g)
+			Flux.testmode!(d)
+		end : nothing
+
 	fake, latent_i, latent_o = g(real_input)
 	pred_real, feat_real = d(real_input)
 	pred_fake, feat_fake = d(fake)
@@ -261,6 +266,11 @@ function validation_loss(g::Generator, d::Discriminator, real_input; weights=[1,
 	loss_for_real = Flux.crossentropy(pred_real, 1f0) # ones(typeof(pred_real), size(pred_real)) has same speed
 	loss_for_fake = Flux.crossentropy(1f0.-pred_fake, 1f0)
 
+	(to_testmode == true) ? begin 
+			Flux.testmode!(g, false)
+			Flux.testmode!(d, false)
+		end : nothing
+
 	return adversarial_loss*weights[1]+contextual_loss*weights[2]+encoder_loss*weights[3],
 		0.5f0*(loss_for_real+loss_for_fake)
 end
@@ -270,19 +280,23 @@ end
 
 computes unscaled anomaly score A(x) = || E1(x) - E2(D(E1(x))) ||_1
 """
-function anomaly_score(generator::Generator, real_input; dims=3)
+function anomaly_score(generator::Generator, real_input; dims=3, to_testmode::Bool=true)
+	(to_testmode == true) ? Flux.testmode!(generator) : nothing
 	_, latent_i, latent_o = generator(real_input)
+	(to_testmode == true) ? Flux.testmode!(generator, false) : nothing
 	return vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims)))'
 end
 
-function anomaly_score_gpu(generator::Generator, real_input; dims=3, batch_size=64)
+function anomaly_score_gpu(generator::Generator, real_input; dims=3, batch_size=64, to_testmode::Bool=true)
 	real_input = Flux.Data.DataLoader(real_input, batchsize=batch_size)
+	(to_testmode == true) ? Flux.testmode!(generator) : nothing
 	generator = generator|>gpu
 	output = Array{Float32}([])
 	for X in real_input
 		_, latent_i, latent_o = generator(X|>gpu)
 		output = cat(output,vec(Flux.mae(latent_i, latent_o, agg=x->mean(x, dims=dims))) |> cpu, dims=1)
 	end
+	(to_testmode == true) ? Flux.testmode!(generator, false) : nothing
 	return output'
 end
 
@@ -306,7 +320,8 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 	val_batches = length(val_loader)
 
 	# ADAMW(η = 0.001, β = (0.9, 0.999), decay = 0) = Optimiser(ADAM(η, β), WeightDecay(decay))
-	opt = haskey(params, :decay) ? ADAMW(params.lr, (0.9, 0.999), params.decay) : ADAM(params.lr)
+	opt_g = haskey(params, :decay) ? ADAMW(params.lr, (0.9, 0.999), params.decay) : ADAM(params.lr)
+	opt_d = haskey(params, :decay) ? ADAMW(params.lr, (0.9, 0.999), params.decay) : ADAM(params.lr)
 
 	ps_g = Flux.params(generator)
 	ps_d = Flux.params(discriminator)
@@ -320,14 +335,14 @@ function StatsBase.fit!(generator::Generator, discriminator::Discriminator, data
 			generator_loss(generator, discriminator, getobs(X)|>gpu, weights=loss_weights)
 		end
 		grad = back((1f0, 0f0, 0f0, 0f0))
-		Flux.Optimise.update!(opt, ps_g, grad)
+		Flux.Optimise.update!(opt_g, ps_g, grad)
 
 		# discriminator update
 		loss2, back = Flux.pullback(ps_d) do
 			discriminator_loss(generator, discriminator, getobs(X)|>gpu)
 		end
 		grad = back(1f0)
-		Flux.Optimise.update!(opt, ps_d, grad)
+		Flux.Optimise.update!(opt_d, ps_d, grad)
 
 		history = update_history(history, loss1, loss2)
 		next!(progress; showvalues=[
@@ -405,6 +420,7 @@ function ganomaly_constructor(kwargs)
 end
 
 function tabular_ganomaly_constructor(kwargs)
+	(kwargs.init_seed !== nothing) ? Random.seed!(kwargs.init_seed) : nothing
 	encoder1 = build_mlp(
 		kwargs.idim, 
 		kwargs.hdim, 
@@ -442,6 +458,7 @@ function tabular_ganomaly_constructor(kwargs)
 
 	generator = Generator(encoder1, decoder, encoder2)
 	discriminator = Discriminator(features, classsifier)
+	(kwargs.init_seed !== nothing) ? Random.seed!() : nothing
 
 	return generator, discriminator
 end

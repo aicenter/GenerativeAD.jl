@@ -81,8 +81,9 @@ function fit(data, parameters)
 		)
 
 
-	return training_info, [(x -> generalized_anomaly_score_gpu(model|>cpu, x, R=r, L=l, lambda=lam), parameters)
-							for r in ["mae", "mse"] for l in ["mae", "mse"] for lam = 0.1:0.1:0.9 ]
+	return training_info, [(x -> generalized_anomaly_score_gpu(model|>cpu, x, R=r, L=l, lambda=lam), 
+		merge(parameters, (R=r, L=l, test_lambda=lam,)))
+		for r in ["mae", "mse"] for l in ["mae", "mse"] for lam = 0.1:0.1:0.9 ]
 end
 
 #_________________________________________________________________________________________________
@@ -113,7 +114,7 @@ while try_counter < max_tries
 				training_info, results = fit(data, parameters)
 				# saving model separately
 				if training_info.model != nothing
-					tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+					tagsave(joinpath(savepath, savename("model", parameters, "bson", digits=5)), Dict("model"=>training_info.model), safe = true)
 					training_info = merge(training_info, (model = nothing,))
 				end
 				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))

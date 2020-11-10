@@ -1,6 +1,6 @@
 using DataFrames
 using BSON, FileIO, ValueHistories
-using Crayons
+using PrettyTables.Crayons
 using ArgParse
 s = ArgParseSettings()
 @add_arg_table s begin

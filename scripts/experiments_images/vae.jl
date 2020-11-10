@@ -58,6 +58,8 @@ loss(model::GenerativeModels.VAE, x) = -elbo(model,gpu(Array(x)))
 # version of loss for large datasets
 loss(model::GenerativeModels.VAE, x, batchsize::Int) = 
 	mean(map(y->loss(model,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
+batch_score(scoref, model, x, batchsize=512) =
+	vcat(map(y->cpu(scoref(model, gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 """
 	fit(data, parameters)
 
@@ -86,7 +88,7 @@ function fit(data, parameters)
 	
 	# produce encodings
 	if model != nothing
-		encodings = map(x->cpu(GenerativeAD.Models.encode_mean_gpu(model, x, 128)), (data[1][1], data[2][1], data[3][1]))
+		encodings = map(x->cpu(GenerativeAD.Models.encode_mean_gpu(model, x, 32)), (data[1][1], data[2][1], data[3][1]))
 	else
 		encodings = (nothing, nothing, nothing)
 	end
@@ -104,10 +106,10 @@ function fit(data, parameters)
 
 	# now return the different scoring functions
 	training_info, [
-		(x -> cpu(GenerativeAD.Models.reconstruction_score(model, gpu(Array(x)))), merge(parameters, (score = "reconstruction",))),
-		(x -> cpu(GenerativeAD.Models.reconstruction_score_mean(model, gpu(Array(x)))), merge(parameters, (score = "reconstruction-mean",))),
-		(x -> cpu(GenerativeAD.Models.latent_score(info.model, gpu(Array(x)))), merge(parameters, (score = "latent",))),
-		(x -> cpu(GenerativeAD.Models.latent_score_mean(info.model, gpu(Array(x)))), merge(parameters, (score = "latent-mean",))),
+		(x -> batch_score(GenerativeAD.Models.reconstruction_score, model, x), merge(parameters, (score = "reconstruction",))),
+		(x -> batch_score(GenerativeAD.Models.reconstruction_score_mean, model, x), merge(parameters, (score = "reconstruction-mean",))),
+		(x -> batch_score(GenerativeAD.Models.latent_score, model, x), merge(parameters, (score = "latent",))),
+		(x -> batch_score(GenerativeAD.Models.latent_score_mean, model, x), merge(parameters, (score = "latent-mean",))),
 		]
 end
 
@@ -143,13 +145,18 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
 					# save the model separately			
 					if training_info.model != nothing
-						tagsave(joinpath(savepath, savename("model", parameters, "bson")), 
+						tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
 							Dict("model"=>training_info.model,
 								 "tr_encodings"=>training_info.tr_encodings,
 								 "val_encodings"=>training_info.val_encodings,
-								 "tst_encodings"=>training_info.tst_encodings), 
+								 "tst_encodings"=>training_info.tst_encodings,
+								 "fit_t"=>training_info.fit_t,
+								 "history"=>training_info.history,
+								 "parameters"=>edited_parameters
+								 ), 
 							safe = true)
-						training_info = merge(training_info, (model=nothing,tr_encodings=nothing,val_encodings=nothing,tst_encodings=nothing))
+						training_info = merge(training_info, 
+							(model=nothing,tr_encodings=nothing,val_encodings=nothing,tst_encodings=nothing))
 					end
 
 					# here define what additional info should be saved together with parameters, scores, labels and predict times

@@ -63,7 +63,6 @@ function fit(data, parameters)
 	# set number of max iterations apropriatelly
 	max_iter = 5000 # this should be enough
 
-	println(max_iter)
 	# fit train data
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data, gloss, dloss; 
@@ -130,7 +129,12 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
 				# save the model separately			
 				if training_info.model != nothing
-					tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+					tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
+						Dict("model"=>training_info.model,
+							"fit_t"=>training_info.fit_t,
+							"history"=>training_info.history,
+							"parameters"=>edited_parameters
+							), safe = true)
 					training_info = merge(training_info, (model = nothing,))
 				end
 

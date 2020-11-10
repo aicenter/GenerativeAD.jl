@@ -75,7 +75,12 @@ while try_counter < max_tries
 			training_info, results = fit(data, edited_parameters)
 
 			if training_info.model != nothing
-				tagsave(joinpath(savepath, savename("model", parameters, "bson")), Dict("model"=>training_info.model), safe = true)
+				tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
+						Dict("model"=>training_info.model,
+							"fit_t"=>training_info.fit_t,
+							"history"=>training_info.history,
+							"parameters"=>edited_parameters
+							), safe = true)
 				training_info = merge(training_info, (model = nothing,))
 			end
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
