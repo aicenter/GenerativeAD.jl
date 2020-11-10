@@ -16,6 +16,12 @@ function seqids2bags(bagids)
 	Mill.length2bags([c[i] for i in sort(collect(keys(c)))])
 end
 
+function y_on_instances(bagnode, y)
+	# yout = reduce(cat, cat([y[p]*ones(length(bagnode.bags[p]))[:] for p=1:nobs(bagnode)]...,dims=1))
+	yforbag = (p)->y[p]*ones(length(bagnode.bags[p]))
+	yout = mapreduce(yforbag, vcat, 1:length(bagnode.bags))
+end
+
 
 """
 	load_mill_data(dataset::String)
@@ -24,9 +30,9 @@ Loads basic MIProblems data. For a list of available datasets, check `Generative
 """
 function load_mill_data(dataset::String)
 	mdp = get_mill_datapath()
-	x=readdlm("$mdp/$(problem)/data.csv",'\t',Float32)
-	bagids = readdlm("$mdp/$(problem)/bagids.csv",'\t',Int)[:]
-	y = readdlm("$mdp/$(problem)/labels.csv",'\t',Int)
+	x=readdlm("$mdp/$(dataset)/data.csv",'\t',Float32)
+	bagids = readdlm("$mdp/$(dataset)/bagids.csv",'\t',Int)[:]
+	y = readdlm("$mdp/$(dataset)/labels.csv",'\t',Int)
 	
 	# plit to 0/1 classes
 	c0 = y.==0

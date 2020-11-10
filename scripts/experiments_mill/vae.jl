@@ -67,12 +67,9 @@ function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
 	model = GenerativeAD.Models.vae_constructor(;idim=size(data[1][1],1), parameters...)
 
-	# data are now BagNodes!!! copy to arrys
-
-	data_array = (data[1][1].data.data,data[1][2]), (data[2][1].data.data,data[2][2]), (data[3][1].data.data,data[3][2])
 	# fit train data
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data_array, loss; max_train_time=82800/max_seed, 
+		global info, fit_t, _, _, _ = @timed fit!(model, data, loss; max_train_time=82800/max_seed, 
 			patience=200, check_interval=10, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
@@ -122,10 +119,14 @@ if abspath(PROGRAM_FILE) == @__FILE__
 			mkpath(savepath)
 
 			# get data
-			data = GenerativeAD.load_data(dataset, seed=seed)
+			data = load_datam(dataset, seed=seed)
+			# data are now BagNodes!!! copy to arrys
+			data_prep = (d)->(d[1].data.data, y_on_instances(d[1],d[2]))
+			data_array = (data_prep(data[1]), data_prep(data[2]), data_prep(data[3]))
+
 			
 			# edit parameters
-			edited_parameters = GenerativeAD.edit_params(data, parameters)
+			edited_parameters = GenerativeAD.edit_params(data_array, parameters)
 			
 			@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
 			@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[3][1], 2))"
@@ -133,8 +134,13 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
 			# check if a combination of parameters and seed alread exists
 			if GenerativeAD.check_params(savepath, edited_parameters)
-				# fit
-				training_info, results = fit(data, edited_parameters)
+				# fit instance
+				training_info, results = fit(data_array, edited_parameters)
+
+				# fit number of bags
+				nofbags = length.(data[1][1].bags)
+				pc = fit_mle(Distributions.LogNormal, nofbags)
+				training_info = merge(training_info, (pc = pc,))
 
 				# save the model separately			
 				if training_info.model != nothing
