@@ -22,7 +22,7 @@ end
 # for testing purposes
 if length(ARGS) == 0
 	push!(ARGS, "1")
-	push!(ARGS, "iris")
+	push!(ARGS, "Fox")
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed = parsed_args
@@ -141,6 +141,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
 				nofbags = length.(data[1][1].bags)
 				pc = fit_mle(Distributions.LogNormal, nofbags)
 				training_info = merge(training_info, (pc = pc,))
+				# hatU = geom.
+				# hatlogU = average loglike
+
 
 				# save the model separately			
 				if training_info.model != nothing
