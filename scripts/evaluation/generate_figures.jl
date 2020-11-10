@@ -95,6 +95,55 @@ plot_knowledge_tabular(copy(df_tabular); format="tex")
 plot_knowledge_tabular(copy(df_tabular_ens), suffix="_ensembles", format="tex")
 
 
+function plot_knowledge_tabular(df, models; suffix="", format="pdf")
+    filter!(x -> (x.modelname in models), df)
+    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
+    apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
+
+    for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric)
+
+        for (name, agg) in zip(
+                    ["maxmean", "meanmax"], 
+                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
+
+            ranks = []
+            criterions = vcat(_prefix_symbol.("val", PAT_METRICS), [val_metric, tst_metric])
+            for criterion in criterions
+                df_agg = agg(df, criterion)
+                rt = rank_table(df_agg, tst_metric)
+                push!(ranks, rt[end:end, :])
+            end
+
+            df_ranks = vcat(ranks...)
+            df_ranks[:, :dataset] .= String.(criterions)
+            rename!(df_ranks, :dataset => :criterion)
+
+            models = names(df_ranks)[2:end]
+            a = PGFPlots.Axis([PGFPlots.Plots.Linear(
+                            1:length(criterions), 
+                            df_ranks[:, i + 1], 
+                            legendentry=m) for (i, m) in enumerate(models)], 
+                    ylabel="avg. rnk", ymax=4.5,
+                    style="xtick={1, 2, 3, 4, 5, 6}, 
+                        xticklabels={\$PR@1\$, \$PR@5\$, \$PR@10\$, \$PR@20\$, \$$(mn)_{val}\$, \$$(mn)_{tst}\$},
+                        x tick label style={rotate=50,anchor=east}"
+                        )
+            filename = "./paper/figures/tabular_knowledge_rank_$(metric)_$(name)$(suffix).$(format)"
+            PGFPlots.save(filename, a; include_preamble=false)
+        end
+    end
+end
+
+representatives=["ocsvm", "vae", "MAF", "fmgan"]
+plot_knowledge_tabular(copy(df_tabular), representatives; 
+                        format="tex", suffix="_representatives")
+
+# representatives=["RealNVP", "sptn", "MAF"]
+# plot_knowledge_tabular(copy(df_tabular), representatives; 
+#                         format="pdf", suffix="_representatives")
+
 function rank_comparison_agg(df, tm=("AUC", :auc); suffix="")
     mn, metric = tm
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
