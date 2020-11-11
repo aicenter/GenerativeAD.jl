@@ -101,6 +101,15 @@ function latent_score_mean(model::AEModel, x)
 	-logpdf(model.prior, z)
 end
 
+"""
+	aae_score(model::AAE, x, alpha::Real)
+
+A combination of reconstruction and discriminator score.
+"""
+aae_score(model::AAE, x, alpha::Real) = 
+	alpha*GenerativeAD.Models.reconstruction_score_mean(model, x) .+ 
+	(1-alpha)*vec(model.discriminator(mean(model.encoder, x)))
+
 # JacoDeco score
 # see https://arxiv.org/abs/1905.11890
 """
