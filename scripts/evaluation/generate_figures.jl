@@ -100,6 +100,7 @@ function plot_knowledge_tabular(df, models; suffix="", format="pdf")
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
     apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
 
+    results = Dict()
     for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)
@@ -113,6 +114,7 @@ function plot_knowledge_tabular(df, models; suffix="", format="pdf")
             for criterion in criterions
                 df_agg = agg(df, criterion)
                 rt = rank_table(df_agg, tst_metric)
+                results[(metric, name, criterion)] = rt
                 push!(ranks, rt[end:end, :])
             end
 
@@ -134,15 +136,18 @@ function plot_knowledge_tabular(df, models; suffix="", format="pdf")
             PGFPlots.save(filename, a; include_preamble=false)
         end
     end
+    results
 end
 
-representatives=["ocsvm", "vae", "MAF", "fmgan"]
+representatives=["ocsvm", "wae", "MAF", "fmgan"]
 plot_knowledge_tabular(copy(df_tabular), representatives; 
                         format="tex", suffix="_representatives")
 
 # representatives=["RealNVP", "sptn", "MAF"]
-# plot_knowledge_tabular(copy(df_tabular), representatives; 
+# results = plot_knowledge_tabular(copy(df_tabular), representatives; 
 #                         format="pdf", suffix="_representatives")
+
+# reduce(hcat, [results[(:auc, "maxmean", c)]["osvm"] for c in vcat(_prefix_symbol.("val", PAT_METRICS), [:val_auc, :tst_auc])])
 
 function rank_comparison_agg(df, tm=("AUC", :auc); suffix="")
     mn, metric = tm
@@ -301,6 +306,9 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="
     rt[1:end-3, 2:end] .= dif
     rt[end-2, 1] = "σ"
     rt[end-1, 1] = "σ_1"
+    # print rank change rather than just the baseline rank
+    rt[end, 1] = "rnk. chng."
+    rt[end, 2:end] .=  Vector(rt_ensemble[end, 2:end]) .- Vector(rt[end, 2:end])
     filename = "./paper/tables/tabular_ensemblecomp_$(metric)_detail$(suffix).html"
     open(filename, "w") do io
         print_rank_table(io, rt; backend=:html)
@@ -427,6 +435,9 @@ function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix=""
     rt[1:end-3, 2:end] .= dif
     rt[end-2, 1] = "σ"
     rt[end-1, 1] = "σ_1"
+    # print rank change rather than just the baseline rank
+    rt[end, 1] = "rnk. chng."
+    rt[end, 2:end] .=  Vector(rt_ensemble[end, 2:end]) .- Vector(rt[end, 2:end])
     filename = "./paper/tables/images_ensemblecomp_$(metric)_detail$(suffix).html"
     open(filename, "w") do io
         print_rank_table(io, rt; backend=:html)
