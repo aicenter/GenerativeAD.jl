@@ -18,7 +18,7 @@ check = parsed_args["check"]
 
 function list_files(datapath)
 	fs = readdir(datapath)
-	fs = filter(f->!(occursin("model_", f)), fs)
+	fs = filter(f->!(startswith(f, "model_")), fs)
 	fs = filter(f->!(occursin("#", f)), fs)
 	return unique(fs)
 end
