@@ -96,5 +96,5 @@ for f in mfiles
 		GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac)
 		
 	# compute and save the score
-	save_jacodeco(f, data, seed, ac)
+	save_aae_disc_score(f, data, seed, ac)
 end
