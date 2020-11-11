@@ -11,3 +11,14 @@ function raw_ll_score(model::VAE,  b::BagNode)
     map(sci, 1:nobs(b))
 end
 
+
+function logU_score(model::MillModel,  b::BagNode) 
+    # evaluate ll for each sample in a bag
+    sci = (i)->(sum(GenerativeAD.Models.reconstruction_score_mean(model.pf,b.data.data[:,b.bags[i]])))
+	raw=map(sci, 1:nobs(b))
+	ns = length.(b.bags)
+	ll_pc = map(n->logpdf(model.pc,n), ns)
+
+	ll_pc .+ raw .- ns.*model.U
+end
+
