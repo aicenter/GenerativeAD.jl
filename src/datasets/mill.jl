@@ -18,7 +18,7 @@ end
 
 function y_on_instances(bagnode, y)
 	# yout = reduce(cat, cat([y[p]*ones(length(bagnode.bags[p]))[:] for p=1:nobs(bagnode)]...,dims=1))
-	yforbag = (p)->y[p]*ones(length(bagnode.bags[p]))
+	yforbag = (p)->y[p]*ones(typeof(y[1]),length(bagnode.bags[p]))
 	yout = mapreduce(yforbag, vcat, 1:length(bagnode.bags))
 end
 

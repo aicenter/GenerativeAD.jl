@@ -184,8 +184,11 @@ function StatsBase.fit!(model::VAE, data::Tuple, loss::Function; max_train_time=
 		
 		(i%check_interval == 0) ? (@info "$i - loss: $(batch_loss) (batch) | $(val_loss) (validation)") : nothing
 			
-		if isnan(val_loss) || isnan(batch_loss)
-			error("Encountered invalid values in loss function.")
+		if isnan(val_loss) 
+			error("Encountered invalid values in val loss function.")
+		end
+		if  isnan(batch_loss)
+			error("Encountered invalid values in batch loss function.")
 		end
 
 		push!(history, :training_loss, i, batch_loss)

@@ -65,7 +65,8 @@ Final parameters is a named tuple of names and parameter values that are used fo
 """
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.vae_constructor(;idim=size(data[1][1],1), parameters...)
+	vae = GenerativeAD.Models.vae_constructor(;idim=size(data[1][1],1), parameters...)
+	model = MillModel(vae,nothing,1.0)
 
 	# fit train data
 	try
@@ -87,10 +88,7 @@ function fit(data, parameters)
 
 	# now return the different scoring functions
 	training_info, [
-		(x -> GenerativeAD.Models.reconstruction_score(info.model, x), merge(parameters, (score = "reconstruction",))),
-		(x -> GenerativeAD.Models.reconstruction_score_mean(info.model, x), merge(parameters, (score = "reconstruction-mean",))),
-		(x -> GenerativeAD.Models.latent_score(info.model, x), merge(parameters, (score = "latent",))),
-		(x -> GenerativeAD.Models.latent_score_mean(info.model, x), merge(parameters, (score = "latent-mean",))),
+		(b -> GenerativeAD.Models.raw_ll_score(info.model, b), merge(parameters, (score = "basic",))),
 		]
 end
 function GenerativeAD.edit_params(data, parameters)
@@ -121,8 +119,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
 			# get data
 			data = load_datam(dataset, seed=seed)
 			# data are now BagNodes!!! copy to arrys
-			data_prep = (d)->(d[1].data.data, y_on_instances(d[1],d[2]))
-			data_array = (data_prep(data[1]), data_prep(data[2]), data_prep(data[3]))
 
 			
 			# edit parameters
@@ -138,9 +134,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
 				training_info, results = fit(data_array, edited_parameters)
 
 				# fit number of bags
-				nofbags = length.(data[1][1].bags)
-				pc = fit_mle(Distributions.LogNormal, nofbags)
-				training_info = merge(training_info, (pc = pc,))
 				# hatU = geom.
 				# hatlogU = average loglike
 
