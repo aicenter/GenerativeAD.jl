@@ -14,9 +14,17 @@ if [ ! -d "$LOG_DIR" ]; then
 	mkdir $LOG_DIR
 fi
 
+
 while read d; do
+	if [ $d = "MNIST" ] || [ $d = "FashionMNIST" ] || [ $d = "CIFAR10" ] || [ $d = "SVHN2" ]
+	then
+		RUNSCRIPT="./aae_disc_score_gpu_run.sh"
+	else
+		RUNSCRIPT="./aae_disc_score_run.sh"
+	fi
+
 	# submit to slurm
     sbatch \
     --output="${LOG_DIR}/${DATATYPE}_${MODEL}_${d}-%A.out" \
-    ./aae_disc_score_run.sh $MODEL $DATATYPE $d $SEED $AC
+    $RUNSCRIPT $MODEL $DATATYPE $d $SEED $AC
 done < ${DATASET_FILE}
