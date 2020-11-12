@@ -53,17 +53,18 @@ function MAF(;idim::Int=1, nflows::Int=2, hdim::Int=10, nlayers::Int=2,
 	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
 
 	model = MAF(Chain([
-        MaskedAutoregressiveFlow(
-            idim, 
-            hdim,
-            nlayers, 
-            idim,
-            (α=eval(:($(Symbol(act_loc)))), β=eval(:($(Symbol(act_scl))))),
-            (ordering == "natural") ? (
-                (mod(i, 2) == 0) ? "reversed" : "sequential"
-              ) : "random"
-            ) 
-        for i in 1:nflows]...), MvNormal(idim, 1.0f0))
+		MaskedAutoregressiveFlow(
+			idim, 
+			hdim,
+			nlayers, 
+			idim,
+			(α=eval(:($(Symbol(act_loc)))), β=eval(:($(Symbol(act_scl))))),
+			(ordering == "natural") ? (
+				(mod(i, 2) == 0) ? "reversed" : "sequential"
+			  ) : "random";
+			seed=rand(Int)) 
+		for i in 1:nflows]...), MvNormal(idim, 1.0f0)
+	) # seed has to be passed into maf in order to create the same masks
 
 	# reset seed
 	(init_seed != nothing) ? Random.seed!() : nothing
