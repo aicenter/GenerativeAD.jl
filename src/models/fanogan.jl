@@ -1,12 +1,13 @@
-"""
-	Implements all needed parts for constructing f-AnoGAN model
-		(https://www.sciencedirect.com/science/article/pii/S1361841518302640).
-"""
 using Distributions
 using DistributionsAD
 using ConditionalDists
 using GenerativeModels
+using ConditionalDists
 
+"""
+	Implements all needed parts for constructing f-AnoGAN model
+		(https://www.sciencedirect.com/science/article/pii/S1361841518302640).
+"""
 
 struct fAnoGAN
 	gan::GenerativeModels.GAN
@@ -17,8 +18,8 @@ Flux.@functor fAnoGAN
 
 function izi(m::fAnoGAN, x)
 	z = m.encoder(x)
-	x̂ = m.generator.mapping(z)
-	f = m.discriminator.mapping[1:end-1]
+	x̂ = m.gan.generator.mapping(z)
+	f = m.gan.discriminator.mapping[1:end-1]
 	fx = f(x)
 	fx̂ = f(x̂)
 	return x̂, fx, fx̂
@@ -40,7 +41,7 @@ Anomaly score computed according to formula from fAnoGAN paper.
 Version izi_f (image-z-image)
 		A(x) = 1/n * ||x-D(x)||^2 + κ / n_g ||f(x) - f(G(x))||^2
 """
-function anomaly_score(m::fAnoGAN, x, κ=1.0)
+function anomaly_score(m::fAnoGAN, x, κ=1f0)
 	x̂, fx, fx̂ = izi(m, x)
 	xx̂= vec(Flux.sum((x̂ .- x).^2, dims=[1,2,3]))
 	fxfx̂ = vec(Flux.sum((fx̂ .- fx).^2, dims=1))
@@ -51,7 +52,7 @@ end
 	function anomaly_score_gpu(m::fAnoGAN, real_input, κ = 1.0; batch_size=64, to_testmode::Bool=true)
 Function which compute anomaly score on GPU.
 """
-function anomaly_score_gpu(m::fAnoGAN, real_input, κ = 1.0; batch_size=64, to_testmode::Bool=true)
+function anomaly_score_gpu(m::fAnoGAN, real_input, κ = 1f0; batch_size=64, to_testmode::Bool=true)
 	real_input = Flux.Data.DataLoader(real_input, batchsize=batch_size)
 	(to_testmode == true) ? Flux.testmode!(m) : nothing
 	m = m |> gpu
@@ -65,6 +66,28 @@ function anomaly_score_gpu(m::fAnoGAN, real_input, κ = 1.0; batch_size=64, to_t
 	return scores
 end
 
+# loss functions for Wassersten GAN
+
+function wdloss(gen, dis, x, z)
+	x̂ = gen(z)
+	dx = dis(x)
+	dx̂ = dis(x̂)
+	return Flux.mean(dx) - Flux.mean(dx̂)
+end
+
+wdloss(model::GenerativeModels.GAN, x) = 
+	wdloss(model.generator.mapping, model.discriminator.mapping, x, rand(model.prior |> cpu, size(x, ndims(x))))
+
+wdloss_gpu(model::GenerativeModels.GAN, x) = 
+	wdloss(model.generator.mapping, model.discriminator.mapping, x, rand(model.prior |> cpu, size(x, ndims(x))) |> gpu)
+
+wgloss(gen, dis, z) = Flux.mean(dis(gen(z)))
+
+wgloss(model::GenerativeModels.GAN, x) = 
+	wgloss(model.generator.mapping, model.discriminator.mapping, rand(model.prior |> cpu, size(x, ndims(x))))
+
+wgloss_gpu(model::GenerativeModels.GAN, x)=
+	wgloss(model.generator.mapping, model.discriminator.mapping, rand(model.prior |>cpu, size(x, ndims(x))) |>gpu)
 
 function fanogan_constructor(
 		;idim=(2,2,1), 
@@ -87,7 +110,7 @@ function fanogan_constructor(
 
 	vecdim = reduce(*,idim[1:3]) # size of vectorized data
 	discriminator_map = Chain(conv_encoder(idim, 1, kernelsizes, channels, scalings,
-			activation=activation, batchnorm=batchnorm)..., x->σ.(x))
+			activation=activation, batchnorm=batchnorm)...)
 	discriminator = ConditionalMvNormal(discriminator_map)
 	
 	encoder_ =  Chain(conv_encoder(idim, zdim, kernelsizes, channels, scalings,
@@ -111,7 +134,7 @@ General function for fitting of fAnoGAN.
 		lr_enc		 		... learning rate for encoder (image-z-iamge_f)
 		batch_size::Int 	... batch size
 		check_every::Int  	... number of iterations between EarlyStopping evaluation check
-		patience::Int	 	... patience before stoping training 
+		patience::Int		... patience before stoping training 
 		max_iter::Int     	... max number of iteration 
 		mtt_gan::Int		... max train time for GAN (if training is too slow)
 		mtt_enc::Int      	... max train time for Encoder
@@ -119,27 +142,32 @@ General function for fitting of fAnoGAN.
 		usegpu::Bool    	... to use GPU or not
 
 	Example: 
-		params = (kappa = 1.0, clip=0.1, lr_gan = 0.001, lr_enc = 0.001, batch_size=128, 
+		params = (kappa = 1.0, weight_clip=0.1, lr_gan = 0.001, lr_enc = 0.001, batch_size=128, 
 			patience=10, check_every=30, max_iter=10000, mtt_gan=82800, mtt_enc=82800, 
 			n_critic=1, usegpu=true)	
 
 """
 function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
+	gen_loss = params.usegpu ? wgloss_gpu : wgloss
+	dis_loss = params.usegpu ? wdloss_gpu : wdloss
 	# train WGAN
-	gan_info =  fit!(model.gan, data, gloss, dloss; lr = params.lr_gan, batchsize = params.batch_size, 	
-					max_iter = params.max_iter, max_train_time = params.mtt_gan, 
-					patience = params.patience, check_interval = params.check_every,
-					weight_clip = params.weight_clip, stop_threshold = params.stop_threshold,
-					discriminator_advantage = params.n_critic,  usegpu = params.usegpu, kwargs...)
+	#gan_patience = params.patience*params.check_every
+	gan_patience = params.max_iter # behavior of loss function is wierd 
+	gan_info =  fit!(model.gan, data, gen_loss, dis_loss; lr = params.lr_gan, batchsize = params.batch_size, 	
+					max_train_time = params.mtt_gan, patience=gan_patience, 
+					discriminator_advantage = params.n_critic, params...)
 
-	model = fAnoGAN(gan_info.model, model.encoder) # we are getting best model
+	@info " i did gan training properly "
+	return nothing
+	model = fAnoGAN(gan_info.model |> cpu, model.encoder |> cpu) # we are getting best model
 	best_model = deepcopy(model)
 
 	history = MVHistory()
-	train_loader, val_loader = prepare_dataloaders(data, batch_size=params.batch_size, iters = params.max_iter)
+	train_loader, val_loader = prepare_dataloaders(data, batch_size=params.batch_size, iters=params.max_iter)
 	best_val_loss = Inf
 	patience_ = deepcopy(params.patience)
 	val_batches = length(val_loader)
+	progress = Progress(length(train_loader))
 
 	model = params.usegpu ? model|>gpu : model|>cpu
 	optim = ADAM(params.lr_enc)
@@ -149,7 +177,7 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 	for (iter, X) in enumerate(train_loader)
 		X = params.usegpu ? getobs(X)|>gpu : getobs(X)
 		loss_e, back = Flux.pullback(ps) do
-			izif_loss(m::fAnoGAN, X, params.kappa)
+			izif_loss(model, X, params.kappa)
 		end
 		grad = back(1f0)
 		Flux.Optimise.update!(optim, ps, grad)
@@ -157,7 +185,7 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 		push!(history, :loss_izif, iter, loss_e)
 
 		next!(progress; showvalues=[
-			(:iters, "$(iter)/$(max_iter)"),
+			(:iters, "$(iter)/$(params.max_iter)"),
 			(:loss_izif, loss_e)
 			])
 
@@ -166,7 +194,7 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 			Flux.testmode!(model)
 			for X_val in val_loader
 				X_val = params.usegpu ? X_val |> gpu : X_val
-				total_val_loss += izif_loss(m::fAnoGAN, X, params.kappa)
+				total_val_loss += izif_loss(model, X, params.kappa)
 			end
 			Flux.testmode!(model, false)
 			push!(history, :validation_izif, iter, total_val_loss/val_batches)
@@ -182,7 +210,7 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 				end
 			end
 		end
-		if time() - start_time > params.mtt_encoder + params.mtt_gan # stop early if time is running out
+		if time() - start_time > params.mtt_enc + params.mtt_gan # stop early if time is running out
 			best_model = deepcopy(model)
 			@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
 			break
