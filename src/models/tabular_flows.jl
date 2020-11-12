@@ -14,7 +14,7 @@ struct RealNVPFlow <: TabularFlow
 end
 
 function RealNVPFlow(;idim::Int=1, nflows::Int=2, hdim::Int=10, nlayers::Int=2,
-						act_loc="relu", act_scl="tanh",	init_seed=nothing, kwargs...)
+						act_loc="relu", act_scl="tanh",	init_seed=nothing, bn=false, kwargs...)
 	# if seed is given, set it
 	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
 
@@ -24,7 +24,8 @@ function RealNVPFlow(;idim::Int=1, nflows::Int=2, hdim::Int=10, nlayers::Int=2,
 		RealNVP(
 			idim, 
 			builders,
-			mod(i,2) == 0)
+			mod(i,2) == 0;
+			use_batchnorm=bn)
 		for i in 1:nflows]...), MvNormal(idim, 1.0f0))
 
 	# reset seed
@@ -48,7 +49,7 @@ end
 
 function MAF(;idim::Int=1, nflows::Int=2, hdim::Int=10, nlayers::Int=2, 
 				act_loc="relu", act_scl="tanh",	ordering::String="natural", 
-				init_seed=nothing, kwargs...)
+				init_seed=nothing, bn=false, kwargs...)
 	# if seed is given, set it
 	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
 
@@ -62,6 +63,7 @@ function MAF(;idim::Int=1, nflows::Int=2, hdim::Int=10, nlayers::Int=2,
 			(ordering == "natural") ? (
 				(mod(i, 2) == 0) ? "reversed" : "sequential"
 			  ) : "random";
+			use_batchnorm=bn,
 			seed=rand(Int)) 
 		for i in 1:nflows]...), MvNormal(idim, 1.0f0)
 	) # seed has to be passed into maf in order to create the same masks
@@ -81,8 +83,8 @@ function Base.show(io::IO, maf::MAF)
 end
 
 function loss(model::F, X) where {F <: TabularFlow}
-    Z, logJ = model((X, _init_logJ(X)))
-    -sum(logpdf(model.base, Z)' .+ logJ)/size(X, 2)
+	Z, logJ = model((X, _init_logJ(X)))
+	-sum(logpdf(model.base, Z)' .+ logJ)/size(X, 2)
 end
 
 function StatsBase.fit!(model::F, data::Tuple; max_train_time=82800,
@@ -110,7 +112,9 @@ function StatsBase.fit!(model::F, data::Tuple; max_train_time=82800,
 		Flux.update!(opt, ps, gs)
 
 		# validation/early stopping
+		testmode!(model, true)
 		val_loss = loss(trn_model, X_val)
+		testmode!(model, false)
 		@info "$i - loss: $l (batch) | $val_loss (validation)"
 		
 		if isnan(val_loss) || isinf(val_loss) || isnan(l) || isinf(l)
@@ -153,6 +157,8 @@ function StatsBase.fit!(model::F, data::Tuple; max_train_time=82800,
 end
 
 function StatsBase.predict(model::F, X) where {F <: TabularFlow}
+	testmode!(model, true)
 	Z, logJ = model((X, _init_logJ(X)))
-    -(logpdf(model.base, Z)' .+ logJ)[:]
+	testmode!(model, false)
+	-(logpdf(model.base, Z)' .+ logJ)[:]
 end
