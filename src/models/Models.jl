@@ -27,6 +27,7 @@ include("vae.jl")
 include("aae.jl")
 include("adVAE.jl")
 include("DeepSVDD.jl")
+include("fanogan.jl")
 include("gan.jl")
 include("sptn.jl")
 
