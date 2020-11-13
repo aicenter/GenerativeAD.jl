@@ -1,8 +1,4 @@
 using Distributions
-using DistributionsAD
-using ConditionalDists
-using GenerativeModels
-using ConditionalDists
 
 """
 	Implements all needed parts for constructing f-AnoGAN model
@@ -10,7 +6,9 @@ using ConditionalDists
 """
 
 struct fAnoGAN
-	gan::GenerativeModels.GAN
+	prior 
+	generator
+	discriminator
 	encoder
 end
 
@@ -18,8 +16,8 @@ Flux.@functor fAnoGAN
 
 function izi(m::fAnoGAN, x)
 	z = m.encoder(x)
-	x̂ = m.gan.generator.mapping(z)
-	f = m.gan.discriminator.mapping[1:end-1]
+	x̂ = m.generator(z)
+	f = m.discriminator[1:end-1]
 	fx = f(x)
 	fx̂ = f(x̂)
 	return x̂, fx, fx̂
@@ -67,27 +65,12 @@ function anomaly_score_gpu(m::fAnoGAN, real_input, κ = 1f0; batch_size=64, to_t
 end
 
 # loss functions for Wassersten GAN
-
-function wdloss(gen, dis, x, z)
-	x̂ = gen(z)
-	dx = dis(x)
-	dx̂ = dis(x̂)
-	return Flux.mean(dx) - Flux.mean(dx̂)
-end
-
-wdloss(model::GenerativeModels.GAN, x) = 
-	wdloss(model.generator.mapping, model.discriminator.mapping, x, rand(model.prior |> cpu, size(x, ndims(x))))
-
-wdloss_gpu(model::GenerativeModels.GAN, x) = 
-	wdloss(model.generator.mapping, model.discriminator.mapping, x, rand(model.prior |> cpu, size(x, ndims(x))) |> gpu)
+wdloss(gen, dis, x, z) = Flux.mean(dis(x)) - Flux.mean(dis(gen(z)))
+wdloss(model::fAnoGAN, x) = wdloss(model.generator, model.discriminator, x, rand(model.prior, size(x, ndims(x))))
+wdloss(model::fAnoGAN, x, z) = wdloss(model.generator, model.discriminator, x, z)
 
 wgloss(gen, dis, z) = Flux.mean(dis(gen(z)))
-
-wgloss(model::GenerativeModels.GAN, x) = 
-	wgloss(model.generator.mapping, model.discriminator.mapping, rand(model.prior |> cpu, size(x, ndims(x))))
-
-wgloss_gpu(model::GenerativeModels.GAN, x)=
-	wgloss(model.generator.mapping, model.discriminator.mapping, rand(model.prior |>cpu, size(x, ndims(x))) |>gpu)
+wgloss(model::fAnoGAN, z) = wgloss(model.generator, model.discriminator, z)
 
 function fanogan_constructor(
 		;idim=(2,2,1), 
@@ -104,21 +87,18 @@ function fanogan_constructor(
 
 	(init_seed !== nothing) ? Random.seed!(init_seed) : nothing
 
-	generator_map = conv_decoder(idim, zdim, reverse(kernelsizes), reverse(channels), 
+	generator = conv_decoder(idim, zdim, reverse(kernelsizes), reverse(channels), 
 		reverse(scalings); activation=activation, batchnorm=batchnorm)
-	generator = ConditionalMvNormal(generator_map)
 
-	vecdim = reduce(*,idim[1:3]) # size of vectorized data
-	discriminator_map = Chain(conv_encoder(idim, 1, kernelsizes, channels, scalings,
+	discriminator = Chain(conv_encoder(idim, 1, kernelsizes, channels, scalings,
 			activation=activation, batchnorm=batchnorm)...)
-	discriminator = ConditionalMvNormal(discriminator_map)
 	
 	encoder_ =  Chain(conv_encoder(idim, zdim, kernelsizes, channels, scalings,
 	activation=activation, batchnorm=batchnorm)..., x->tanh.(x))
 
 	(init_seed !== nothing) ? Random.seed!() : nothing
 
-	model = fAnoGAN(GAN(zdim, generator, discriminator), encoder_)
+	model = fAnoGAN(MvNormal(zdim, 1f0), generator, discriminator, encoder_)
 end
 
 """
@@ -135,71 +115,111 @@ General function for fitting of fAnoGAN.
 		batch_size::Int 	... batch size
 		check_every::Int  	... number of iterations between EarlyStopping evaluation check
 		patience::Int		... patience before stoping training 
-		max_iter::Int     	... max number of iteration 
+		iters::Int     		... max number of iteration 
 		mtt_gan::Int		... max train time for GAN (if training is too slow)
 		mtt_enc::Int      	... max train time for Encoder
 		n_critic::Int   	... number of discriminator updater per one generator update
 		usegpu::Bool    	... to use GPU or not
 
 	Example: 
-		params = (kappa = 1.0, weight_clip=0.1, lr_gan = 0.001, lr_enc = 0.001, batch_size=128, 
-			patience=10, check_every=30, max_iter=10000, mtt_gan=82800, mtt_enc=82800, 
+		params = (kappa = 1f0, weight_clip=0.1, lr_gan = 0.001, lr_enc = 0.001, batch_size=128, 
+			patience=10, check_every=30, iters=10000, mtt_gan=82800, mtt_enc=82800, 
 			n_critic=1, usegpu=true)	
 
 """
 function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
+
+	model = params.usegpu ? model |>gpu : model |>cpu 
+	best_model = deepcopy(model)
+	history = MVHistory()
+	train_loader, val_loader = prepare_dataloaders(data, params)
+	val_batches = length(val_loader)
+	"""
+		WGAN training 
+	"""
 	gen_loss = params.usegpu ? wgloss_gpu : wgloss
 	dis_loss = params.usegpu ? wdloss_gpu : wdloss
-	# train WGAN
-	#gan_patience = params.patience*params.check_every
-	gan_patience = params.max_iter # behavior of loss function is wierd 
-	gan_info =  fit!(model.gan, data, gen_loss, dis_loss; lr = params.lr_gan, batchsize = params.batch_size, 	
-					max_train_time = params.mtt_gan, patience=gan_patience, 
-					discriminator_advantage = params.n_critic, params...)
+	
+	opt_G = ADAM(params.lr_gan)
+	opt_D = ADAM(params.lr_gan)
+	ps_D = Flux.params(model.discriminator) #model.gan.discriminator
+	ps_G = Flux.params(model.generator) # model.gan.generator
+	# no early stopping here <– bahavior of loss function will not allow it 
+	for (iter, X) in enumerate(train_loader)
+		X = params.usegpu ? gpu(getobs(X)) : getobs(X)
+		for n = 1:params.n_critic
+			z = rand(model.prior, size(x, ndims(x)))
+			z = params.usegpu ? gpu(z) : z
+			loss_D, back_D = Flux.pullback(ps_D) do
+				wdloss(model, X, z)
+			end
+			grad_D = back_D(1f0)
+			Flux.Optimise.update!(opt_D, ps_D, grad_D)
+			clip_weights!(ps_D, params.weight_clip)
+			#push!(history, :loss_D, iter, loss_e)
+		end
+		z = rand(model.prior, size(x, ndims(x)))
+		z = params.usegpu ? gpu(z) : z
+		loss_G, back_G = Flux.pullback(ps_G) do
+				wgloss(model, z)
+		end
+		grad_G = back_G(1f0)
+		Flux.Optimise.update!(opt_G, ps_G, grad_G)
+		push!(history, :loss_G, iter, loss_G)
 
-	@info " i did gan training properly "
-	return nothing
-	model = fAnoGAN(gan_info.model |> cpu, model.encoder |> cpu) # we are getting best model
+		if mod(iter, params.check_every) == 0
+			val_loss_G = 0
+			val_loss_D = 0
+			Flux.testmode!(model)
+			for X_val in val_loader
+				X_val = params.usegpu ? X_val |> gpu : X_val
+				val_loss_G += gen_loss(model, X)
+				val_loss_D += dis_loss(model, X)
+			end
+			Flux.testmode!(model, false)
+			push!(history, :validation_D, iter, val_loss_D/val_batches)
+			push!(history, :validation_G, iter, val_loss_G/val_batches)
+		end
+	end
+
+	"""
+		Encoder training
+	"""
 	best_model = deepcopy(model)
-
-	history = MVHistory()
-	train_loader, val_loader = prepare_dataloaders(data, batch_size=params.batch_size, iters=params.max_iter)
+	# early stopping
 	best_val_loss = Inf
 	patience_ = deepcopy(params.patience)
-	val_batches = length(val_loader)
 	progress = Progress(length(train_loader))
 
-	model = params.usegpu ? model|>gpu : model|>cpu
-	optim = ADAM(params.lr_enc)
+	opt_E = ADAM(params.lr_enc)
+	ps_E = Flux.params(model.encoder)
 
 	start_time = time()
-	ps = Flux.params(model.encoder)
 	for (iter, X) in enumerate(train_loader)
-		X = params.usegpu ? getobs(X)|>gpu : getobs(X)
-		loss_e, back = Flux.pullback(ps) do
+		X = params.usegpu ? gpu(getobs(X)) : getobs(X)
+		loss_E, back_E = Flux.pullback(ps_E) do
 			izif_loss(model, X, params.kappa)
 		end
-		grad = back(1f0)
-		Flux.Optimise.update!(optim, ps, grad)
+		grad_E = back_E(1f0)
+		Flux.Optimise.update!(op_E, ps_E, grad_E)
 		
-		push!(history, :loss_izif, iter, loss_e)
-
+		push!(history, :loss_E, iter, loss_e)
 		next!(progress; showvalues=[
-			(:iters, "$(iter)/$(params.max_iter)"),
+			(:iters, "$(iter)/$(params.iters)"),
 			(:loss_izif, loss_e)
 			])
 
 		if mod(iter, params.check_every) == 0
-			total_val_loss = 0
+			val_loss_E = 0
 			Flux.testmode!(model)
 			for X_val in val_loader
 				X_val = params.usegpu ? X_val |> gpu : X_val
-				total_val_loss += izif_loss(model, X, params.kappa)
+				val_loss_E += izif_loss(model, X, params.kappa)
 			end
 			Flux.testmode!(model, false)
-			push!(history, :validation_izif, iter, total_val_loss/val_batches)
-			if total_val_loss < best_val_loss
-				best_val_loss = total_val_loss
+			push!(history, :validation_E, iter, val_loss_E/val_batches)
+			if val_loss_E < best_val_loss
+				best_val_loss = val_loss_E
 				patience_ = params.patience
 				best_model = deepcopy(model)
 			else
@@ -210,14 +230,11 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 				end
 			end
 		end
-		if time() - start_time > params.mtt_enc + params.mtt_gan # stop early if time is running out
+		if time() - start_time > params.mtt # stop early if time is running out
 			best_model = deepcopy(model)
 			@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
 			break
 		end
 	end
-	return best_model, (gan_history = gan_info.history, izif_history = history, 
-		iters_gan = gan_info.iterations, 
-		iters_enc = iter, 
-		npars=sum(map(p->length(p), Flux.params(model))))
+	return best_model, history, sum(map(p->length(p), Flux.params(model)))
 end
