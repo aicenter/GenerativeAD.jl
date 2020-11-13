@@ -29,7 +29,15 @@ function compute_score(info, score="AUC")
 		f5 = EvalMetrics.f1_score(cm5)
 		return f5
 	elseif score == "LOSS"
-		return minimum(get(info[:history][:validation_likelihood])[2])
+		try 
+			return minimum(get(info[:history][:validation_likelihood])[2])
+		catch e
+			try
+				return minimum(get(info[:history][:validation_loss])[2])
+			catch ee
+				@error "no validation likelihood or validation loss"
+			end
+		end
 	else
 		@error "unknown score"
 	end 
@@ -92,7 +100,7 @@ function create_df(models; score::String="LOSS", images::Bool=true)
 	for model in models
 		(root, mod_path, infos) = model
 		for (mod,info) in zip(mod_path, infos)
-			try
+			try	
 				path = joinpath(root, info)
 				info = BSON.load(path)
 				if images
@@ -116,7 +124,8 @@ function create_df(models; score::String="LOSS", images::Bool=true)
 					]
 				end
 				push!(df, update)
-			catch e
+			catch e	
+				println("error $(e)")
 				println("info not found #$(i)")
 				i += 1
 			end
@@ -145,11 +154,11 @@ end
 #df = create_df(models, images=true)
 #CSV.write(datadir("vae_tab.csv"), df)
 
-encoders =["vae"]  # ["vae","wae", "wae_vamp"]
+encoders =["aae"]  # ["vae","wae", "wae_vamp"]
 
 for type in ["images"] #["images", "tabular"]
 	for encoder in encoders
-		for score in ["LOSS", "AUC", "AUPRC", "TPR@5", "F1@5"] # LOSS->validation_likelihood
+		for score in ["LOSS", "AUC"] #, "AUPRC", "TPR@5", "F1@5"] # LOSS->validation_likelihood
 			@info "working on $(type)-$(encoder)-$(score)"
 			#models = models_and_params("/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/$(type)/$(encoder)") #shortcut
 			models = models_and_params(datadir("experiments/$(type)/$(encoder)"))
