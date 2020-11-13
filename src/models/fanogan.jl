@@ -116,15 +116,13 @@ General function for fitting of fAnoGAN.
 		check_every::Int  	... number of iterations between EarlyStopping evaluation check
 		patience::Int		... patience before stoping training 
 		iters::Int     		... max number of iteration 
-		mtt_gan::Int		... max train time for GAN (if training is too slow)
-		mtt_enc::Int      	... max train time for Encoder
+		mtt::Int			... max train time (if training is too slow)
 		n_critic::Int   	... number of discriminator updater per one generator update
 		usegpu::Bool    	... to use GPU or not
 
 	Example: 
 		params = (kappa = 1f0, weight_clip=0.1, lr_gan = 0.001, lr_enc = 0.001, batch_size=128, 
-			patience=10, check_every=30, iters=10000, mtt_gan=82800, mtt_enc=82800, 
-			n_critic=1, usegpu=true)	
+			patience=10, check_every=30, iters=10000, mtt=82800, n_critic=1, usegpu=true)	
 
 """
 function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
@@ -137,18 +135,20 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 	"""
 		WGAN training 
 	"""
-	gen_loss = params.usegpu ? wgloss_gpu : wgloss
-	dis_loss = params.usegpu ? wdloss_gpu : wdloss
+	#gen_loss = params.usegpu ? wgloss_gpu : wgloss
+	#dis_loss = params.usegpu ? wdloss_gpu : wdloss
 	
 	opt_G = ADAM(params.lr_gan)
 	opt_D = ADAM(params.lr_gan)
 	ps_D = Flux.params(model.discriminator) #model.gan.discriminator
 	ps_G = Flux.params(model.generator) # model.gan.generator
 	# no early stopping here <– bahavior of loss function will not allow it 
+	progress = Progress(length(train_loader))
 	for (iter, X) in enumerate(train_loader)
 		X = params.usegpu ? gpu(getobs(X)) : getobs(X)
+		last_loss_D = 0
 		for n = 1:params.n_critic
-			z = rand(model.prior, size(x, ndims(x)))
+			z = rand(model.prior, size(X, ndims(X)))
 			z = params.usegpu ? gpu(z) : z
 			loss_D, back_D = Flux.pullback(ps_D) do
 				wdloss(model, X, z)
@@ -156,9 +156,9 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 			grad_D = back_D(1f0)
 			Flux.Optimise.update!(opt_D, ps_D, grad_D)
 			clip_weights!(ps_D, params.weight_clip)
-			#push!(history, :loss_D, iter, loss_e)
+			last_loss_D = loss_D
 		end
-		z = rand(model.prior, size(x, ndims(x)))
+		z = rand(model.prior, size(X, ndims(X)))
 		z = params.usegpu ? gpu(z) : z
 		loss_G, back_G = Flux.pullback(ps_G) do
 				wgloss(model, z)
@@ -166,7 +166,12 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 		grad_G = back_G(1f0)
 		Flux.Optimise.update!(opt_G, ps_G, grad_G)
 		push!(history, :loss_G, iter, loss_G)
-
+		push!(history, :loss_D, iter, last_loss_D)
+		next!(progress; showvalues=[
+			(:iters, "$(iter)/$(params.iters)"),
+			(:loss_G, loss_G),
+			(:loss_D, last_loss_D)
+			])
 		if mod(iter, params.check_every) == 0
 			val_loss_G = 0
 			val_loss_D = 0
@@ -201,12 +206,12 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 			izif_loss(model, X, params.kappa)
 		end
 		grad_E = back_E(1f0)
-		Flux.Optimise.update!(op_E, ps_E, grad_E)
+		Flux.Optimise.update!(opt_E, ps_E, grad_E)
 		
-		push!(history, :loss_E, iter, loss_e)
+		push!(history, :loss_E, iter, loss_E)
 		next!(progress; showvalues=[
 			(:iters, "$(iter)/$(params.iters)"),
-			(:loss_izif, loss_e)
+			(:loss_izif, loss_E)
 			])
 
 		if mod(iter, params.check_every) == 0
