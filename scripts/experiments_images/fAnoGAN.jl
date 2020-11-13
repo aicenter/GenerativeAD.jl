@@ -43,6 +43,7 @@ function sample_params()
 	
 	par_vec = (
 		2 .^(3:8), 
+		10f0 .^(-4:-3),
 		10f0 .^(-4:-3), 
 		2 .^ (5:7), 
 		["relu", "swish", "tanh"], 
@@ -51,7 +52,8 @@ function sample_params()
 	)
 	argnames = (
 		:zdim, 
-		:lr, 
+		:lr_gan,
+		:lr_enc, 
 		:batchsize, 
 		:activation, 
 		:init_seed, 
@@ -73,16 +75,17 @@ Final parameters is a named tuple of names and parameter values that are used fo
 """
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
-	default_params = (idim = size(data[1][1])[1:3], kappa = 1f0, wight_clip=0.01, lr_gan = 0.001, lr_enc = 0.001, 
-		batch_size=128, patience=10, check_every=30, max_iter=10000, mtt_gan=82800, mtt_enc=82800, n_critic=1, usegpu=true)
+	default_params = (idim = size(data[1][1])[1:3], kappa = 1f0, weight_clip=0.1, lr_gan = 0.00005, lr_enc = 0.001, batch_size=128, 
+		patience=10, check_every=30, iters=10000, mtt=82800, n_critic=1, usegpu=true)
 	
 
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.fanogan_constructor(;merge(default_params, parameters)...) |> gpu
+	model = GenerativeAD.Models.fanogan_constructor(;idim = size(data[1][1])[1:3], parameters...) |> gpu
 
-	max_iter = 5000 # this should be enough
+	max_iter = 50 # this should be enough
 
 	# fit train data
+	
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data, merge(default_params, parameters))
 	catch e
@@ -90,13 +93,13 @@ function fit(data, parameters)
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
 	end
-	model = info.model
+	model = info[1]
 	
 	# construct return information - put e.g. the model structure here for generative models
 	training_info = (
 		fit_t = fit_t,
-		history = info.history,
-		npars = info.npars,
+		history = info[2],
+		npars = info[3],
 		model = model |> cpu
 		)
 
