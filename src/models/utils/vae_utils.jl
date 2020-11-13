@@ -64,7 +64,7 @@ function encode_mean_gpu(model, x::AbstractArray{T,4}, batchsize::Int) where T
 end
 
 """
-	reconstruction_score(model::AEModel, x)
+	reconstruction_score(model::AEModel, x[, L=1])
 
 Anomaly score based on the reconstruction probability of the data.
 """
@@ -72,6 +72,9 @@ function reconstruction_score(model::AEModel, x)
 	p = condition(model.decoder, rand(model.encoder, x))
 	-logpdf(p, x)
 end
+reconstruction_score(model::AEModel, x, L::Int) = 
+	mean([reconstruction_score(model, x) for _ in 1:L])
+
 """
 	reconstruction_score_mean(model::AEModel, x)
 
@@ -82,7 +85,7 @@ function reconstruction_score_mean(model::AEModel, x)
 	-logpdf(p, x)
 end
 """
-	latent_score(model::AEModel, x) 
+	latent_score(model::AEModel, x[, L=1]) 
 
 Anomaly score based on the similarity of the encoded data and the prior.
 """
@@ -90,6 +93,8 @@ function latent_score(model::AEModel, x)
 	z = rand(model.encoder, x)
 	-logpdf(model.prior, z)
 end
+latent_score(model::AEModel, x, L::Int) = 
+	mean([latent_score(model, x) for _ in 1:L])
 
 """
 	latent_score_mean(model::AEModel, x) 
