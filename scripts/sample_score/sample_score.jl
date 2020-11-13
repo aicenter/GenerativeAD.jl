@@ -76,7 +76,7 @@ function save_sample_score(f::String, data, seed::Int, ac=nothing)
 	end
 
 	# if the file does not exist already, compute the scores
-		savef = joinpath(savepath, savename(result[2], "bson", digits=5))
+	savef = joinpath(savepath, savename(result[2], "bson", digits=5))
 	if !isfile(savef)
 		@info "computing sample score for $f"
 		GenerativeAD.experiment(result..., data, savepath; save_entries...)
