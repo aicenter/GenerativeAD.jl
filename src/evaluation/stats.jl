@@ -10,6 +10,7 @@ using EvalMetrics
 # metric names and settings 
 const BASE_METRICS = ["auc", "auprc", "tpr_5", "f1_5"]
 const PAT_METRICS = ["pat_1", "pat_5", "pat_10", "pat_20"]
+const TRAIN_EVAL_TIMES = ["fit_t", "tr_eval_t", "tst_eval_t", "val_eval_t"]
 
 """
 	_prefix_symbol(prefix, s)
@@ -132,6 +133,8 @@ function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc;
 							downsample=Dict())
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
+	agg_cols = vcat(agg_cols, Symbol.(TRAIN_EVAL_TIMES))
+	top10_std_cols = _prefix_symbol.(agg_cols, "top_10_std")
 
 	# agregate by seed over given hyperparameter and then choose best
 	results = []
@@ -162,7 +165,7 @@ function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc;
 				best = first(pg_agg, 1)
 
 				# add std of top 10 models metrics
-				best_10_std = combine(first(pg_agg, 10), agg_cols .=> std .=> _prefix_symbol.(agg_cols, "top_10_std"))
+				best_10_std = combine(first(pg_agg, 10), agg_cols .=> std .=> top10_std_cols)
 				best = hcat(best, best_10_std)
 				
 				# add grouping keys
@@ -199,6 +202,7 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc;
 									downsample=Dict())
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
+	agg_cols = vcat(agg_cols, Symbol.(TRAIN_EVAL_TIMES))
 	top10_std_cols = _prefix_symbol.(agg_cols, "top_10_std")
 
 	agg_keys = ("anomaly_class" in names(df)) ? [:seed, :anomaly_class] : [:seed]
