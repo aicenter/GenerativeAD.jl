@@ -101,7 +101,7 @@ function StatsBase.fit!(model::F, data::Tuple; max_train_time=82800,
 	X_val = data[2][1][:, data[2][2] .== 0.0f0]
 
 	history = MVHistory()
-	patience = patience
+	_patience = patience
 	
 	best_val_loss = loss(trn_model, X_val)
 	i = 1
@@ -133,7 +133,7 @@ function StatsBase.fit!(model::F, data::Tuple; max_train_time=82800,
 
 		if val_loss < best_val_loss
 			best_val_loss = val_loss
-			patience = patience
+			_patience = patience
 
 			# this should save the model at least once
 			# when the validation loss is decreasing 
@@ -141,8 +141,8 @@ function StatsBase.fit!(model::F, data::Tuple; max_train_time=82800,
 				model = deepcopy(trn_model)
 			end
 		else
-			patience -= 1
-			if patience == 0
+			_patience -= 1
+			if _patience == 0
 				@info "Stopped training after $(i) iterations."
 				break
 			end
