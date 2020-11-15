@@ -49,6 +49,10 @@ function compute_stats(f::String)
 		dataset = r[:dataset],
 		phash = hash(r[:parameters]),
 		parameters = savename(r[:parameters], digits=6), 
+		fit_t = r[:fit_t],
+		tr_eval_t = r[:tr_eval_t],
+		tst_eval_t = r[:tst_eval_t],
+		val_eval_t = r[:val_eval_t],
 		seed = r[:seed])
 	
 	if Symbol("anomaly_class") in keys(r)
