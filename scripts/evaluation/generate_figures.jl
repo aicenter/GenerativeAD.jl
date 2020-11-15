@@ -461,3 +461,38 @@ comparison_images_ensemble(
     baseline_img, 
     ensembles_img, ("TPR@5", :tpr_5);
     suffix="_only_improve")
+
+
+# basic tables when anomaly_class is treated as separate dataset
+function basic_tables_images_per_ac(df; suffix="")
+    dff = filter(x -> x.seed == 1, df)
+    apply_aliases!(dff, col="dataset", d=DATASET_ALIAS)
+    dff[:dataset] .= lowercase.(dff[:dataset]) .* ":" .* lpad.(string.(dff[:anomaly_class]), 2, '0')
+    select!(dff, Not(:anomaly_class))
+
+    apply_aliases!(dff, col="modelname", d=MODEL_MERGE)
+    for metric in [:auc, :tpr_5]
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric)    
+
+        # does not play well with the aggregation when anomaly_class is present
+        df_agg = aggregate_stats_mean_max(dff; min_samples=1)
+
+        df_agg["model_type"] = copy(df_agg["modelname"])
+        apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+        apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
+
+        sort!(df_agg, (:dataset, :model_type, :modelname))
+        rt = rank_table(df_agg, tst_metric)
+        rt[end-2, 1] = "\$\\sigma_1\$"
+        rt[end-1, 1] = "\$\\sigma_{10}\$"
+        rt[end, 1] = "rnk"
+
+        open("./paper/tables/images_per_ac_$(metric)_$(metric)$(suffix).tex", "w") do io
+            print_rank_table(io, rt; backend=:tex)
+        end
+    end
+end
+
+basic_tables_images_per_ac(copy(df_images))
+basic_tables_images_per_ac(copy(df_images_ens), suffix="_ensembles")
