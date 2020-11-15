@@ -48,6 +48,7 @@ function sample_params()
 		2 .^ (5:7), 
 		["relu", "swish", "tanh"], 
 		1:Int(1e8),
+		[true, false],
 		[0.001,0.005,0.01,0.05,0.1]
 	)
 	argnames = (
@@ -57,6 +58,7 @@ function sample_params()
 		:batchsize, 
 		:activation, 
 		:init_seed, 
+		:batchnorm,
 		:weight_clip,
 	)
 	parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
@@ -76,7 +78,7 @@ Final parameters is a named tuple of names and parameter values that are used fo
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
 	default_params = (idim = size(data[1][1])[1:3], kappa = 1f0, weight_clip=0.1, lr_gan = 0.00005, lr_enc = 0.001, batch_size=128, 
-		patience=10, check_every=30, iters=10000, mtt=82800, n_critic=1, usegpu=true)
+		patience=10, check_every=30, iters=10000, mtt=82800, n_critic=5, usegpu=true)
 	
 
 	# construct model - constructor should only accept kwargs
@@ -108,7 +110,7 @@ function fit(data, parameters)
 end
 
 
-___________________________________________________________________________________________________________________
+#___________________________________________________________________________________________________________________
 try_counter = 0
 max_tries = 10*max_seed
 

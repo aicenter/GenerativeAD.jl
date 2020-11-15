@@ -1,4 +1,5 @@
 using Distributions
+using CUDA
 
 """
 	Implements all needed parts for constructing f-AnoGAN model
@@ -13,6 +14,10 @@ struct fAnoGAN
 end
 
 Flux.@functor fAnoGAN
+
+function Flux.trainable(model::fAnoGAN)
+	(generator = model.generator, discriminator = model.discriminator, encoder = model.encoder)
+end
 
 function izi(m::fAnoGAN, x)
 	z = m.encoder(x)
@@ -65,11 +70,11 @@ function anomaly_score_gpu(m::fAnoGAN, real_input, κ = 1f0; batch_size=64, to_t
 end
 
 # loss functions for Wassersten GAN
-wdloss(gen, dis, x, z) = Flux.mean(dis(x)) - Flux.mean(dis(gen(z)))
+wdloss(gen, dis, x, z) = -(Flux.mean(dis(x)) - Flux.mean(dis(gen(z))))
 wdloss(model::fAnoGAN, x) = wdloss(model.generator, model.discriminator, x, rand(model.prior, size(x, ndims(x))))
 wdloss(model::fAnoGAN, x, z) = wdloss(model.generator, model.discriminator, x, z)
 
-wgloss(gen, dis, z) = Flux.mean(dis(gen(z)))
+wgloss(gen, dis, z) = - Flux.mean(dis(gen(z)))
 wgloss(model::fAnoGAN, z) = wgloss(model.generator, model.discriminator, z)
 
 function fanogan_constructor(
@@ -135,11 +140,11 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 	"""
 		WGAN training 
 	"""
-	#gen_loss = params.usegpu ? wgloss_gpu : wgloss
-	#dis_loss = params.usegpu ? wdloss_gpu : wdloss
 	
-	opt_G = ADAM(params.lr_gan)
-	opt_D = ADAM(params.lr_gan)
+	opt_G = RMSProp(params.lr_gan)
+	opt_D = RMSProp(params.lr_gan)
+	opt_E = ADAM(params.lr_enc)
+	ps_E = Flux.params(model.encoder)
 	ps_D = Flux.params(model.discriminator) #model.gan.discriminator
 	ps_G = Flux.params(model.generator) # model.gan.generator
 	# no early stopping here <– bahavior of loss function will not allow it 
@@ -149,7 +154,7 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 		last_loss_D = 0
 		for n = 1:params.n_critic
 			z = rand(model.prior, size(X, ndims(X)))
-			z = params.usegpu ? gpu(z) : z
+			z = params.usegpu ? z|>gpu : z
 			loss_D, back_D = Flux.pullback(ps_D) do
 				wdloss(model, X, z)
 			end
@@ -159,7 +164,7 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 			last_loss_D = loss_D
 		end
 		z = rand(model.prior, size(X, ndims(X)))
-		z = params.usegpu ? gpu(z) : z
+		z = params.usegpu ? z|>gpu : z
 		loss_G, back_G = Flux.pullback(ps_G) do
 				wgloss(model, z)
 		end
@@ -178,8 +183,10 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 			Flux.testmode!(model)
 			for X_val in val_loader
 				X_val = params.usegpu ? X_val |> gpu : X_val
-				val_loss_G += gen_loss(model, X)
-				val_loss_D += dis_loss(model, X)
+				z = rand(model.prior, size(X_val, ndims(X_val)))
+				z = params.usegpu ? z|>gpu : z
+				val_loss_G += wgloss(model, z)
+				val_loss_D += wdloss(model, X_val, z)
 			end
 			Flux.testmode!(model, false)
 			push!(history, :validation_D, iter, val_loss_D/val_batches)
@@ -190,14 +197,14 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 	"""
 		Encoder training
 	"""
+	# possible memory problems 
+	CUDA.reclaim() # somehow GPU will run out of memory. This helps to clear cached memory and continue with it
+
 	best_model = deepcopy(model)
 	# early stopping
 	best_val_loss = Inf
 	patience_ = deepcopy(params.patience)
 	progress = Progress(length(train_loader))
-
-	opt_E = ADAM(params.lr_enc)
-	ps_E = Flux.params(model.encoder)
 
 	start_time = time()
 	for (iter, X) in enumerate(train_loader)
@@ -219,7 +226,7 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 			Flux.testmode!(model)
 			for X_val in val_loader
 				X_val = params.usegpu ? X_val |> gpu : X_val
-				val_loss_E += izif_loss(model, X, params.kappa)
+				val_loss_E += izif_loss(model, X_val, params.kappa)
 			end
 			Flux.testmode!(model, false)
 			push!(history, :validation_E, iter, val_loss_E/val_batches)
