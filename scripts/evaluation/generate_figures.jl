@@ -335,7 +335,34 @@ comparison_tabular_ensemble(
     suffix="_only_improve")
 
 
-# and almost the same for images
+# training time rank vs avg rank
+function plot_tabular_fit_time(df; suffix="", format="pdf")
+    for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric)
+
+        for (name, agg) in zip(
+                    ["maxmean", "meanmax"], 
+                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
+
+            df_agg = agg(df, val_metric)
+            rt = rank_table(df_agg, tst_metric) 
+            df_agg[:fit_t] .= -df_agg[:fit_t]
+            rtt = rank_table(df_agg, :fit_t)
+
+            a = PGFPlots.Plots.Scatter(rtt[end, 2:end], rt[end, 2:end],
+                    ylabel="avg. rnk",
+                    xlabel="avg. time rnk")
+            filename = "./paper/figures/tabular_fit_time_vs_$(metric)_$(name)$(suffix).$(format)"
+            PGFPlots.save(filename, a; include_preamble=false)
+        end
+    end
+    results
+end
+
+######################################################################################
+#######################               IMAGES                ##########################
+######################################################################################
 df_images = load(datadir("evaluation/images_eval.bson"))[:df];
 df_images_ens = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
 
