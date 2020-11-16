@@ -1,5 +1,5 @@
 using Distributions
-#using CUDA
+using Flux.CUDA
 
 """
 	Implements all needed parts for constructing f-AnoGAN model
@@ -198,7 +198,7 @@ function StatsBase.fit!(model::fAnoGAN, data::Tuple, params::NamedTuple)
 		Encoder training
 	"""
 	# possible memory problems 
-	#CUDA.reclaim() # somehow GPU will run out of memory. This helps to clear cached memory and continue with it
+	CUDA.reclaim() # somehow GPU will run out of memory. This helps to clear cached memory and continue with it
 
 	best_model = deepcopy(model)
 	# early stopping
