@@ -71,7 +71,7 @@ function save_sample_score(f::String, data, seed::Int, ac=nothing)
 		result = (x -> sample_score_batched(model, x, L, 512), 
 			merge(mdata["parameters"], (L = L, score = "reconstruction-sampled"))) 
 	else
-		result = (x -> sample_score_batched_gpu(gpu(model), x, L, 512), 
+		result = (x -> sample_score_batched_gpu(gpu(model), x, L, 256), 
 			merge(mdata["parameters"], (L = L, score = "reconstruction-sampled"))) 
 	end
 
