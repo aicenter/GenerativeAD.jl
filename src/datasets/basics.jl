@@ -30,11 +30,12 @@ end
 
 Split data.
 """
-function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); seed=nothing,
+function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); seed=nothing, method="leave-one-out",
 	    	contamination::Real=0.0)
 	# split the normal data, add some anomalies to the train set and divide
 	# the rest between validation and test
 	(0 <= contamination <= 1) ? nothing : error("contamination must be in the interval [0,1]")
+	any(method .== ["leave-one-out","leave-one-in"]) ? nothing : error("unknown method")
 	nd = ndims(data_normal) # differentiate between 2D tabular and 4D image data
 
 	# split normal indices
@@ -56,12 +57,17 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	end
 
 	# cat it together
-	tr_x = cat(tr_n, tr_a, dims = nd)
+	if method == "leave-one-in"
+		tr_x = tr_n
+		tr_y = zeros(Float32, size(tr_x))
+	else	
+		tr_x = cat(tr_n, tr_a, dims = nd)
+		tr_y = vcat(zeros(Float32, size(tr_n, nd)), ones(Float32, size(tr_a,nd)))
+	end
 	val_x = cat(val_n, val_a, dims = nd)
 	tst_x = cat(tst_n, tst_a, dims = nd)
 
 	# now create labels
-	tr_y = vcat(zeros(Float32, size(tr_n, nd)), ones(Float32, size(tr_a,nd)))
 	val_y = vcat(zeros(Float32, size(val_n, nd)), ones(Float32, size(val_a,nd)))
 	tst_y = vcat(zeros(Float32, size(tst_n, nd)), ones(Float32, size(tst_a,nd)))
 
@@ -77,7 +83,7 @@ ratios for normal data, seed and training data contamination.
 For a list of available datasets, check `GenerativeAD.Datasets.uci_datasets`, `GenerativeAD.Datasets.other_datasets`
 and `GenerativeAD.Datasets.mldatasets`.
 """
-function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamination::Real=0.0, kwargs...)
+function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, method="leave-one-out", contamination::Real=0.0, kwargs...)
 	# extract data and labels
 	if dataset in uci_datasets # UCI Loda data, standardized
 		data_normal, data_anomalous = load_uci_data(dataset; kwargs...)
@@ -91,7 +97,11 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamin
 	end
 
 	# now do the train/validation/test split
-	train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
+	if method=="leave-one-in"
+		return train_val_test_split(data_anomalous, data_normal, ratios; seed=seed, method=method, contamination=ratios[1])
+	else
+		return train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
+	end
 end
 
 """
