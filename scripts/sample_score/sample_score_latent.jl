@@ -45,9 +45,9 @@ if anomaly_class != nothing
 end
 
 sample_score_batched(m,x,L,batchsize) = 
-	vcat(map(y-> Base.invokelatest(GenerativeAD.Models.reconstruction_score, m, y, L), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+	vcat(map(y-> Base.invokelatest(GenerativeAD.Models.latent_score, m, y, L), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 sample_score_batched_gpu(m,x,L,batchsize) = 
-	vcat(map(y-> cpu(Base.invokelatest(GenerativeAD.Models.reconstruction_score, m, gpu(Array(y)), L)), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+	vcat(map(y-> cpu(Base.invokelatest(GenerativeAD.Models.latent_score, m, gpu(Array(y)), L)), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 
 function save_sample_score(f::String, data, seed::Int, ac=nothing)
 	# get model
@@ -69,10 +69,10 @@ function save_sample_score(f::String, data, seed::Int, ac=nothing)
 	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (ac=ac,))
 	if ac == nothing
 		result = (x -> sample_score_batched(model, x, L, 512), 
-			merge(mdata["parameters"], (L = L, score = "reconstruction-sampled"))) 
+			merge(mdata["parameters"], (L = L, score = "latent-sampled"))) 
 	else
 		result = (x -> sample_score_batched_gpu(gpu(model), x, L, 256), 
-			merge(mdata["parameters"], (L = L, score = "reconstruction-sampled"))) 
+			merge(mdata["parameters"], (L = L, score = "latent-sampled"))) 
 	end
 
 	# if the file does not exist already, compute the scores
