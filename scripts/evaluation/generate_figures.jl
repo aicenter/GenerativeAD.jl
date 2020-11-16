@@ -336,13 +336,17 @@ comparison_tabular_ensemble(
 
 
 # training time rank vs avg rank
-function plot_tabular_fit_time(df; suffix="", format="pdf")
+function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf")
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
     df["model_type"] = copy(df["modelname"])
     apply_aliases!(df, col="model_type", d=MODEL_TYPE)
     apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
     # training time with two stage methods shows only the second stage
+    # once the encoding fit time is added to the dataframe add it to the fit column
     filter!(x -> (x.model_type != "two-stage"), df)
+
+    # add all eval times together
+    df["total_eval_t"] = df["tr_eval_t"] .+ df["tst_eval_t"] .+ df["val_eval_t"]
 
     for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
         val_metric = _prefix_symbol("val", metric)
@@ -352,14 +356,13 @@ function plot_tabular_fit_time(df; suffix="", format="pdf")
                     ["maxmean", "meanmax"], 
                     [aggregate_stats_max_mean, aggregate_stats_mean_max])
 
-            df_agg = agg(df, val_metric)
-
+            df_agg = agg(df, val_metric, add_col=:total_eval_t)
             rt = rank_table(df_agg, tst_metric) 
             
             # time is computed only for the best models
             # maybe should be averaged over all samples
-            df_agg[:fit_t] .= -df_agg[:fit_t]
-            rtt = rank_table(df_agg, :fit_t)
+            df_agg[time_col] .= -df_agg[time_col]
+            rtt = rank_table(df_agg, time_col)
 
             models = names(rt)[2:end]
             x = Vector(rt[end, 2:end])
@@ -370,7 +373,7 @@ function plot_tabular_fit_time(df; suffix="", format="pdf")
                     [PGFPlots.Plots.Node(m, xx + 0.5, yy + 0.7) for (m, xx, yy) in zip(models, x, y)]...],
                     xlabel="avg. rnk",
                     ylabel="avg. time rnk")
-            filename = "./paper/figures/tabular_fit_time_vs_$(metric)_$(name)$(suffix).$(format)"
+            filename = "./paper/figures/tabular_$(time_col)_vs_$(metric)_$(name)$(suffix).$(format)"
             PGFPlots.save(filename, a; include_preamble=false)
         end
     end
