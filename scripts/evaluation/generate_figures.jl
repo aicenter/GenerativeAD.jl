@@ -337,6 +337,13 @@ comparison_tabular_ensemble(
 
 # training time rank vs avg rank
 function plot_tabular_fit_time(df; suffix="", format="pdf")
+    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
+    df["model_type"] = copy(df["modelname"])
+    apply_aliases!(df, col="model_type", d=MODEL_TYPE)
+    apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
+    # training time with two stage methods shows only the second stage
+    filter!(x -> (x.model_type != "two-stage"), df)
+
     for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)
@@ -346,19 +353,31 @@ function plot_tabular_fit_time(df; suffix="", format="pdf")
                     [aggregate_stats_max_mean, aggregate_stats_mean_max])
 
             df_agg = agg(df, val_metric)
+
             rt = rank_table(df_agg, tst_metric) 
+            
+            # time is computed only for the best models
+            # maybe should be averaged over all samples
             df_agg[:fit_t] .= -df_agg[:fit_t]
             rtt = rank_table(df_agg, :fit_t)
 
-            a = PGFPlots.Plots.Scatter(rtt[end, 2:end], rt[end, 2:end],
-                    ylabel="avg. rnk",
-                    xlabel="avg. time rnk")
+            models = names(rt)[2:end]
+            x = Vector(rt[end, 2:end])
+            y = Vector(rtt[end, 2:end])
+            # labels cannot be shifted uniformly
+            a = PGFPlots.Axis([
+                    PGFPlots.Plots.Scatter(x, y),
+                    [PGFPlots.Plots.Node(m, xx + 0.5, yy + 0.7) for (m, xx, yy) in zip(models, x, y)]...],
+                    xlabel="avg. rnk",
+                    ylabel="avg. time rnk")
             filename = "./paper/figures/tabular_fit_time_vs_$(metric)_$(name)$(suffix).$(format)"
             PGFPlots.save(filename, a; include_preamble=false)
         end
     end
-    results
 end
+
+plot_tabular_fit_time(copy(df_tabular); format="tex")
+# plot_tabular_fit_time(copy(df_tabular); format="pdf")
 
 ######################################################################################
 #######################               IMAGES                ##########################
