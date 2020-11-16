@@ -110,7 +110,7 @@ end
 """
 	aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc; 
 								min_samples=("anomaly_class" in names(df)) ? 10 : 3, 
-								downsample=Dict())
+								downsample=Dict(), add_col=nothing)
 
 Agregates eval metrics by seed/anomaly class over a given hyperparameter and then chooses best
 model based on `criterion_col`. The output is a DataFrame of maximum #datasets*#models rows with
@@ -127,13 +127,15 @@ When nonempty `downsample` dictionary is specified, the entries of`("model" => #
 how many samples should be taken into acount. These are selected randomly with fixed seed.
 Optional arg `min_samples` specifies how many seed/anomaly_class combinations should be present
 in order for the hyperparameter's results be considered statistically significant.
+Optionally with argument `add_col` one can specify additional column to average values over.
 """
 function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc; 
 							min_samples=("anomaly_class" in names(df)) ? 10 : 3, 
-							downsample=Dict())
+							downsample=Dict(), add_col=nothing)
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 	agg_cols = vcat(agg_cols, Symbol.(TRAIN_EVAL_TIMES))
+	agg_cols = (add_col !== nothing) ? vcat(agg_cols, add_col) : agg_cols
 	top10_std_cols = _prefix_symbol.(agg_cols, "top_10_std")
 
 	# agregate by seed over given hyperparameter and then choose best
@@ -184,7 +186,7 @@ end
 
 """
 aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; 
-							downsample=Dict())
+							downsample=Dict(), add_col=nothing)
 
 Chooses the best hyperparameters for each seed/anomaly_class combination by `criterion_col`
 and then aggregates the metrics over seed/anomaly_class to get the final results. The output 
@@ -196,13 +198,15 @@ columns of different types
 - std of best 10 hyperparameters in each seed then averaged over seeds, suffixed `_top_10_std`
 When nonempty `downsample` dictionary is specified, the entries of`("model" => #samples)`, specify
 how many samples should be taken into acount. These are selected randomly with fixed seed.
-As oposed to mean-max aggregation the output does not contain 
+As oposed to mean-max aggregation the output does not contain parameters and phash.
+Optionally with argument `add_col` one can specify additional column to average values over.
 """
 function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; 
-									downsample=Dict())
+									downsample=Dict(), add_col=nothing)
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 	agg_cols = vcat(agg_cols, Symbol.(TRAIN_EVAL_TIMES))
+	agg_cols = (add_col !== nothing) ? vcat(agg_cols, add_col) : agg_cols
 	top10_std_cols = _prefix_symbol.(agg_cols, "top_10_std")
 
 	agg_keys = ("anomaly_class" in names(df)) ? [:seed, :anomaly_class] : [:seed]
