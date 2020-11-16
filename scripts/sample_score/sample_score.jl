@@ -47,7 +47,7 @@ end
 sample_score_batched(m,x,L,batchsize) = 
 	vcat(map(y-> Base.invokelatest(GenerativeAD.Models.reconstruction_score, m, y, L), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 sample_score_batched_gpu(m,x,L,batchsize) = 
-	vcat(map(y-> Base.invokelatest(GenerativeAD.Models.reconstruction_score, m, gpu(Array(y)), L), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+	vcat(map(y-> cpu(Base.invokelatest(GenerativeAD.Models.reconstruction_score, m, gpu(Array(y)), L)), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 
 function save_sample_score(f::String, data, seed::Int, ac=nothing)
 	# get model
