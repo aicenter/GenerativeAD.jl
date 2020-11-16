@@ -2,6 +2,9 @@ using DrWatson
 using FileIO, BSON, DataFrames
 using PrettyTables
 using Statistics
+using StatsBase
+import PGFPlots
+include("./scripts/evaluation/utils/pgf_boxplot.jl")
 
 using GenerativeAD.Evaluation: MODEL_MERGE, MODEL_ALIAS, DATASET_ALIAS, MODEL_TYPE, apply_aliases!
 using GenerativeAD.Evaluation: _prefix_symbol, PAT_METRICS, aggregate_stats_mean_max, aggregate_stats_max_mean
@@ -45,7 +48,6 @@ basic_tables_tabular(copy(df_tabular))
 basic_tables_tabular(copy(df_tabular_ens), suffix="_ensembles")
 
 
-import PGFPlots
 function plot_knowledge_tabular(df; suffix="", format="pdf")
     # filter!(x -> (x.modelname != "vae_ocsvm") && (x.modelname != "vae+ocsvm"), df)    
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
@@ -379,8 +381,88 @@ function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf")
     end
 end
 
-plot_tabular_fit_time(copy(df_tabular); format="tex")
+plot_tabular_fit_time(copy(df_tabular); time_col=:fit_t, format="tex")
+plot_tabular_fit_time(copy(df_tabular); time_col=:tr_eval_t, format="tex")
+plot_tabular_fit_time(copy(df_tabular); time_col=:val_eval_t, format="tex")
+plot_tabular_fit_time(copy(df_tabular); time_col=:tst_eval_t, format="tex")
+plot_tabular_fit_time(copy(df_tabular); time_col=:total_eval_t, format="tex")
 # plot_tabular_fit_time(copy(df_tabular); format="pdf")
+
+# show basic table only for autoencoders
+function basic_tables_tabular_autoencoders(df; suffix="")
+    df["model_type"] = copy(df["modelname"])
+    apply_aliases!(df, col="model_type", d=MODEL_TYPE)
+    filter!(x -> (x.model_type == "autoencoders"), df)
+    apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
+    apply_aliases!(df, col="dataset", d=DATASET_ALIAS)
+
+    # define further splitting of models based on parameters
+    jc_mask = occursin.("jacodeco", df.parameters)
+    df[jc_mask, :modelname] .=  df[jc_mask, :modelname] .*"jc"
+
+    lm_mask = occursin.("latent-mean", df.parameters)
+    df[lm_mask, :modelname] .=  df[lm_mask, :modelname] .*"lm"
+
+    l_mask = occursin.("latent_", df.parameters)
+    df[l_mask, :modelname] .=  df[l_mask, :modelname] .*"l"
+
+    rm_mask = occursin.("reconstruction-mean", df.parameters)
+    df[rm_mask, :modelname] .=  df[rm_mask, :modelname] .*"rm"
+
+    r_mask = occursin.("reconstruction_", df.parameters)
+    df[r_mask, :modelname] .=  df[r_mask, :modelname] .*"r"
+
+    rs_mask = occursin.("reconstruction-sampled", df.parameters)
+    df[rs_mask, :modelname] .=  df[rs_mask, :modelname] .*"rs"
+
+    d_mask = occursin.("disc_", df.parameters)
+    df[d_mask, :modelname] .=  df[d_mask, :modelname] .*"d"
+
+    for metric in [:auc, :tpr_5]
+        for (name, agg) in zip(
+                    ["maxmean", "meanmax"], 
+                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
+            val_metric = _prefix_symbol("val", metric)
+            tst_metric = _prefix_symbol("tst", metric)    
+
+            df_agg = agg(df, val_metric)
+            sort!(df_agg, (:dataset, :modelname))
+            rt = rank_table(df_agg, tst_metric)
+            
+            filename = "./paper/tables/tabular_ae_only_$(metric)_$(metric)_$(name)$(suffix).tex"
+            open(filename, "w") do io
+                print_rank_table(io, rt; backend=:tex)
+            end
+
+            # due to its width we opted for box plot
+            # recompute ranks for each dataset
+            mask_nan_max = (x) -> (isnan(x) ? -Inf : x)
+            rs = []
+            for row in eachrow(rt[1:end-3,:])
+                push!(rs, StatsBase.competerank(mask_nan_max.(Vector(row[2:end])), rev = true))
+            end
+            # each row represents ranks of a method
+            ranks = reduce(hcat, rs)
+            models = names(rt)[2:end]
+
+            # compute statistics for boxplot
+            rmin, rmax = maximum(ranks, dims=2), maximum(ranks, dims=2)
+            rmean = mean(ranks, dims=2)
+            rmedian = median(ranks, dims=2)
+            rlowq = quantile.(eachrow(ranks), 0.25)
+            rhighq = quantile.(eachrow(ranks), 0.75)
+
+            a = pgf_boxplot(rlowq, rhighq, rmedian, rmin, rmax, models,; h="10cm", w="8cm")
+            filename = "./paper/figures/tabular_ae_only_box_$(metric)_$(name)$(suffix).tex"
+            open(filename, "w") do f
+                write(f, a)
+            end
+        end
+    end
+
+end
+
+basic_tables_tabular_autoencoders(copy(df_tabular))
 
 ######################################################################################
 #######################               IMAGES                ##########################
