@@ -79,7 +79,7 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
             ensemble[:ensemble_files] = exp_files
             for method in [:max, :mean]
                 for ignore in [true, false]
-                    eagg = aggregate_score!(deepcopy(ensemble), scores;
+                    @timed eagg, fit_t, _, _, _ = aggregate_score!(deepcopy(ensemble), scores;
                                         method=method, ignore_nan=ignore)
                     parameters = (
                         modelname=ensemble[:modelname], 
@@ -88,6 +88,10 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
                         method=method,
                         ignore_nan=ignore)
                     eagg[:parameters] = parameters
+                    eagg[:fit_t] = fit_t
+                    eagg[:tr_eval_t] = 0.0
+                    eagg[:tst_eval_t] = 0.0
+                    eagg[:val_eval_t] = 0.0
 
                     savef = joinpath(out_directory, savename("ensemble", parameters, "bson"))
                     @info "Saving ensemble experiment to $savef"
@@ -114,6 +118,10 @@ function _init_ensemble(results)
     end
 
     ensemble[:ensemble_phash] = [hash(r[:parameters]) for r in results]
+
+    # sum training times
+    ensemble[:ensemble_fit_t] = sum([r[:fit_t] for r in results])
+    ensemble[:ensemble_eval_t] = sum([r[:tr_eval_t] + r[:tst_eval_t] + r[:val_eval_t] for r in results])
 
     scores = Dict()
     for key in _prefix_symbol.(SPLITS, :scores)
