@@ -60,17 +60,17 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	if method == "leave-one-in"
 		tr_x = tr_n
 		tr_y = zeros(Float32, size(tr_x))
+		val_y = vcat(ones(Float32, size(val_n, nd)), zeros(Float32, size(val_a,nd)))
+		tst_y = vcat(ones(Float32, size(tst_n, nd)), zeros(Float32, size(tst_a,nd)))
 	else	
 		tr_x = cat(tr_n, tr_a, dims = nd)
 		tr_y = vcat(zeros(Float32, size(tr_n, nd)), ones(Float32, size(tr_a,nd)))
+		val_y = vcat(zeros(Float32, size(val_n, nd)), ones(Float32, size(val_a,nd)))
+		tst_y = vcat(zeros(Float32, size(tst_n, nd)), ones(Float32, size(tst_a,nd)))
 	end
 	val_x = cat(val_n, val_a, dims = nd)
 	tst_x = cat(tst_n, tst_a, dims = nd)
-
-	# now create labels
-	val_y = vcat(zeros(Float32, size(val_n, nd)), ones(Float32, size(val_a,nd)))
-	tst_y = vcat(zeros(Float32, size(tst_n, nd)), ones(Float32, size(tst_a,nd)))
-
+	
 	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
 end
 
