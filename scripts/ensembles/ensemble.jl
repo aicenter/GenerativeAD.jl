@@ -113,9 +113,11 @@ function _init_ensemble(results)
         ensemble[key] = r[key]
     end
     # add anomaly class if present
-    if :anomaly_class in keys(r)
+    if Symbol("anomaly_class") in keys(r)
         ensemble[:anomaly_class] = r[:anomaly_class]
-    end
+	elseif Symbol("ac") in keys(r)
+        ensemble[:anomaly_class] = r[:ac]
+	end
 
     ensemble[:ensemble_phash] = [hash(r[:parameters]) for r in results]
 
@@ -185,5 +187,5 @@ function main(args)
         @error "Unsupported dataset type."
     end
 end
-
+DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
 main(parse_args(ARGS, s))

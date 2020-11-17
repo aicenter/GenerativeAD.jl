@@ -58,6 +58,8 @@ function compute_stats(f::String)
 	
 	if Symbol("anomaly_class") in keys(r)
 		row = merge(row, (anomaly_class = r[:anomaly_class],))
+	elseif Symbol("ac") in keys(r)
+		row = merge(row, (anomaly_class = r[:ac],))
 	end
 
 	# add fs = first stage fit/eval time
