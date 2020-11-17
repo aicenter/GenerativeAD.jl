@@ -4,14 +4,26 @@ using PrettyTables
 using Statistics
 using StatsBase
 import PGFPlots
-include("./scripts/evaluation/utils/pgf_boxplot.jl")
+include("./utils/pgf_boxplot.jl")
+include("./utils/ranks.jl")
+include("./utils/split.jl")
+
+# temporary solution until the times are present in all input dataframes
+function _add_times!(df)
+    if ~("fit_t" in names(df))
+        for c in ["fit_t", "tr_eval_t", "tst_eval_t", "val_eval_t"]
+            df[c] = 0.0
+        end
+    end
+    df
+end
 
 using GenerativeAD.Evaluation: MODEL_MERGE, MODEL_ALIAS, DATASET_ALIAS, MODEL_TYPE, apply_aliases!
 using GenerativeAD.Evaluation: _prefix_symbol, PAT_METRICS, aggregate_stats_mean_max, aggregate_stats_max_mean
-using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs
+using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, convert_anomaly_class
 
-df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
-df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
+df_tabular = _add_times!(load(datadir("evaluation/tabular_eval.bson"))[:df]);
+df_tabular_ens = _add_times!(load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df]);
 
 function basic_tables_tabular(df; suffix="")
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
@@ -45,6 +57,7 @@ function basic_tables_tabular(df; suffix="")
 end
 
 basic_tables_tabular(copy(df_tabular))
+basic_tables_tabular(copy(split_ocsvm(df_tabular)), suffix="_split_ocsvm")
 basic_tables_tabular(copy(df_tabular_ens), suffix="_ensembles")
 
 
@@ -386,7 +399,7 @@ plot_tabular_fit_time(copy(df_tabular); time_col=:tr_eval_t, format="tex")
 plot_tabular_fit_time(copy(df_tabular); time_col=:val_eval_t, format="tex")
 plot_tabular_fit_time(copy(df_tabular); time_col=:tst_eval_t, format="tex")
 plot_tabular_fit_time(copy(df_tabular); time_col=:total_eval_t, format="tex")
-# plot_tabular_fit_time(copy(df_tabular); format="pdf")
+# plot_tabular_fit_time(copy(filter(x -> (x.modelname in Set(["ocsvm", "wae", "MAF", "fmgan"])), df_tabular)); time_col=:fit_t, format="pdf")
 
 # show basic table only for autoencoders
 function basic_tables_tabular_autoencoders(df; suffix="")
@@ -405,6 +418,9 @@ function basic_tables_tabular_autoencoders(df; suffix="")
 
     l_mask = occursin.("latent_", df.parameters)
     df[l_mask, :modelname] .=  df[l_mask, :modelname] .*"l"
+
+    ls_mask = occursin.("latent-sampled", df.parameters)
+    df[ls_mask, :modelname] .=  df[ls_mask, :modelname] .*"ls"
 
     rm_mask = occursin.("reconstruction-mean", df.parameters)
     df[rm_mask, :modelname] .=  df[rm_mask, :modelname] .*"rm"
@@ -436,13 +452,7 @@ function basic_tables_tabular_autoencoders(df; suffix="")
 
             # due to its width we opted for box plot
             # recompute ranks for each dataset
-            mask_nan_max = (x) -> (isnan(x) ? -Inf : x)
-            rs = []
-            for row in eachrow(rt[1:end-3,:])
-                push!(rs, StatsBase.competerank(mask_nan_max.(Vector(row[2:end])), rev = true))
-            end
-            # each row represents ranks of a method
-            ranks = reduce(hcat, rs)
+            ranks = compute_ranks(rt[1:end-3, 2:end])
             models = names(rt)[2:end]
 
             # compute statistics for boxplot
@@ -467,8 +477,8 @@ basic_tables_tabular_autoencoders(copy(df_tabular))
 ######################################################################################
 #######################               IMAGES                ##########################
 ######################################################################################
-df_images = load(datadir("evaluation/images_eval.bson"))[:df];
-df_images_ens = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
+df_images = _add_times!(load(datadir("evaluation/images_eval.bson"))[:df]);
+df_images_ens = _add_times!(load(datadir("evaluation_ensembles/images_eval.bson"))[:df]);
 
 function basic_tables_images(df; suffix="")
     dff = filter(x -> x.seed == 1, df)
