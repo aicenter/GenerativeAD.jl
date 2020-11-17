@@ -598,7 +598,10 @@ comparison_images_ensemble(
 function basic_tables_images_per_ac(df; suffix="")
     dff = filter(x -> x.seed == 1, df)
     apply_aliases!(dff, col="dataset", d=DATASET_ALIAS)
-    dff[:dataset] .= lowercase.(dff[:dataset]) .* ":" .* lpad.(string.(dff[:anomaly_class]), 2, '0')
+    for d in unique(dff.dataset)
+        mask = (dff.dataset .== d)
+        dff[mask, :dataset] .= dff[mask, :dataset] .* ":" .* convert_anomaly_class.(dff[mask, :anomaly_class], d)
+    end
     select!(dff, Not(:anomaly_class))
 
     apply_aliases!(dff, col="modelname", d=MODEL_MERGE)

@@ -111,6 +111,13 @@ const DATASET_ALIAS = Dict{String, String}(
 	"SVHN2" 					=> "svhn2"
 )
 
+const AC_CONVERSION = Dict(
+	"mnist" 			=> ["5", "0", "4", "1", "9", "2", "3", "6", "7", "8"],
+	"svhn2"				=> ["1", "9", "2", "3", "5", "8", "7", "4", "6", "0"],
+	"fmnist" 			=> ["Ankle boot", "T-Shirt", "Dress", "Pullover", "Sneaker", "Sandal", "Trouser", "Shirt", "Shirt", "Coat", "Bag"],
+	"cifar10"			=> ["frog", "truck", "deer", "automobile", "bird", "horse", "ship", "cat", "dog", "airplane"]
+)
+
 
 """
     apply_aliases!(df; col="modelname", d=MODEL_ALIAS)
@@ -122,3 +129,12 @@ function apply_aliases!(df::D; col="modelname", d=MODEL_ALIAS) where {D <: Abstr
     df[:,col] = map(x -> get(d, x, x), df[:, col])
 end
 
+
+"""
+	convert_anomaly_class(ac, dataset="MNIST")
+
+Returns string representation of anomaly class id `ac`.
+"""
+function convert_anomaly_class(ac, dataset="mnist")
+	getindex(AC_CONVERSION[dataset], ac)
+end
