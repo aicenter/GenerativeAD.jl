@@ -79,7 +79,7 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
             ensemble[:ensemble_files] = exp_files
             for method in [:max, :mean]
                 for ignore in [true, false]
-                    @timed eagg, fit_t, _, _, _ = aggregate_score!(deepcopy(ensemble), scores;
+                    eagg, fit_t, _, _, _ = @timed aggregate_score!(deepcopy(ensemble), scores;
                                         method=method, ignore_nan=ignore)
                     parameters = (
                         modelname=ensemble[:modelname], 
@@ -187,5 +187,5 @@ function main(args)
         @error "Unsupported dataset type."
     end
 end
-DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
+
 main(parse_args(ARGS, s))

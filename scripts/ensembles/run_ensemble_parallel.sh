@@ -3,7 +3,7 @@ MODEL=$1 		# which model to run
 DATASET_TYPE=$2 # images | tabular
 DATASET_FILE=$3	# file with dataset list
 
-LOG_DIR="${HOME}/logs/${MODEL}_ensemble"
+LOG_DIR="${HOME}/logs/ensembles/${MODEL}"
 
 if [ ! -d "$LOG_DIR" ]; then
 	mkdir $LOG_DIR
