@@ -60,6 +60,16 @@ function compute_stats(f::String)
 		row = merge(row, (anomaly_class = r[:anomaly_class],))
 	end
 
+	# add fs = first stage fit/eval time
+	# case of ensembles and 2stage models
+	if Symbol("encoder_fit_t") in keys(r)
+		row = merge(row, (fs_fit_t = r[:encoder_fit_t], fs_eval_t = r[:encode_t],))
+	elseif Symbol("ensemble_fit_t") in keys(r)
+		row = merge(row, (fs_fit_t = r[:ensemble_fit_t], fs_eval_t = r[:ensemble_eval_t],))
+	else
+		row = merge(row, (fs_fit_t = 0.0, fs_eval_t = 0.0,))
+	end
+
 	for splt in ["val", "tst"]
 		scores = r[_prefix_symbol(splt, :scores)]
 		labels = r[_prefix_symbol(splt, :labels)]
