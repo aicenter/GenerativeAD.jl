@@ -414,7 +414,7 @@ function basic_tables_tabular_autoencoders(df; suffix="")
     df[rm_mask, :modelname] .=  df[rm_mask, :modelname] .*"-rm"
 
     r_mask = occursin.("reconstruction_", df.parameters)
-    df[r_mask, :modelname] .=  df[r_mask, :modelname] .*"-r"
+    df[r_mask, :modelname] .=  "disregard"
 
     rs_mask = occursin.("reconstruction-sampled", df.parameters)
     df[rs_mask, :modelname] .=  df[rs_mask, :modelname] .*"-rs"
@@ -451,13 +451,15 @@ function basic_tables_tabular_autoencoders(df; suffix="")
 
             # reverse eng. of groups
             groups = ones(Int, length(models))
-            groups[startswith.(models, "aae")] .= 1
-            groups[startswith.(models, "avae")] .= 2
-            groups[startswith.(models, "gano")] .= 3
-            groups[startswith.(models, "vae-")] .= 4
-            groups[startswith.(models, "vaef")] .= 5
-            groups[startswith.(models, "vaes")] .= 6
-            groups[startswith.(models, "wae")] .= 7            
+            groups[startswith.(models, "aae-")] .= 1
+            groups[startswith.(models, "aaev")] .= 2
+            groups[startswith.(models, "avae")] .= 3
+            groups[startswith.(models, "gano")] .= 4
+            groups[startswith.(models, "vae-")] .= 5
+            groups[startswith.(models, "vaef")] .= 6
+            groups[startswith.(models, "vaes")] .= 7
+            groups[startswith.(models, "wae-")] .= 8           
+            groups[startswith.(models, "waev")] .= 9            
 
             # compute statistics for boxplot
             rmin, rmax = maximum(ranks, dims=2), maximum(ranks, dims=2)
