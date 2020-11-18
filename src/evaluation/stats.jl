@@ -9,7 +9,7 @@ using EvalMetrics
 
 # metric names and settings 
 const BASE_METRICS = ["auc", "auprc", "tpr_5", "f1_5"]
-const PAT_METRICS = ["pat_1", "pat_5", "pat_10", "pat_20"]
+const PAT_METRICS = ["pat_001", "pat_01", "pat_1", "pat_5", "pat_10", "pat_20"]
 const TRAIN_EVAL_TIMES = ["fit_t", "tr_eval_t", "tst_eval_t", "val_eval_t"]
 
 """
@@ -109,7 +109,7 @@ function compute_stats(f::String)
 					[auc, auprc, tpr5, f5])...))
 
 			# compute precision on most anomalous samples
-			pat = [_precision_at(p/100, labels, scores) for p in [1, 5, 10, 20]]
+			pat = [_precision_at(p/100.0, labels, scores) for p in [0.01, 0.1, 1.0, 5.0, 10.0, 20.0]]
 			row = merge(row, (;zip(_prefix_symbol.(splt, PAT_METRICS), pat)...))
 		else
 			error("$(splt)_scores contain only one value")
