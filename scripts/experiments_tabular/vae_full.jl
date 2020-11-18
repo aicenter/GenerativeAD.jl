@@ -101,7 +101,7 @@ function fit(data, parameters)
 		(x -> sample_reconstruction_batched(info.model, x, L, 512), merge(parameters, (score = "reconstruction-sampled", L=L))),		
 		(x -> GenerativeAD.Models.latent_score(info.model, x), merge(parameters, (score = "latent",))),
 		(x -> GenerativeAD.Models.latent_score_mean(info.model, x), merge(parameters, (score = "latent-mean",))),
-		(x -> sample_reconstruction_batched(info.model, x, L, 512), merge(parameters, (score = "latent-sampled", L=L))),
+		(x -> sample_latent_batched(info.model, x, L, 512), merge(parameters, (score = "latent-sampled", L=L))),
 		]
 end
 function GenerativeAD.edit_params(data, parameters)
