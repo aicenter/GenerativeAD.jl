@@ -66,7 +66,7 @@ function save_jacodeco(f::String, data, seed::Int, ac=nothing)
 		model = nothing,
 		seed = seed
 		)
-	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (ac=ac,))
+	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (anomaly_class=ac,))
 	result = (x -> jacodeco_batched(model, x, 512), 
 			merge(mdata["parameters"], (score = "jacodeco",)))
 
