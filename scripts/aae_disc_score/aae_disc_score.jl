@@ -65,7 +65,7 @@ function save_aae_disc_score(f::String, data, seed::Int, ac=nothing)
 		model = nothing,
 		seed = seed
 		)
-	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (ac=ac,))
+	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (anomaly_class=ac,))
 	if ac == nothing
 		results = [(x -> aae_score_batched(model, x, alpha, 512), 
 			merge(mdata["parameters"], (alpha = alpha, score = "disc"))) 
