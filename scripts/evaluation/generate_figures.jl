@@ -399,28 +399,30 @@ function basic_tables_tabular_autoencoders(df; suffix="")
 
     # define further splitting of models based on parameters
     jc_mask = occursin.("jacodeco", df.parameters)
-    df[jc_mask, :modelname] .=  df[jc_mask, :modelname] .*"jc"
+    df[jc_mask, :modelname] .=  df[jc_mask, :modelname] .*"-jc"
 
     lm_mask = occursin.("latent-mean", df.parameters)
-    df[lm_mask, :modelname] .=  df[lm_mask, :modelname] .*"lm"
+    df[lm_mask, :modelname] .=  "disregard"
 
     l_mask = occursin.("latent_", df.parameters)
-    df[l_mask, :modelname] .=  df[l_mask, :modelname] .*"l"
+    df[l_mask, :modelname] .=  "disregard"
 
     ls_mask = occursin.("latent-sampled", df.parameters)
-    df[ls_mask, :modelname] .=  df[ls_mask, :modelname] .*"ls"
+    df[ls_mask, :modelname] .=  "disregard"
 
     rm_mask = occursin.("reconstruction-mean", df.parameters)
-    df[rm_mask, :modelname] .=  df[rm_mask, :modelname] .*"rm"
+    df[rm_mask, :modelname] .=  df[rm_mask, :modelname] .*"-rm"
 
     r_mask = occursin.("reconstruction_", df.parameters)
-    df[r_mask, :modelname] .=  df[r_mask, :modelname] .*"r"
+    df[r_mask, :modelname] .=  df[r_mask, :modelname] .*"-r"
 
     rs_mask = occursin.("reconstruction-sampled", df.parameters)
-    df[rs_mask, :modelname] .=  df[rs_mask, :modelname] .*"rs"
+    df[rs_mask, :modelname] .=  df[rs_mask, :modelname] .*"-rs"
 
     d_mask = occursin.("disc_", df.parameters)
-    df[d_mask, :modelname] .=  df[d_mask, :modelname] .*"d"
+    df[d_mask, :modelname] .=  df[d_mask, :modelname] .*"-d"
+
+    filter!(x -> (x.modelname != "disregard"), df)
 
     for metric in [:auc, :tpr_5]
         for (name, agg) in zip(
@@ -432,6 +434,10 @@ function basic_tables_tabular_autoencoders(df; suffix="")
             df_agg = agg(df, val_metric)
             sort!(df_agg, (:dataset, :modelname))
             rt = rank_table(df_agg, tst_metric)
+
+            rt[end-2, 1] = "\$\\sigma_1\$"
+            rt[end-1, 1] = "\$\\sigma_{10}\$"
+            rt[end, 1] = "rnk"
             
             filename = "$(projectdir())/paper/tables/tabular_ae_only_$(metric)_$(metric)_$(name)$(suffix).tex"
             open(filename, "w") do io
@@ -443,6 +449,16 @@ function basic_tables_tabular_autoencoders(df; suffix="")
             ranks = compute_ranks(rt[1:end-3, 2:end])
             models = names(rt)[2:end]
 
+            # reverse eng. of groups
+            groups = ones(Int, length(models))
+            groups[startswith.(models, "aae")] .= 1
+            groups[startswith.(models, "avae")] .= 2
+            groups[startswith.(models, "gano")] .= 3
+            groups[startswith.(models, "vae-")] .= 4
+            groups[startswith.(models, "vaef")] .= 5
+            groups[startswith.(models, "vaes")] .= 6
+            groups[startswith.(models, "wae")] .= 7            
+
             # compute statistics for boxplot
             rmin, rmax = maximum(ranks, dims=2), maximum(ranks, dims=2)
             rmean = mean(ranks, dims=2)
@@ -450,7 +466,7 @@ function basic_tables_tabular_autoencoders(df; suffix="")
             rlowq = quantile.(eachrow(ranks), 0.25)
             rhighq = quantile.(eachrow(ranks), 0.75)
 
-            a = pgf_boxplot(rlowq, rhighq, rmedian, rmin, rmax, models,; h="10cm", w="8cm")
+            a = pgf_boxplot_grouped(rlowq, rhighq, rmedian, rmin, rmax, models, groups; h="10cm", w="8cm")
             filename = "$(projectdir())/paper/figures/tabular_ae_only_box_$(metric)_$(name)$(suffix).tex"
             open(filename, "w") do f
                 write(f, a)
