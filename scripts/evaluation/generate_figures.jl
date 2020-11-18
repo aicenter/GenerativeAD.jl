@@ -647,3 +647,52 @@ end
 
 basic_tables_images_per_ac(copy(df_images))
 basic_tables_images_per_ac(copy(df_images_ens), suffix="_ensembles")
+
+function plot_knowledge_images(df, models; suffix="", format="pdf")
+    filter!(x -> (x.seed == 1), df)
+    filter!(x -> (x.modelname in models), df)
+    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
+    apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
+
+    results = Dict()
+    for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric)
+
+        for (name, agg) in zip(
+                    ["maxmean", "meanmax"], 
+                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
+
+            ranks = []
+            criterions = vcat(_prefix_symbol.("val", PAT_METRICS), [val_metric, tst_metric])
+            for criterion in criterions
+                df_agg = agg(df, criterion)
+                rt = rank_table(df_agg, tst_metric)
+                results[(metric, name, criterion)] = rt
+                push!(ranks, rt[end:end, :])
+            end
+
+            df_ranks = vcat(ranks...)
+            df_ranks[:, :dataset] .= String.(criterions)
+            rename!(df_ranks, :dataset => :criterion)
+
+            models = names(df_ranks)[2:end]
+            a = PGFPlots.Axis([PGFPlots.Plots.Linear(
+                            1:length(criterions), 
+                            df_ranks[:, i + 1], 
+                            legendentry=m) for (i, m) in enumerate(models)], 
+                    ylabel="avg. rnk", ymax=4.5,
+                    style="xtick={1, 2, 3, 4, 5, 6}, 
+                        xticklabels={\$PR@1\$, \$PR@5\$, \$PR@10\$, \$PR@20\$, \$$(mn)_{val}\$, \$$(mn)_{tst}\$},
+                        x tick label style={rotate=50,anchor=east}"
+                        )
+            filename = "$(projectdir())/paper/figures/images_knowledge_rank_$(metric)_$(name)$(suffix).$(format)"
+            PGFPlots.save(filename, a; include_preamble=false)
+        end
+    end
+    results
+end
+
+representatives=["ocsvm", "aae", "fmgan", "vae_ocsvm"]
+plot_knowledge_images(copy(df_images), representatives; 
+                        format="tex", suffix="_representatives")
