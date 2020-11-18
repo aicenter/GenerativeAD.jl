@@ -6,24 +6,13 @@ using StatsBase
 import PGFPlots
 include("./utils/pgf_boxplot.jl")
 include("./utils/ranks.jl")
-include("./utils/split.jl")
-
-# temporary solution until the times are present in all input dataframes
-function _add_times!(df)
-    if ~("fit_t" in names(df))
-        for c in ["fit_t", "tr_eval_t", "tst_eval_t", "val_eval_t"]
-            df[c] = 0.0
-        end
-    end
-    df
-end
 
 using GenerativeAD.Evaluation: MODEL_MERGE, MODEL_ALIAS, DATASET_ALIAS, MODEL_TYPE, apply_aliases!
 using GenerativeAD.Evaluation: _prefix_symbol, PAT_METRICS, aggregate_stats_mean_max, aggregate_stats_max_mean
 using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, convert_anomaly_class
 
-df_tabular = _add_times!(load(datadir("evaluation/tabular_eval.bson"))[:df]);
-df_tabular_ens = _add_times!(load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df]);
+df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
+df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
 
 function basic_tables_tabular(df; suffix="")
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
@@ -48,7 +37,7 @@ function basic_tables_tabular(df; suffix="")
             rt[end-1, 1] = "\$\\sigma_{10}\$"
             rt[end, 1] = "rnk"
 
-            filename = "./paper/tables/tabular_$(metric)_$(metric)_$(name)$(suffix).tex"
+            filename = "$(projectdir())/paper/tables/tabular_$(metric)_$(metric)_$(name)$(suffix).tex"
             open(filename, "w") do io
                 print_rank_table(io, rt; backend=:tex)
             end
@@ -57,12 +46,10 @@ function basic_tables_tabular(df; suffix="")
 end
 
 basic_tables_tabular(copy(df_tabular))
-basic_tables_tabular(copy(split_ocsvm(df_tabular)), suffix="_split_ocsvm")
 basic_tables_tabular(copy(df_tabular_ens), suffix="_ensembles")
 
 
 function plot_knowledge_tabular(df; suffix="", format="pdf")
-    # filter!(x -> (x.modelname != "vae_ocsvm") && (x.modelname != "vae+ocsvm"), df)    
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
     apply_aliases!(df, col="modelname", d=MODEL_TYPE)
 
@@ -91,12 +78,12 @@ function plot_knowledge_tabular(df; suffix="", format="pdf")
                             1:length(criterions), 
                             df_ranks[:, i + 1], 
                             legendentry=m) for (i, m) in enumerate(models)], 
-                    ylabel="avg. rnk", ymax=4.5,
+                    ylabel="avg. rnk", ymax=6.0,
                     style="xtick={1, 2, 3, 4, 5, 6}, 
                         xticklabels={\$PR@1\$, \$PR@5\$, \$PR@10\$, \$PR@20\$, \$$(mn)_{val}\$, \$$(mn)_{tst}\$},
                         x tick label style={rotate=50,anchor=east}"
                         )
-            filename = "./paper/figures/tabular_knowledge_rank_$(metric)_$(name)$(suffix).$(format)"
+            filename = "$(projectdir())/paper/figures/tabular_knowledge_rank_$(metric)_$(name)$(suffix).$(format)"
             PGFPlots.save(filename, a; include_preamble=false)
         end
     end
@@ -147,7 +134,7 @@ function plot_knowledge_tabular(df, models; suffix="", format="pdf")
                         xticklabels={\$PR@1\$, \$PR@5\$, \$PR@10\$, \$PR@20\$, \$$(mn)_{val}\$, \$$(mn)_{tst}\$},
                         x tick label style={rotate=50,anchor=east}"
                         )
-            filename = "./paper/figures/tabular_knowledge_rank_$(metric)_$(name)$(suffix).$(format)"
+            filename = "$(projectdir())/paper/figures/tabular_knowledge_rank_$(metric)_$(name)$(suffix).$(format)"
             PGFPlots.save(filename, a; include_preamble=false)
         end
     end
@@ -197,7 +184,7 @@ function rank_comparison_agg(df, tm=("AUC", :auc); suffix="")
                     (data, i, j) -> (data[i,j] == minimum(df_ranks[i, 2:end])),
                     ["color{red}","textbf"])
         
-    filename = "./paper/tables/tabular_aggcomp_$(metric)$(suffix).tex"
+    filename = "$(projectdir())/paper/tables/tabular_aggcomp_$(metric)$(suffix).tex"
     open(filename, "w") do io
         pretty_table(
             io, df_ranks,
@@ -245,7 +232,7 @@ function rank_comparison_metric(df, ta=("maxmean", aggregate_stats_max_mean); su
                     (data, i, j) -> (data[i,j] == minimum(df_ranks[i, 2:end])),
                     ["color{red}","textbf"])
         
-    filename = "./paper/tables/tabular_metriccomp_$(name)$(suffix).tex"
+    filename = "$(projectdir())/paper/tables/tabular_metriccomp_$(name)$(suffix).tex"
     open(filename, "w") do io
         pretty_table(
             io, df_ranks,
@@ -305,7 +292,7 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="
         
     f_float = (v, i, j) -> (j > 1) && (i == 3) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
 
-    filename = "./paper/tables/tabular_ensemblecomp_$(metric)$(suffix).tex"
+    filename = "$(projectdir())/paper/tables/tabular_ensemblecomp_$(metric)$(suffix).tex"
     open(filename, "w") do io
         pretty_table(
             io, df_ranks,
@@ -324,22 +311,21 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="
     # print rank change rather than just the baseline rank
     rt[end, 1] = "rnk. chng."
     rt[end, 2:end] .=  Vector(rt_ensemble[end, 2:end]) .- Vector(rt[end, 2:end])
-    filename = "./paper/tables/tabular_ensemblecomp_$(metric)_detail$(suffix).html"
+    filename = "$(projectdir())/paper/tables/tabular_ensemblecomp_$(metric)_detail$(suffix).html"
     open(filename, "w") do io
         print_rank_table(io, rt; backend=:html)
     end
-    ###
 end
 
 
-comparison_tabular_ensemble(df_tabular, df_tabular_ens, ("AUC", :auc))
-comparison_tabular_ensemble(df_tabular, df_tabular_ens, ("TPR@5", :tpr_5))
+comparison_tabular_ensemble(copy(df_tabular), copy(df_tabular_ens), ("AUC", :auc))
+comparison_tabular_ensemble(copy(df_tabular), copy(df_tabular_ens), ("TPR@5", :tpr_5))
 
 # join baseline and ensembles, allows to dig into where they help
 # compare only those models for which ensembles are computed
 baseline = copy(df_tabular);
 models = unique(df_tabular_ens.modelname);
-ensembles = vcat(filter(x -> (x.modelname in models), df_tabular), df_tabular_ens);
+ensembles = copy(vcat(filter(x -> (x.modelname in models), baseline), df_tabular_ens));
 comparison_tabular_ensemble(
     baseline, 
     ensembles, ("AUC", :auc); 
@@ -358,8 +344,10 @@ function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf")
     apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
     # training time with two stage methods shows only the second stage
     # once the encoding fit time is added to the dataframe add it to the fit column
-    filter!(x -> (x.model_type != "two-stage"), df)
+    # filter!(x -> (x.model_type != "two-stage"), df)
 
+    # add first stage time for encoding and training of encoding
+    df["fit_t"] .+= df["fs_fit_t"] .+ df["fs_fit_t"]
     # add all eval times together
     df["total_eval_t"] = df["tr_eval_t"] .+ df["tst_eval_t"] .+ df["val_eval_t"]
 
@@ -388,7 +376,7 @@ function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf")
                     [PGFPlots.Plots.Node(m, xx + 0.5, yy + 0.7) for (m, xx, yy) in zip(models, x, y)]...],
                     xlabel="avg. rnk",
                     ylabel="avg. time rnk")
-            filename = "./paper/figures/tabular_$(time_col)_vs_$(metric)_$(name)$(suffix).$(format)"
+            filename = "$(projectdir())/paper/figures/tabular_$(time_col)_vs_$(metric)_$(name)$(suffix).$(format)"
             PGFPlots.save(filename, a; include_preamble=false)
         end
     end
@@ -445,7 +433,7 @@ function basic_tables_tabular_autoencoders(df; suffix="")
             sort!(df_agg, (:dataset, :modelname))
             rt = rank_table(df_agg, tst_metric)
             
-            filename = "./paper/tables/tabular_ae_only_$(metric)_$(metric)_$(name)$(suffix).tex"
+            filename = "$(projectdir())/paper/tables/tabular_ae_only_$(metric)_$(metric)_$(name)$(suffix).tex"
             open(filename, "w") do io
                 print_rank_table(io, rt; backend=:tex)
             end
@@ -463,13 +451,12 @@ function basic_tables_tabular_autoencoders(df; suffix="")
             rhighq = quantile.(eachrow(ranks), 0.75)
 
             a = pgf_boxplot(rlowq, rhighq, rmedian, rmin, rmax, models,; h="10cm", w="8cm")
-            filename = "./paper/figures/tabular_ae_only_box_$(metric)_$(name)$(suffix).tex"
+            filename = "$(projectdir())/paper/figures/tabular_ae_only_box_$(metric)_$(name)$(suffix).tex"
             open(filename, "w") do f
                 write(f, a)
             end
         end
     end
-
 end
 
 basic_tables_tabular_autoencoders(copy(df_tabular))
@@ -477,8 +464,8 @@ basic_tables_tabular_autoencoders(copy(df_tabular))
 ######################################################################################
 #######################               IMAGES                ##########################
 ######################################################################################
-df_images = _add_times!(load(datadir("evaluation/images_eval.bson"))[:df]);
-df_images_ens = _add_times!(load(datadir("evaluation_ensembles/images_eval.bson"))[:df]);
+df_images = load(datadir("evaluation/images_eval.bson"))[:df];
+df_images_ens = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
 
 function basic_tables_images(df; suffix="")
     dff = filter(x -> x.seed == 1, df)
@@ -504,7 +491,8 @@ function basic_tables_images(df; suffix="")
             rt[end-1, 1] = "\$\\sigma_{10}\$"
             rt[end, 1] = "rnk"
 
-            open("./paper/tables/images_$(metric)_$(metric)_$(name)$(suffix).tex", "w") do io
+            filename = "$(projectdir())/paper/tables/images_$(metric)_$(metric)_$(name)$(suffix).tex"
+            open(filename, "w") do io
                 print_rank_table(io, rt; backend=:tex)
             end
         end
@@ -560,7 +548,7 @@ function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix=""
         
     f_float = (v, i, j) -> (i == 3) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
 
-    filename = "./paper/tables/images_ensemblecomp_$(metric)$(suffix).tex"
+    filename = "$(projectdir())/paper/tables/images_ensemblecomp_$(metric)$(suffix).tex"
     open(filename, "w") do io
         pretty_table(
             io, df_ranks,
@@ -579,21 +567,21 @@ function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix=""
     # print rank change rather than just the baseline rank
     rt[end, 1] = "rnk. chng."
     rt[end, 2:end] .=  Vector(rt_ensemble[end, 2:end]) .- Vector(rt[end, 2:end])
-    filename = "./paper/tables/images_ensemblecomp_$(metric)_detail$(suffix).html"
+    filename = "$(projectdir())/paper/tables/images_ensemblecomp_$(metric)_detail$(suffix).html"
     open(filename, "w") do io
         print_rank_table(io, rt; backend=:html)
     end
     ###
 end
 
-comparison_images_ensemble(df_images, df_images_ens, ("AUC", :auc))
-comparison_images_ensemble(df_images, df_images_ens, ("TPR@5", :tpr_5))
+comparison_images_ensemble(copy(df_images), copy(df_images_ens), ("AUC", :auc))
+comparison_images_ensemble(copy(df_images), copy(df_images_ens), ("TPR@5", :tpr_5))
 
 # join baseline and ensembles, allows to dig into where they help
 # compare only those models for which ensembles are computed
 baseline_img = copy(df_images);
 models_img = unique(df_images_ens.modelname);
-ensembles_img = vcat(filter(x -> (x.modelname in models), df_images), df_images_ens);
+ensembles_img = copy(vcat(filter(x -> (x.modelname in models_img), baseline_img), df_images_ens));
 comparison_images_ensemble(
     baseline_img, 
     ensembles_img, ("AUC", :auc); 
@@ -632,7 +620,8 @@ function basic_tables_images_per_ac(df; suffix="")
         rt[end-1, 1] = "\$\\sigma_{10}\$"
         rt[end, 1] = "rnk"
 
-        open("./paper/tables/images_per_ac_$(metric)_$(metric)$(suffix).tex", "w") do io
+        filename = "$(projectdir())/paper/tables/images_per_ac_$(metric)_$(metric)$(suffix).tex"
+        open(filename, "w") do io
             print_rank_table(io, rt; backend=:tex)
         end
     end
