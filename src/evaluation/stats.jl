@@ -41,13 +41,20 @@ end
 	_auc_at(n, labels, scores, auc)
 
 Computes area under roc curve on `n` samples with highest score.
-If `n` is greater the function will return provided `auc` value.
+If `n` is greater than sample size the provided `auc` value is returned.
 """
 function _auc_at(n, labels, scores, auc)
 	if n < length(labels)
 		sp = sortperm(scores, rev=true)[1:n]
-		roc = EvalMetrics.roccurve(labels[sp], scores[sp])
-		return EvalMetrics.auc_trapezoidal(roc...)
+		l, s = labels[sp], scores[sp]
+		if all(l .== 1.0)
+			return 1.0 # zooming at highest scoring samples left us with positives
+		elseif all(l .== 0.0)
+			return 0.0 # zooming at highest scoring samples left us with negatives
+		else
+			roc = EvalMetrics.roccurve(l, s)
+			return EvalMetrics.auc_trapezoidal(roc...)
+		end
 	end
 	auc
 end
