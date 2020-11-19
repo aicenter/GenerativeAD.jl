@@ -10,6 +10,7 @@ using EvalMetrics
 # metric names and settings 
 const BASE_METRICS = ["auc", "auprc", "tpr_5", "f1_5"]
 const PAT_METRICS = ["pat_001", "pat_01", "pat_1", "pat_5", "pat_10", "pat_20"]
+const PAC_METRICS = ["pac_5", "pac_10", "pac_50", "pac_100", "pac_500", "pac_1000"]
 const TRAIN_EVAL_TIMES = ["fit_t", "tr_eval_t", "tst_eval_t", "val_eval_t"]
 
 """
@@ -21,7 +22,7 @@ _prefix_symbol(prefix, s) = Symbol("$(prefix)_$(s)")
 
 
 """
-	_precision_at(p, scores, labels)
+	_precision_at(p, labels, scores)
 
 Computes precision on portion `p` samples with highest score.
 """
@@ -34,6 +35,21 @@ function _precision_at(p, labels, scores)
 	else
 		return NaN
 	end
+end
+
+"""
+	_auc_at(n, labels, scores, auc)
+
+Computes area under roc curve on `n` samples with highest score.
+If `n` is greater the function will return provided `auc` value.
+"""
+function _auc_at(n, labels, scores, auc)
+	if n < length(labels)
+		sp = sortperm(scores, rev=true)[1:n]
+		roc = EvalMetrics.roccurve(labels[sp], scores[sp])
+		return EvalMetrics.auc_trapezoidal(roc...)
+	end
+	auc
 end
 
 """
@@ -111,6 +127,9 @@ function compute_stats(f::String)
 			# compute precision on most anomalous samples
 			pat = [_precision_at(p/100.0, labels, scores) for p in [0.01, 0.1, 1.0, 5.0, 10.0, 20.0]]
 			row = merge(row, (;zip(_prefix_symbol.(splt, PAT_METRICS), pat)...))
+
+			pac = [_auc_at(n, labels, scores, auc) for n in [5, 10, 50, 100, 500, 1000]]
+			row = merge(row, (;zip(_prefix_symbol.(splt, PAC_METRICS), pac)...))	
 		else
 			error("$(splt)_scores contain only one value")
 		end
