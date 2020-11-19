@@ -10,6 +10,7 @@ using EvalMetrics
 # metric names and settings 
 const BASE_METRICS = ["auc", "auprc", "tpr_5", "f1_5"]
 const PAT_METRICS = ["pat_001", "pat_01", "pat_1", "pat_5", "pat_10", "pat_20"]
+const PATN_METRICS = ["patn_5", "patn_10", "patn_50", "patn_100", "patn_500", "patn_1000"]
 const PAC_METRICS = ["pac_5", "pac_10", "pac_50", "pac_100", "pac_500", "pac_1000"]
 const TRAIN_EVAL_TIMES = ["fit_t", "tr_eval_t", "tst_eval_t", "val_eval_t"]
 
@@ -25,6 +26,7 @@ _prefix_symbol(prefix, s) = Symbol("$(prefix)_$(s)")
 	_precision_at(p, labels, scores)
 
 Computes precision on portion `p` samples with highest score.
+Assumes such portion of highest scoring samples is labeled positive by the model.
 """
 function _precision_at(p, labels, scores)
 	pN = floor(Int, p*length(labels))
@@ -34,6 +36,23 @@ function _precision_at(p, labels, scores)
 		return EvalMetrics.precision(labels[sp], ones(eltype(labels), pN))
 	else
 		return NaN
+	end
+end
+
+"""
+	_nprecision_at(n, labels, scores; p=0.2)
+
+Computes precision on `n` samples but up to `p` portion of the samples with highest score.
+Assumes such highest scoring samples are labeled positive by the model.
+"""
+function _nprecision_at(n, labels, scores; p=0.2)
+	N = length(labels)
+	pN = floor(Int, p*N)
+	sp = sortperm(scores, rev=true)
+	if n < pN
+		return EvalMetrics.precision(labels[sp[1:n]], ones(eltype(labels), n))
+	else
+		return EvalMetrics.precision(labels[sp[1:pN]], ones(eltype(labels), pN))
 	end
 end
 
@@ -134,6 +153,9 @@ function compute_stats(f::String)
 			# compute precision on most anomalous samples
 			pat = [_precision_at(p/100.0, labels, scores) for p in [0.01, 0.1, 1.0, 5.0, 10.0, 20.0]]
 			row = merge(row, (;zip(_prefix_symbol.(splt, PAT_METRICS), pat)...))
+
+			patn = [_nprecision_at(n, labels, scores) for n in [5, 10, 50, 100, 500, 1000]]
+			row = merge(row, (;zip(_prefix_symbol.(splt, PATN_METRICS), patn)...))	
 
 			pac = [_auc_at(n, labels, scores, auc) for n in [5, 10, 50, 100, 500, 1000]]
 			row = merge(row, (;zip(_prefix_symbol.(splt, PAC_METRICS), pac)...))	
