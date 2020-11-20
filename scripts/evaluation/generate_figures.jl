@@ -449,17 +449,32 @@ function basic_tables_tabular_autoencoders(df; suffix="")
             ranks = compute_ranks(rt[1:end-3, 2:end])
             models = names(rt)[2:end]
 
-            # reverse eng. of groups
-            groups = ones(Int, length(models))
-            groups[startswith.(models, "aae-")] .= 1
-            groups[startswith.(models, "aaev")] .= 2
-            groups[startswith.(models, "avae")] .= 3
-            groups[startswith.(models, "gano")] .= 4
-            groups[startswith.(models, "vae-")] .= 5
-            groups[startswith.(models, "vaef")] .= 6
-            groups[startswith.(models, "vaes")] .= 7
-            groups[startswith.(models, "wae-")] .= 8           
-            groups[startswith.(models, "waev")] .= 9            
+            #### grouping by method
+            mgroups = ones(Int, length(models))
+            mgroups[startswith.(models, "avae")] .= 1
+            mgroups[startswith.(models, "gano")] .= 2
+            mgroups[startswith.(models, "aae-")] .= 3
+            mgroups[startswith.(models, "aaev")] .= 4
+            mgroups[startswith.(models, "vae-")] .= 5
+            mgroups[startswith.(models, "vaef")] .= 6
+            mgroups[startswith.(models, "vaes")] .= 7
+            mgroups[startswith.(models, "wae-")] .= 8
+            mgroups[startswith.(models, "waev")] .= 9
+
+            sm = sortperm(mgroups)
+            mgroups = mgroups[sm]
+
+            models = models[sm]
+            ranks = ranks[sm, :]
+
+            #### grouping by score
+            groups = 5*ones(Int, length(models))
+            groups[endswith.(models, "-rm")] .= 1
+            groups[endswith.(models, "-rs")] .= 2
+            groups[endswith.(models, "-jc")] .= 3
+            groups[endswith.(models, "-d")] .= 4
+            ####
+
 
             # compute statistics for boxplot
             rmin, rmax = maximum(ranks, dims=2), maximum(ranks, dims=2)
@@ -468,7 +483,7 @@ function basic_tables_tabular_autoencoders(df; suffix="")
             rlowq = quantile.(eachrow(ranks), 0.25)
             rhighq = quantile.(eachrow(ranks), 0.75)
 
-            a = pgf_boxplot_grouped(rlowq, rhighq, rmedian, rmin, rmax, models, groups; h="10cm", w="8cm")
+            a = pgf_boxplot_grouped_colorpos(rlowq, rhighq, rmedian, rmin, rmax, models, groups, mgroups; h="12cm", w="8cm")
             filename = "$(projectdir())/paper/figures/tabular_ae_only_box_$(metric)_$(name)$(suffix).tex"
             open(filename, "w") do f
                 write(f, a)
