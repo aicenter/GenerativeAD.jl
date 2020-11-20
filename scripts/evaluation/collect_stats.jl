@@ -31,7 +31,7 @@ Collects evaluation DataFrames from a given data folder prefix `source_prefix`.
 function collect_stats(source_prefix::String)
 	source = datadir(source_prefix)
 	@info "Collecting files from $source folder."
-	files = GenerativeAD.Evaluation.collect_files(source)
+	files = GenerativeAD.Evaluation.collect_files_th(source)
 	@info "Collected $(length(files)) files from $source folder."
 
 	frames = Vector{DataFrame}(undef, length(files))
@@ -39,7 +39,7 @@ function collect_stats(source_prefix::String)
 		df = load(files[i])[:df]
 		frames[i] = df
 	end
-	vcat(frames...)
+	reduce(vcat, frames)
 end
 
 
