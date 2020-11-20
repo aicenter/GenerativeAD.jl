@@ -70,9 +70,13 @@ function _auc_at(n, labels, scores, auc)
 			return 1.0 # zooming at highest scoring samples left us with positives
 		elseif all(l .== 0.0)
 			return 0.0 # zooming at highest scoring samples left us with negatives
-		else
-			roc = EvalMetrics.roccurve(l, s)
-			return EvalMetrics.auc_trapezoidal(roc...)
+        else
+            try
+                roc = EvalMetrics.roccurve(l, s)
+                return EvalMetrics.auc_trapezoidal(roc...)
+            catch
+                return NaN
+            end
 		end
 	end
 	auc
