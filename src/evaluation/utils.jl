@@ -30,8 +30,8 @@ Using @threads inside recursion may not be the best idea.
 """
 function collect_files_th(target::String)
     files = readdir(target, join=true)
-	if all(isfile.(files))
-		println("Collecting from: ", target)
+    if all(isfile.(files))
+        println(target)
         return files
     end
     results = Vector{Vector{String}}(undef, length(files))

@@ -41,7 +41,7 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 	
 	source = datadir(source_prefix)
 	@info "Collecting files from $source folder."
-	files = GenerativeAD.Evaluation.collect_files(source)
+	files = GenerativeAD.Evaluation.collect_files_th(source)
 	# filter out model files
 	filter!(x -> !startswith(basename(x), "model"), files)
 	@info "Collected $(length(files)) files from $source folder."
@@ -61,7 +61,7 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 		catch e
 			# remove old files in order to ensure consistency
 			if (isfile(target) && force)
-				rm.(target)
+				rm(target)
 			end
 			@warn "Processing of $f failed due to \n$e"
 		end
