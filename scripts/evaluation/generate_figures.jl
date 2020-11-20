@@ -62,7 +62,7 @@ function plot_knowledge_tabular(df; suffix="", format="pdf")
                     [aggregate_stats_max_mean, aggregate_stats_mean_max])
 
             ranks = []
-            criterions = vcat(_prefix_symbol.("val", PAT_METRICS), [val_metric, tst_metric])
+            criterions = vcat(_prefix_symbol.("val", PAT_METRICS[4:end]), [val_metric, tst_metric])
             for criterion in criterions
                 df_agg = agg(df, criterion)
                 rt = rank_table(df_agg, tst_metric)
@@ -79,8 +79,8 @@ function plot_knowledge_tabular(df; suffix="", format="pdf")
                             df_ranks[:, i + 1], 
                             legendentry=m) for (i, m) in enumerate(models)], 
                     ylabel="avg. rnk", ymax=6.0,
-                    style="xtick={1, 2, 3, 4, 5, 6}, 
-                        xticklabels={\$PR@1\$, \$PR@5\$, \$PR@10\$, \$PR@20\$, \$$(mn)_{val}\$, \$$(mn)_{tst}\$},
+                    style="xtick=$(_pgf_array(1:5)), 
+                        xticklabels={\$PR@5\$, \$PR@10\$, \$PR@20\$, \$$(mn)_{val}\$, \$$(mn)_{tst}\$},
                         x tick label style={rotate=50,anchor=east}"
                         )
             filename = "$(projectdir())/paper/figures/tabular_knowledge_rank_$(metric)_$(name)$(suffix).$(format)"
@@ -112,7 +112,8 @@ function plot_knowledge_tabular(df, models; suffix="", format="pdf")
                     [aggregate_stats_max_mean, aggregate_stats_mean_max])
 
             ranks = []
-            criterions = vcat(_prefix_symbol.("val", PAT_METRICS), [val_metric, tst_metric])
+            # the first three metrics are NaN for many tabular datasets
+            criterions = vcat(_prefix_symbol.("val", PAT_METRICS[4:end]), [val_metric, tst_metric])
             for criterion in criterions
                 df_agg = agg(df, criterion)
                 rt = rank_table(df_agg, tst_metric)
@@ -279,7 +280,7 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="
 
     df_ranks = vcat(rt[end:end, :], rt_ensemble[end:end, :])
     dif = Matrix(rt_ensemble[1:end-3, 2:end]) - Matrix(rt[1:end-3, 2:end])
-    mean_dif = mean(dif, dims=1)
+    mean_dif = round.(mean(dif, dims=1), digits=2)
     push!(df_ranks, ["avg. change", mean_dif...])
 
     hl_best_rank = LatexHighlighter(
@@ -679,7 +680,7 @@ function plot_knowledge_images(df, models; suffix="", format="pdf")
                     [aggregate_stats_max_mean, aggregate_stats_mean_max])
 
             ranks = []
-            criterions = vcat(_prefix_symbol.("val", PAT_METRICS), [val_metric, tst_metric])
+            criterions = vcat(_prefix_symbol.("val", PAT_METRICS[2:end]), [val_metric, tst_metric])
             for criterion in criterions
                 df_agg = agg(df, criterion)
                 rt = rank_table(df_agg, tst_metric)
@@ -697,8 +698,8 @@ function plot_knowledge_images(df, models; suffix="", format="pdf")
                             df_ranks[:, i + 1], 
                             legendentry=m) for (i, m) in enumerate(models)], 
                     ylabel="avg. rnk", ymax=4.5,
-                    style="xtick={1, 2, 3, 4, 5, 6}, 
-                        xticklabels={\$PR@1\$, \$PR@5\$, \$PR@10\$, \$PR@20\$, \$$(mn)_{val}\$, \$$(mn)_{tst}\$},
+                    style="xtick=$(_pgf_array(1:7)), 
+                        xticklabels={\$PR@0.1\$, \$PR@1\$, \$PR@5\$, \$PR@10\$, \$PR@20\$, \$$(mn)_{val}\$, \$$(mn)_{tst}\$},
                         x tick label style={rotate=50,anchor=east}"
                         )
             filename = "$(projectdir())/paper/figures/images_knowledge_rank_$(metric)_$(name)$(suffix).$(format)"
