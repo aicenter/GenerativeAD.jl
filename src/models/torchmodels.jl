@@ -34,6 +34,7 @@ mutable struct fAnoGAN_GP <: TorchModel
                 device = torch.device("cuda")
             else:
                 device = torch.device("cpu")
+            # TODO: dodělat a otestovat
 			return fanogan_gp()
 		"""
 		new(py"construct_fanogan_gp"(kwargs))

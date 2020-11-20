@@ -5,7 +5,6 @@ import numpy as np
 import torch.utils.data as utils
 
 
-
 class Flatten(nn.Module):
 	def __init__(self, out_features):
 		super(Flatten, self).__init__()
@@ -93,13 +92,6 @@ class SWISH(nn.Module):
 	def forward(self, x):
 		return x * torch.sigmoid(x)
   
-class Tanh(nn.Module):
-	def __init__(self):
-		super(Tanh, self).__init__()
-
-	def forward(self, x):
-		return torch.tanh(x)  
-
 
 class fAnoGAN(nn.Module):
 	def __init__(
@@ -132,7 +124,6 @@ class fAnoGAN(nn.Module):
 		self.generator = decoder_builder(idim,zdim, kernelsizes, channels, scalings, activ_f, batchnorm).to(device)
 		
 
-
 	def forward(self, x):
 		"""
 			izi_f forward pass
@@ -144,9 +135,11 @@ class fAnoGAN(nn.Module):
 		fx_hat = f(x_hat)
 		return x_hat, fx, fx_hat
 
+
 	def izif_loss(self, x, kappa=1.0):
 		x_, fx, fx_ = self.forward(x)
 		return F.mse_loss(x,x_) + kappa * F.mse_loss(fx, fx_)
+
 
 	def gradient_penalty(self, x, x_, lambda_=10):
 		bs = x.shape[0]
@@ -170,7 +163,23 @@ class fAnoGAN(nn.Module):
 		gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * lambda_
 		return gradient_penalty
 
-	def predict(self,)
+
+	def predict(self, data, batch_size=64, kappa=1.0):
+		self.generator.eval()
+		self.discriminator.eval()
+		self.encoder.eval()
+
+		test_loader = utils.DataLoader(data[0], batch_size=batch_size)
+		anomaly_scores = []
+		for x in test_loader:
+			x = x.to(self.device)
+			x_, fx, fx_ = self.forward(x)
+			L_G = torch.sum(torch.pow(x-x_,2), axis=[1,2,3]).detach().cpu()
+			L_D = torch.sum(torch.pow(fx-fx_,2), axis=1).detach().cpu()
+			anomaly_scores.append(L_G + kappa*L_D)
+		anomaly_scores = torch.cat(anomaly_scores)
+		return anomaly_scores
+
 
 	def fit(self, data, max_iters=10000, lr_gan=1e-4, lr_enc=1e-4, batch_size=64, n_critic=5):
 		one = torch.FloatTensor([1]).to(self.device)
