@@ -8,8 +8,13 @@ include("./utils/pgf_boxplot.jl")
 include("./utils/ranks.jl")
 
 using GenerativeAD.Evaluation: MODEL_MERGE, MODEL_ALIAS, DATASET_ALIAS, MODEL_TYPE, apply_aliases!
-using GenerativeAD.Evaluation: _prefix_symbol, PAT_METRICS, aggregate_stats_mean_max, aggregate_stats_max_mean
+using GenerativeAD.Evaluation: _prefix_symbol, aggregate_stats_mean_max, aggregate_stats_max_mean
+using GenerativeAD.Evaluation: PAT_METRICS, PATN_METRICS, PAC_METRICS
 using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, convert_anomaly_class
+
+const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@\\%5\$","\$PR@\\%10\$","\$PR@\\%20\$"]
+const PAC_METRICS_NAMES = ["\$AUC@\\#5\$","\$AUC@\\#10\$","\$AUC@\\#50\$","\$AUC@\\#100\$","\$AUC@\\#500\$","\$AUC@\\#1000\$"]
+const PATN_METRICS_NAMES = ["\$PR@\\#5\$","\$PR@\\#10\$","\$PR@\\#50\$","\$PR@\\#100\$","\$PR@\\#500\$","\$PR@\\#1000\$"]
 
 df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
 df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
@@ -49,10 +54,8 @@ basic_tables_tabular(copy(df_tabular))
 basic_tables_tabular(copy(df_tabular_ens), suffix="_ensembles")
 
 
-function plot_knowledge_tabular(df; suffix="", format="pdf")
-    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
-    apply_aliases!(df, col="modelname", d=MODEL_TYPE)
-
+# generic for both images and tabular data just change prefix and filter input
+function plot_knowledge_ranks(df; prefix="tabular", suffix="", format="pdf")
     for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)
@@ -61,96 +64,61 @@ function plot_knowledge_tabular(df; suffix="", format="pdf")
                     ["maxmean", "meanmax"], 
                     [aggregate_stats_max_mean, aggregate_stats_mean_max])
 
-            ranks = []
-            criterions = vcat(_prefix_symbol.("val", PAT_METRICS[4:end]), [val_metric, tst_metric])
-            for criterion in criterions
-                df_agg = agg(df, criterion)
-                rt = rank_table(df_agg, tst_metric)
-                push!(ranks, rt[end:end, :])
+            n = (prefix == "tabular") ? 4 : 1
+            for (ctype, cnames, criterions) in zip(
+                                ["pat", "pac", "patn"],
+                                [PAT_METRICS_NAMES[n:end], PAC_METRICS_NAMES, PATN_METRICS_NAMES],
+                                [_prefix_symbol.("val", PAT_METRICS[n:end]), _prefix_symbol.("val", PAC_METRICS), _prefix_symbol.("val", PATN_METRICS)])
+                ranks = []
+                extended_criterions = vcat(criterions, [val_metric, tst_metric])
+                extended_cnames = vcat(cnames, ["\$$(mn)_{val}\$", "\$$(mn)_{tst}\$"])
+
+                for criterion in extended_criterions
+                    df_agg = agg(df, criterion)
+                    rt = rank_table(df_agg, tst_metric)
+                    push!(ranks, rt[end:end, :])
+                end
+
+                df_ranks = vcat(ranks...)
+
+                models = names(df_ranks)[2:end]
+                a = PGFPlots.Axis([PGFPlots.Plots.Linear(
+                                1:length(extended_criterions), 
+                                df_ranks[:, i + 1], 
+                                legendentry=m) for (i, m) in enumerate(models)], 
+                        ylabel="avg. rnk", ymax=length(models) + 1,
+                        style="xtick=$(_pgf_array(1:length(extended_criterions))), 
+                            xticklabels=$(_pgf_array(extended_cnames)),
+                            x tick label style={rotate=50,anchor=east}")
+                filename = "$(projectdir())/paper/figures/$(prefix)_knowledge_rank_$(ctype)_$(metric)_$(name)$(suffix).$(format)"
+                PGFPlots.save(filename, a; include_preamble=false)
             end
-
-            df_ranks = vcat(ranks...)
-            df_ranks[:, :dataset] .= String.(criterions)
-            rename!(df_ranks, :dataset => :criterion)
-
-            models = names(df_ranks)[2:end]
-            a = PGFPlots.Axis([PGFPlots.Plots.Linear(
-                            1:length(criterions), 
-                            df_ranks[:, i + 1], 
-                            legendentry=m) for (i, m) in enumerate(models)], 
-                    ylabel="avg. rnk", ymax=6.0,
-                    style="xtick=$(_pgf_array(1:5)), 
-                        xticklabels={\$PR@5\$, \$PR@10\$, \$PR@20\$, \$$(mn)_{val}\$, \$$(mn)_{tst}\$},
-                        x tick label style={rotate=50,anchor=east}"
-                        )
-            filename = "$(projectdir())/paper/figures/tabular_knowledge_rank_$(metric)_$(name)$(suffix).$(format)"
-            PGFPlots.save(filename, a; include_preamble=false)
         end
     end
 end
 
-
-# plot_knowledge_tabular(copy(df_tabular); format="svg")
-plot_knowledge_tabular(copy(df_tabular); format="tex")
-
-# plot_knowledge_tabular(copy(df_tabular_ens), suffix="_ensembles", format="pdf")
-plot_knowledge_tabular(copy(df_tabular_ens), suffix="_ensembles", format="tex")
-
-
-function plot_knowledge_tabular(df, models; suffix="", format="pdf")
+function plot_knowledge_tabular_repre(df, models; suffix="", format="pdf")
     filter!(x -> (x.modelname in models), df)
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
     apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
-
-    results = Dict()
-    for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
-        val_metric = _prefix_symbol("val", metric)
-        tst_metric = _prefix_symbol("tst", metric)
-
-        for (name, agg) in zip(
-                    ["maxmean", "meanmax"], 
-                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
-
-            ranks = []
-            # the first three metrics are NaN for many tabular datasets
-            criterions = vcat(_prefix_symbol.("val", PAT_METRICS[4:end]), [val_metric, tst_metric])
-            for criterion in criterions
-                df_agg = agg(df, criterion)
-                rt = rank_table(df_agg, tst_metric)
-                results[(metric, name, criterion)] = rt
-                push!(ranks, rt[end:end, :])
-            end
-
-            df_ranks = vcat(ranks...)
-            df_ranks[:, :dataset] .= String.(criterions)
-            rename!(df_ranks, :dataset => :criterion)
-
-            models = names(df_ranks)[2:end]
-            a = PGFPlots.Axis([PGFPlots.Plots.Linear(
-                            1:length(criterions), 
-                            df_ranks[:, i + 1], 
-                            legendentry=m) for (i, m) in enumerate(models)], 
-                    ylabel="avg. rnk", ymax=4.5,
-                    style="xtick={1, 2, 3, 4, 5, 6}, 
-                        xticklabels={\$PR@1\$, \$PR@5\$, \$PR@10\$, \$PR@20\$, \$$(mn)_{val}\$, \$$(mn)_{tst}\$},
-                        x tick label style={rotate=50,anchor=east}"
-                        )
-            filename = "$(projectdir())/paper/figures/tabular_knowledge_rank_$(metric)_$(name)$(suffix).$(format)"
-            PGFPlots.save(filename, a; include_preamble=false)
-        end
-    end
-    results
+    plot_knowledge_ranks(df; prefix="tabular", suffix=suffix, format=format)
 end
 
+function plot_knowledge_tabular_type(df; suffix="", format="pdf")
+    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
+    apply_aliases!(df, col="modelname", d=MODEL_TYPE)
+    plot_knowledge_ranks(df; prefix="tabular", suffix=suffix, format=format)
+end
+
+
 representatives=["ocsvm", "wae", "MAF", "fmgan"]
-plot_knowledge_tabular(copy(df_tabular), representatives; 
-                        format="tex", suffix="_representatives")
+plot_knowledge_tabular_repre(copy(df_tabular), representatives; format="tex", suffix="_representatives")
+# plot_knowledge_tabular_repre(copy(df_tabular_ens), representatives; suffix="_representatives_ensembles", format="tex")
 
-# representatives=["RealNVP", "sptn", "MAF"]
-# results = plot_knowledge_tabular(copy(df_tabular), representatives; 
-#                         format="pdf", suffix="_representatives")
+# these ones are really costly as there are 12 aggregations over all models
+plot_knowledge_tabular_type(copy(df_tabular); format="tex") 
+# plot_knowledge_tabular_type(copy(df_tabular_ens), suffix="_ensembles", format="tex")
 
-# reduce(hcat, [results[(:auc, "maxmean", c)]["osvm"] for c in vcat(_prefix_symbol.("val", PAT_METRICS), [:val_auc, :tst_auc])])
 
 function rank_comparison_agg(df, tm=("AUC", :auc); suffix="")
     mn, metric = tm
@@ -664,51 +632,27 @@ end
 basic_tables_images_per_ac(copy(df_images))
 basic_tables_images_per_ac(copy(df_images_ens), suffix="_ensembles")
 
-function plot_knowledge_images(df, models; suffix="", format="pdf")
+
+function plot_knowledge_images_repre(df, models; suffix="", format="pdf")
     filter!(x -> (x.seed == 1), df)
     filter!(x -> (x.modelname in models), df)
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
     apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
-
-    results = Dict()
-    for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
-        val_metric = _prefix_symbol("val", metric)
-        tst_metric = _prefix_symbol("tst", metric)
-
-        for (name, agg) in zip(
-                    ["maxmean", "meanmax"], 
-                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
-
-            ranks = []
-            criterions = vcat(_prefix_symbol.("val", PAT_METRICS[2:end]), [val_metric, tst_metric])
-            for criterion in criterions
-                df_agg = agg(df, criterion)
-                rt = rank_table(df_agg, tst_metric)
-                results[(metric, name, criterion)] = rt
-                push!(ranks, rt[end:end, :])
-            end
-
-            df_ranks = vcat(ranks...)
-            df_ranks[:, :dataset] .= String.(criterions)
-            rename!(df_ranks, :dataset => :criterion)
-
-            models = names(df_ranks)[2:end]
-            a = PGFPlots.Axis([PGFPlots.Plots.Linear(
-                            1:length(criterions), 
-                            df_ranks[:, i + 1], 
-                            legendentry=m) for (i, m) in enumerate(models)], 
-                    ylabel="avg. rnk", ymax=4.5,
-                    style="xtick=$(_pgf_array(1:7)), 
-                        xticklabels={\$PR@0.1\$, \$PR@1\$, \$PR@5\$, \$PR@10\$, \$PR@20\$, \$$(mn)_{val}\$, \$$(mn)_{tst}\$},
-                        x tick label style={rotate=50,anchor=east}"
-                        )
-            filename = "$(projectdir())/paper/figures/images_knowledge_rank_$(metric)_$(name)$(suffix).$(format)"
-            PGFPlots.save(filename, a; include_preamble=false)
-        end
-    end
-    results
+    plot_knowledge_ranks(df; prefix="images", suffix=suffix, format=format)
 end
 
+function plot_knowledge_images_type(df; suffix="", format="pdf")
+    filter!(x -> (x.seed == 1), df)
+    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
+    apply_aliases!(df, col="modelname", d=MODEL_TYPE)
+    plot_knowledge_ranks(df; prefix="images", suffix=suffix, format=format)
+end
+
+
 representatives=["ocsvm", "aae", "fmgan", "vae_ocsvm"]
-plot_knowledge_images(copy(df_images), representatives; 
-                        format="tex", suffix="_representatives")
+plot_knowledge_images_repre(copy(df_images), representatives; format="tex", suffix="_representatives")
+plot_knowledge_images_repre(copy(df_images_ens), representatives; suffix="_representatives_ensembles", format="tex")
+
+# these ones are really costly as there are 12 aggregations over all models
+plot_knowledge_images_type(copy(df_images); format="tex") 
+plot_knowledge_images_type(copy(df_images_ens), suffix="_ensembles", format="tex")
