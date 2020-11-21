@@ -14,18 +14,20 @@ struct RealNVPFlow <: TabularFlow
 end
 
 function RealNVPFlow(;idim::Int=1, nflows::Int=2, hdim::Int=10, nlayers::Int=2,
-						act_loc="relu", act_scl="tanh",	init_seed=nothing, bn=false, kwargs...)
+						act_loc="relu", act_scl="tanh",	init_seed=nothing, 
+						bn=true, init_I=true, kwargs...)
 	# if seed is given, set it
 	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
 
-	builders = (α=(d, o) -> build_mlp(d, hdim, o, nlayers, activation=act_loc),
-				β=(d, o) -> build_mlp(d, hdim, o, nlayers, activation=act_scl))
+	builders = (α=(d, o) -> build_mlp(d, hdim, o, nlayers, activation=act_loc, lastlayer="linear"),
+				β=(d, o) -> build_mlp(d, hdim, o, nlayers, activation=act_scl, lastlayer="linear"))
 	model = RealNVPFlow(Chain([
 		RealNVP(
 			idim, 
 			builders,
 			mod(i,2) == 0;
-			use_batchnorm=bn)
+			use_batchnorm=bn,
+			lastzero=true)
 		for i in 1:nflows]...), MvNormal(idim, 1.0f0))
 
 	# reset seed
@@ -39,7 +41,7 @@ Flux.trainable(nvpf::RealNVPFlow) = (nvpf.flows, )
 
 function Base.show(io::IO, nvpf::RealNVPFlow)
 	# to avoid the show explosion
-	print(io, "RealNVPFlow(layers=$(length(nvpf.flows)), idim=$(length(nvpf.base))")
+	print(io, "RealNVPFlow(flows=$(length(nvpf.flows)), idim=$(length(nvpf.base)))")
 end
 
 struct MAF <: TabularFlow
@@ -49,7 +51,7 @@ end
 
 function MAF(;idim::Int=1, nflows::Int=2, hdim::Int=10, nlayers::Int=2, 
 				act_loc="relu", act_scl="tanh",	ordering::String="natural", 
-				init_seed=nothing, bn=false, kwargs...)
+				init_seed=nothing, bn=true, init_I=true, kwargs...)
 	# if seed is given, set it
 	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
 
@@ -64,7 +66,8 @@ function MAF(;idim::Int=1, nflows::Int=2, hdim::Int=10, nlayers::Int=2,
 				(mod(i, 2) == 0) ? "reversed" : "sequential"
 			  ) : "random";
 			use_batchnorm=bn,
-			seed=rand(Int)) 
+			lastzero=init_I,
+			seed=rand(UInt)) 
 		for i in 1:nflows]...), MvNormal(idim, 1.0f0)
 	) # seed has to be passed into maf in order to create the same masks
 
@@ -79,7 +82,7 @@ Flux.trainable(maf::MAF) = (maf.flows, )
 
 function Base.show(io::IO, maf::MAF)
 	# to avoid the show explosion
-	print(io, "MAF(layers=$(length(maf.flows)), idim=$(length(maf.base)))")
+	print(io, "MAF(flows=$(length(maf.flows)), idim=$(length(maf.base)))")
 end
 
 function loss(model::F, X) where {F <: TabularFlow}
@@ -149,6 +152,11 @@ function StatsBase.fit!(model::F, data::Tuple; max_train_time=82800,
 		end
 		i += 1
 	end
+
+	# calling loss in trainmode allows to set BatchNorm
+	# statistics from the whole training dataset
+	trainmode!(model, true)
+	loss(model, X)
 
 	# returning model in this way is not ideal
 	# it would have to modify the reference the
