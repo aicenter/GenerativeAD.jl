@@ -15,7 +15,7 @@ end
 
 """
 	fAnoGAN_GP(;idim=(1,2,2), zdim=100, kernelsizes=(9,7,5,3), channels=(128,64,32,16), scalings=(2,2,2,1), 
-        activation="relu", batchnorm=false, usegpu=true):)
+        activation="relu", batchnorm=false, usegpu=true))
 
 The fAnoGAN model with gradient penalization.
 """
@@ -24,18 +24,12 @@ mutable struct fAnoGAN_GP <: TorchModel
 
     function fAnoGAN_GP(;kwargs...)
         pushfirst!(PyVector(pyimport("sys")["path"]), "")
-
 		py"""
 		import fanogan_gp
         import torch
 
 		def construct_fanogan_gp(kwargs):
-            if kwargs.usegpu == True:
-                device = torch.device("cuda")
-            else:
-                device = torch.device("cpu")
-            # TODO: dodělat a otestovat
-			return fanogan_gp()
+			return fanogan_gp.fAnoGAN_GP(**kwargs)
 		"""
 		new(py"construct_fanogan_gp"(kwargs))
 	end

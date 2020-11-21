@@ -103,7 +103,8 @@ class fAnoGAN(nn.Module):
 				scalings=[2,2,2,1], 
 				activation="relu",
 				batchnorm=False,
-				device=torch.device("cuda")):
+				usegpu=True,
+				**kwargs):
 		
 		super(fAnoGAN, self).__init__()
 		if activation == "relu":
@@ -114,7 +115,11 @@ class fAnoGAN(nn.Module):
 			activ_f = nn.Tanh()
 		else:
 			raise ValueError("unknown activation function")
-		self.device = device
+		if usegpu:
+			self.device = torch.device("cuda")
+		else:
+			self.device = torch.device("cpu")
+		
 		self.zdim = zdim
 		self.encoder = encoder_builder(idim,zdim, kernelsizes, channels, scalings, activ_f, batchnorm).to(device)
 		self.discriminator = encoder_builder(idim, 1, kernelsizes, channels, scalings, activ_f, batchnorm).to(device)
