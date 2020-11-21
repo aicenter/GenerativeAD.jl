@@ -10,7 +10,7 @@ s = ArgParseSettings()
 	"max_seed"
 		default = 1
 		arg_type = Int
-		help = "seed"
+		help = "maximum number of seeds to run through"
 	"dataset"
 		default = "iris"
 		arg_type = String
