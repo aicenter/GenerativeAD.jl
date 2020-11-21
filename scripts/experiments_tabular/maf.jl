@@ -34,6 +34,7 @@ function sample_params()
 		bn 			= [true, false],
 		wreg 		= [0.0f0, 1f-5, 1f-6],
 		init_seed 	= 1:Int(1e8),
+		init_I 		= [true, false]
 	)
 
 	(;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
