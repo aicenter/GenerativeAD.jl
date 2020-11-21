@@ -15,7 +15,7 @@ end
 
 function RealNVPFlow(;idim::Int=1, nflows::Int=2, hdim::Int=10, nlayers::Int=2,
 						act_loc="relu", act_scl="tanh",	init_seed=nothing, 
-						bn=true, init_I=true, kwargs...)
+						bn=true, init_I=true, tanhscaling=false, kwargs...)
 	# if seed is given, set it
 	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
 
@@ -27,6 +27,7 @@ function RealNVPFlow(;idim::Int=1, nflows::Int=2, hdim::Int=10, nlayers::Int=2,
 			builders,
 			mod(i,2) == 0;
 			use_batchnorm=bn,
+			tanh_scaling=tanhscaling,
 			lastzero=true)
 		for i in 1:nflows]...), MvNormal(idim, 1.0f0))
 
