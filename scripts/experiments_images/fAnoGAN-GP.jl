@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
-import StatsBase: fit!, predict
+using StatsBase: fit!, predict
 using StatsBase
 using BSON
 
@@ -73,24 +73,28 @@ function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
 	default_params = (lr_gan = 0.00005, lr_enc = 0.001, batch_size=128, max_iters=10000, n_critic=5, usegpu=true)
 	
-
-	# construct model - constructor should only accept kwargs
 	@info "idim -> $(size(data[1][1])[1:3]), flipped -> $(reverse(size(data[1][1])[1:3]))"
+	# construct model - constructor should only accept kwargs
 	model = GenerativeAD.Models.fAnoGAN_GP(;idim = reverse(size(data[1][1])[1:3]), usegpu=true, parameters...)
 
 	#max_iter = 50 # this should be enough for testing purpouses
 	params = merge(default_params, parameters)
 	# fit train data
-	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1], 
+	
+	global info, fit_t, _, _, _ = @timed StatsBase.fit!(model, data[1][1], 
 			max_iters=params.max_iters, lr_gan=params.lr_gan, lr_enc=params.lr_enc, 
 			batch_size=params.batch_size, n_critic=params.n_critic)
+	try
+		print("debugging")
 	catch e
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
 	end
+
+	println("printing return form fit! -> ", info)
 	model = info[1]
+	#println(model)
 	
 	# construct return information - put e.g. the model structure here for generative models
 	training_info = (
