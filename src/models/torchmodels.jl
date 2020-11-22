@@ -2,19 +2,22 @@ using PyCall
 using StatsBase
 
 pushfirst!(PyVector(pyimport("sys")["path"]), "")
+@info "torchmodels compiled. path added -> $(pwd())"
 #ushfirst!(PyVector(pyimport("sys")["path"]), @__DIR__)
 
 abstract type TorchModel end
 
-
-function StatsBase.fit!(model::TorchModel, X::Array{T, 2}, max_iters=10000, lr_gan=1e-4, lr_enc=1e-4, 
+function StatsBase.fit!(model::fAnoGAN_GP, X::Array{T, 4}; max_iters=10000, lr_gan=1e-4, lr_enc=1e-4, 
 		batch_size=64, n_critic=5) where T<:Real
 	# transposition since Python models are row major
-		model.model.fit(Array(transpose(X)), max_iters, lr_gan, lr_enc, batch_size, n_critic)
+	X = Array(permutedims(X, [4,3,2,1]))
+	_, history = model.model.fit(X, max_iters, lr_gan, lr_enc, batch_size, n_critic)
+	return model, history
 end
 
-function StatsBase.predict(model::TorchModel, X::Array{T, 2}) where T<:Real
-	model.model.predict(Array(transpose(X)))
+function StatsBase.predict(model::fAnoGAN_GP, X::Array{T, 4}) where T<:Real
+	X = Array(permutedims(X, [4,3,2,1]))
+	return Array(model.model.predict(X))
 end
 """
 	fAnoGAN_GP(;idim=(1,2,2), zdim=100, kernelsizes=(9,7,5,3), channels=(128,64,32,16), scalings=(2,2,2,1), 

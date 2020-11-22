@@ -177,7 +177,7 @@ class fAnoGAN(nn.Module):
 		self.discriminator.eval()
 		self.encoder.eval()
 
-		test_loader = utils.DataLoader(data[0], batch_size=batch_size)
+		test_loader = utils.DataLoader(data, batch_size=batch_size)
 		anomaly_scores = []
 		for x in test_loader:
 			x = x.to(self.device)
@@ -186,7 +186,7 @@ class fAnoGAN(nn.Module):
 			L_D = torch.sum(torch.pow(fx-fx_,2), axis=1).detach().cpu()
 			anomaly_scores.append(L_G + kappa*L_D)
 		anomaly_scores = torch.cat(anomaly_scores)
-		return anomaly_scores
+		return np.array(anomaly_scores)
 
 
 	def fit(self, data, max_iters=10000, lr_gan=1e-4, lr_enc=1e-4, batch_size=64, n_critic=5):
@@ -196,9 +196,9 @@ class fAnoGAN(nn.Module):
 		optim_E = torch.optim.Adam(self.encoder.parameters(), lr=lr_enc)
 
 		# data = (x, y)
-		train_loader = utils.DataLoader(data[0], batch_size=batch_size, 
+		train_loader = utils.DataLoader(data, batch_size=batch_size, 
 										sampler=utils.RandomSampler(
-											torch.arange(len(data[1])),
+											torch.arange(len(data)),
 											replacement=True, 
 											num_samples=max_iters*batch_size)
 										)
@@ -258,4 +258,4 @@ class fAnoGAN(nn.Module):
 			print(loss.item())
 			history["encoder"].append(loss.item())
 
-		return self
+		return self, history

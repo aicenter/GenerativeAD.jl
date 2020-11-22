@@ -75,7 +75,8 @@ function fit(data, parameters)
 	
 
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.fAnoGAN_GP(;idim = size(data[1][1])[1:3], usegpu=true, parameters...)
+	@info "idim -> $(size(data[1][1])[1:3]), flipped -> $(reverse(size(data[1][1])[1:3]))"
+	model = GenerativeAD.Models.fAnoGAN_GP(;idim = reverse(size(data[1][1])[1:3]), usegpu=true, parameters...)
 
 	#max_iter = 50 # this should be enough for testing purpouses
 	params = merge(default_params, parameters)
@@ -95,7 +96,6 @@ function fit(data, parameters)
 	training_info = (
 		fit_t = fit_t,
 		history = info[2],
-		npars = info[3],
 		model = model  # pytorchmodel
 		)
 
