@@ -42,6 +42,6 @@ end
 
 function StatsBase.predict(model::fAnoGAN_GP, X::Array{T, 4}) where T<:Real
 	X = Array(permutedims(X, [4,3,2,1]))
-	model.model.predict(X)
+	return Array(model.model.predict(X))
 end
 

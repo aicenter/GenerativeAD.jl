@@ -172,6 +172,7 @@ class fAnoGAN(nn.Module):
 	def save_model(self, path):
 		torch.save(self.state_dict, f"{path}.pt")
 
+
 	def predict(self, data, batch_size=64, kappa=1.0):
 		self.generator.eval()
 		self.discriminator.eval()
@@ -186,7 +187,7 @@ class fAnoGAN(nn.Module):
 			L_D = torch.sum(torch.pow(fx-fx_,2), axis=1).detach().cpu()
 			anomaly_scores.append(L_G + kappa*L_D)
 		anomaly_scores = torch.cat(anomaly_scores)
-		return np.array(anomaly_scores)
+		return anomaly_scores.tolist()
 
 
 	def fit(self, data, max_iters=10000, lr_gan=1e-4, lr_enc=1e-4, batch_size=64, n_critic=5):
@@ -229,7 +230,7 @@ class fAnoGAN(nn.Module):
 
 				optim_D.step()
 				history["discriminator"].append(D_fake.item() + D_real.item() + gradient_penalty.item())
-				print("discriminator loss -> ", D_fake.item() + D_real.item() + gradient_penalty.item())
+				print(f"discriminator loss {iter}/{max_iters}  -> ", D_fake.item() + D_real.item() + gradient_penalty.item())
 
 			"""
 				Train generator
@@ -244,7 +245,7 @@ class fAnoGAN(nn.Module):
 			optim_G.step()
 			history["generator"].append(G_loss.item())
 
-			print(G_loss.item())
+			print(f"gen {iter}/{max_iters} -> ", G_loss.item())
 
 		"""
 			Train encoder

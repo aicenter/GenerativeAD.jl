@@ -81,18 +81,17 @@ function fit(data, parameters)
 	params = merge(default_params, parameters)
 	# fit train data
 	
-	global info, fit_t, _, _, _ = @timed StatsBase.fit!(model, data[1][1], 
+	try 
+		global info, fit_t, _, _, _ = @timed StatsBase.fit!(model, data[1][1], 
 			max_iters=params.max_iters, lr_gan=params.lr_gan, lr_enc=params.lr_enc, 
 			batch_size=params.batch_size, n_critic=params.n_critic)
-	try
-		print("debugging")
 	catch e
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
 	end
 
-	println("printing return form fit! -> ", info)
+	#println("printing return form fit! -> ", info)
 	model = info[1]
 	#println(model)
 	
