@@ -183,8 +183,8 @@ class fAnoGAN(nn.Module):
 		for x in test_loader:
 			x = x.to(self.device)
 			x_, fx, fx_ = self.forward(x)
-			L_G = torch.sum(torch.pow(x-x_,2), axis=[1,2,3]).detach().cpu()
-			L_D = torch.sum(torch.pow(fx-fx_,2), axis=1).detach().cpu()
+			L_G = torch.mean(torch.pow(x-x_,2), axis=[1,2,3]).detach().cpu()
+			L_D = torch.mean(torch.pow(fx-fx_,2), axis=1).detach().cpu()
 			anomaly_scores.append(L_G + kappa*L_D)
 		anomaly_scores = torch.cat(anomaly_scores)
 		return anomaly_scores.tolist()
@@ -260,5 +260,5 @@ class fAnoGAN(nn.Module):
 			history["encoder"].append(loss.item())
 			if iter%10==0:
 				print(f"encoder loss {iter}/{max_iters} -> ", loss.item())
-				
+
 		return self, history
