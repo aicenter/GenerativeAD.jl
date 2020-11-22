@@ -75,14 +75,15 @@ function fit(data, parameters)
 	
 
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.fAnoGAN_GP(;idim = reverse(size(data[1][1])[1:3]), usegpu=true, parameters...)
+	model = GenerativeAD.Models.fAnoGAN_GP(;idim = size(data[1][1])[1:3], usegpu=true, parameters...)
 
-	max_iter = 50 # this should be enough
-
+	#max_iter = 50 # this should be enough for testing purpouses
+	params = merge(default_params, parameters)
 	# fit train data
-	
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data, merge(default_params, parameters))
+		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1], 
+			max_iters=params.max_iters, lr_gan=params.lr_gan, lr_enc=params.lr_enc, 
+			batch_size=params.batch_size, n_critic=params.n_critic)
 	catch e
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
@@ -95,11 +96,11 @@ function fit(data, parameters)
 		fit_t = fit_t,
 		history = info[2],
 		npars = info[3],
-		model = model |> cpu
+		model = model  # pytorchmodel
 		)
 
 	# now return the different scoring functions
-	training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(model, x), parameters)]
+	training_info, [(x -> predict(model, x), parameters)]
 end
 
 
@@ -127,7 +128,8 @@ while try_counter < max_tries
 				training_info, results = fit(data, parameters)
 				# saving model separately
 				if training_info.model !== nothing
-					tagsave(joinpath(savepath, savename("model", parameters, "bson", digits=5)), Dict("model"=>training_info.model), safe = true)
+					# save model with build-in save funciton (torch.save) as .pt file (pt ~ pytorch)
+					training_info.model.model.save_model(joinpath(savepath, savename("model", parameters, digits=5)))
 					training_info = merge(training_info, (model = nothing,))
 				end
 				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))

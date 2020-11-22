@@ -25,7 +25,6 @@ class Reshape(nn.Module):
 
 def encoder_builder(idim, zdim, kernelsizes=[9,7,5,3], channels=[128,64,32,16], scalings=[2,2,2,1], 
 					activation=nn.ReLU(), batchnorm=False):
-	nconv = len(kernelsizes)
 	if len(kernelsizes) != len(scalings):
 		raise ValueError("incompatible input dimensions")
 	if len(idim) != 3:
@@ -55,7 +54,6 @@ def encoder_builder(idim, zdim, kernelsizes=[9,7,5,3], channels=[128,64,32,16], 
 
 def decoder_builder(idim, zdim, kernelsizes=[3, 5, 7, 9], channels=[16, 32, 64, 128], scalings=[1,2,2,2], 
 					activation=nn.ReLU(), batchnorm=False):
-	nconv = len(kernelsizes)
 	if len(kernelsizes) != len(scalings):
 		raise ValueError("incompatible input dimensions")
 	if len(idim) != 3:
@@ -121,12 +119,15 @@ class fAnoGAN(nn.Module):
 			self.device = torch.device("cpu")
 		
 		self.zdim = zdim
-		self.encoder = encoder_builder(idim,zdim, kernelsizes, channels, scalings, activ_f, batchnorm).to(device)
-		self.discriminator = encoder_builder(idim, 1, kernelsizes, channels, scalings, activ_f, batchnorm).to(device)
-		kernelsizes.reverse()
-		channels.reverse()
-		scalings.reverse()
-		self.generator = decoder_builder(idim,zdim, kernelsizes, channels, scalings, activ_f, batchnorm).to(device)
+		self.encoder = encoder_builder(
+			idim, zdim, list(kernelsizes), list(channels), list(scalings), activ_f, batchnorm).to(self.device)
+		self.discriminator = encoder_builder(
+			idim, 1, list(kernelsizes), list(channels), list(scalings), activ_f, batchnorm).to(self.device)
+		kernelsizes = np.flip(kernelsizes)
+		channels = np.flip(channels)
+		scalings = np.flip(scalings)
+		self.generator = decoder_builder(
+			idim, zdim, list(kernelsizes), list(channels), list(scalings), activ_f, batchnorm).to(self.device)
 		
 
 	def forward(self, x):
@@ -168,6 +169,8 @@ class fAnoGAN(nn.Module):
 		gradient_penalty = ((gradients.norm(2, dim=1) - 1) ** 2).mean() * lambda_
 		return gradient_penalty
 
+	def save_model(self, path):
+		torch.save(self.state_dict, f"{path}.pt")
 
 	def predict(self, data, batch_size=64, kappa=1.0):
 		self.generator.eval()
@@ -187,8 +190,6 @@ class fAnoGAN(nn.Module):
 
 
 	def fit(self, data, max_iters=10000, lr_gan=1e-4, lr_enc=1e-4, batch_size=64, n_critic=5):
-		one = torch.FloatTensor([1]).to(self.device)
-		mone = one * -1
 
 		optim_G = torch.optim.Adam(self.generator.parameters(), lr=lr_gan)
 		optim_D = torch.optim.Adam(self.discriminator.parameters(), lr=lr_gan)
