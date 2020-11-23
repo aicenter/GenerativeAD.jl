@@ -18,6 +18,7 @@ const PATN_METRICS_NAMES = ["\$PR@\\#5\$","\$PR@\\#10\$","\$PR@\\#50\$","\$PR@\\
 
 df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
 df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
+@info "Loaded results from tabular evaluation."
 
 function basic_tables_tabular(df; suffix="")
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
@@ -52,7 +53,7 @@ end
 
 basic_tables_tabular(copy(df_tabular))
 basic_tables_tabular(copy(df_tabular_ens), suffix="_ensembles")
-
+@info "basic_tables_tabular"
 
 # generic for both images and tabular data just change prefix and filter input
 function plot_knowledge_ranks(df; prefix="tabular", suffix="", format="pdf")
@@ -114,11 +115,12 @@ end
 representatives=["ocsvm", "wae", "MAF", "fmgan"]
 plot_knowledge_tabular_repre(copy(df_tabular), representatives; format="tex", suffix="_representatives")
 # plot_knowledge_tabular_repre(copy(df_tabular_ens), representatives; suffix="_representatives_ensembles", format="tex")
+@info "plot_knowledge_tabular_repre"
 
 # these ones are really costly as there are 12 aggregations over all models
 plot_knowledge_tabular_type(copy(df_tabular); format="tex") 
 # plot_knowledge_tabular_type(copy(df_tabular_ens), suffix="_ensembles", format="tex")
-
+@info "plot_knowledge_tabular_type"
 
 function rank_comparison_agg(df, tm=("AUC", :auc); suffix="")
     mn, metric = tm
@@ -169,6 +171,7 @@ end
 
 rank_comparison_agg(copy(df_tabular), ("AUC", :auc))
 rank_comparison_agg(copy(df_tabular), ("TPR@5", :tpr_5))
+@info "rank_comparison_agg"
 
 function rank_comparison_metric(df, ta=("maxmean", aggregate_stats_max_mean); suffix="")
     name, agg = ta
@@ -217,7 +220,7 @@ end
 
 rank_comparison_metric(copy(df_tabular), ("maxmean", aggregate_stats_max_mean))
 rank_comparison_metric(copy(df_tabular), ("meanmax", aggregate_stats_mean_max))
-
+@info "rank_comparison_metric"
 
 function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="")
     mn, metric = tm
@@ -289,6 +292,7 @@ end
 
 comparison_tabular_ensemble(copy(df_tabular), copy(df_tabular_ens), ("AUC", :auc))
 comparison_tabular_ensemble(copy(df_tabular), copy(df_tabular_ens), ("TPR@5", :tpr_5))
+@info "comparison_tabular_ensemble"
 
 # join baseline and ensembles, allows to dig into where they help
 # compare only those models for which ensembles are computed
@@ -303,7 +307,7 @@ comparison_tabular_ensemble(
     baseline, 
     ensembles, ("TPR@5", :tpr_5);
     suffix="_only_improve")
-
+@info "comparison_tabular_ensemble_only_improve"
 
 # training time rank vs avg rank
 function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf")
@@ -357,6 +361,7 @@ plot_tabular_fit_time(copy(df_tabular); time_col=:val_eval_t, format="tex")
 plot_tabular_fit_time(copy(df_tabular); time_col=:tst_eval_t, format="tex")
 plot_tabular_fit_time(copy(df_tabular); time_col=:total_eval_t, format="tex")
 # plot_tabular_fit_time(copy(filter(x -> (x.modelname in Set(["ocsvm", "wae", "MAF", "fmgan"])), df_tabular)); time_col=:fit_t, format="pdf")
+@info "plot_tabular_fit_time"
 
 # show basic table only for autoencoders
 function basic_tables_tabular_autoencoders(df; suffix="")
@@ -462,12 +467,65 @@ function basic_tables_tabular_autoencoders(df; suffix="")
 end
 
 basic_tables_tabular_autoencoders(copy(df_tabular))
+@info "basic_tables_tabular_autoencoders"
+
+# does crossvalidation matters?
+function per_seed_ranks_tabular(df; suffix="")
+    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
+
+    for metric in [:auc, :tpr_5]
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric)    
+
+        ranks = []
+        for seed in 1:5
+            dff = filter(x -> (x.seed == seed), df)
+            df_agg = aggregate_stats_max_mean(dff, val_metric)
+
+            df_agg["model_type"] = copy(df_agg["modelname"])
+            apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+            apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
+            apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
+
+            sort!(df_agg, (:dataset, :model_type, :modelname))
+            
+            rt = rank_table(df_agg, tst_metric)
+            models = names(rt)[2:end]
+            rt["seed"] = "$seed"
+
+            select!(rt, vcat(["seed"], models))
+            push!(ranks, rt[end:end,:])
+        end
+        df_ranks = reduce(vcat, ranks)
+
+        hl_best_rank = LatexHighlighter(
+                        (data, i, j) -> (data[i,j] == minimum(df_ranks[i, 2:end])),
+                        ["color{red}","textbf"])
+    
+        filename = "$(projectdir())/paper/tables/tabular_per_seed_ranks_$(metric)$(suffix).tex"
+        open(filename, "w") do io
+            pretty_table(
+                io, df_ranks,
+                backend=:latex,
+                formatters=ft_printf("%.1f"),
+                highlighters=(hl_best_rank),
+                nosubheader=true,
+                tf=latex_booktabs)
+        end
+    end
+end
+
+per_seed_ranks_tabular(copy(df_tabular))
+per_seed_ranks_tabular(copy(df_tabular_ens); suffix="_ensembles")
+@info "Per seed average ranks"
+
 
 ######################################################################################
 #######################               IMAGES                ##########################
 ######################################################################################
 df_images = load(datadir("evaluation/images_eval.bson"))[:df];
 df_images_ens = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
+@info "Loaded results from images"
 
 function basic_tables_images(df; suffix="")
     dff = filter(x -> x.seed == 1, df)
@@ -503,7 +561,7 @@ end
 
 basic_tables_images(copy(df_images))
 basic_tables_images(copy(df_images_ens), suffix="_ensembles")
-
+@info "basic_tables_images"
 
 function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="")
     mn, metric = tm
@@ -578,6 +636,7 @@ end
 
 comparison_images_ensemble(copy(df_images), copy(df_images_ens), ("AUC", :auc))
 comparison_images_ensemble(copy(df_images), copy(df_images_ens), ("TPR@5", :tpr_5))
+@info "comparison_images_ensemble"
 
 # join baseline and ensembles, allows to dig into where they help
 # compare only those models for which ensembles are computed
@@ -592,7 +651,7 @@ comparison_images_ensemble(
     baseline_img, 
     ensembles_img, ("TPR@5", :tpr_5);
     suffix="_only_improve")
-
+@info "comparison_images_ensemble_only_improve"
 
 # basic tables when anomaly_class is treated as separate dataset
 function basic_tables_images_per_ac(df; suffix="")
@@ -631,7 +690,7 @@ end
 
 basic_tables_images_per_ac(copy(df_images))
 basic_tables_images_per_ac(copy(df_images_ens), suffix="_ensembles")
-
+@info "basic_tables_images_per_ac"
 
 function plot_knowledge_images_repre(df, models; suffix="", format="pdf")
     filter!(x -> (x.seed == 1), df)
@@ -652,7 +711,10 @@ end
 representatives=["ocsvm", "aae", "fmgan", "vae_ocsvm"]
 plot_knowledge_images_repre(copy(df_images), representatives; format="tex", suffix="_representatives")
 plot_knowledge_images_repre(copy(df_images_ens), representatives; suffix="_representatives_ensembles", format="tex")
+@info "plot_knowledge_images_repre"
 
 # these ones are really costly as there are 12 aggregations over all models
 plot_knowledge_images_type(copy(df_images); format="tex") 
 plot_knowledge_images_type(copy(df_images_ens), suffix="_ensembles", format="tex")
+@info "plot_knowledge_images_type"
+@info "----------------- DONE ---------------------"
