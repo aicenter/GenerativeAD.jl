@@ -66,7 +66,7 @@ function save_sample_score(f::String, data, seed::Int, ac=nothing)
 		model = nothing,
 		seed = seed
 		)
-	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (ac=ac,))
+	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (anomaly_class=ac,))
 	if ac == nothing
 		result = (x -> sample_score_batched(model, x, L, 512), 
 			merge(mdata["parameters"], (L = L, score = "reconstruction-sampled"))) 
@@ -95,3 +95,4 @@ for f in mfiles
 	# compute and save the score
 	save_sample_score(f, data, seed, ac)
 end
+@info "DONE"

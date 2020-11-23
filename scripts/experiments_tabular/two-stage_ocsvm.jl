@@ -31,9 +31,13 @@ s = ArgParseSettings()
 		required = true
 		arg_type = String
 		help = "name of tab -> example: vae_LOSS_tabular, wae-vamp_AUC_tabular"
+	"mi_only"
+		arg_type = Int
+		default = -1
+		help = "index of model in range 1 to 10 or -1 for all models"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, tab_name = parsed_args
+@unpack dataset, max_seed, tab_name, mi_only = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -86,7 +90,8 @@ while try_counter < max_tries
 
 	for seed in 1:max_seed
 		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
-		for mi = 1:10 # iteration through encodings
+		mi_indexes = (mi_only == -1) ? [1:10...] : [mi_only]
+		for mi = mi_indexes # iteration through encodings
 			aux_info = (model_index=mi, criterion=criterion)
 			# get data
 			data = GenerativeAD.load_data(dataset, seed=seed)

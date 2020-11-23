@@ -13,7 +13,7 @@ using ValueHistories
 s = ArgParseSettings()
 @add_arg_table! s begin
 	"modelname"
-		default = "aae"
+		default = "vae"
 		arg_type = String
 		help = "model name"
 	"datatype"
@@ -44,16 +44,17 @@ if anomaly_class != nothing
 	filter!(x->occursin("/ac=$(anomaly_class)/", x), mfiles)
 end
 
-aae_score_batched(m,x,alpha,batchsize) = 
-	vcat(map(y-> Base.invokelatest(GenerativeAD.Models.aae_score, m, y, alpha), Flux.Data.DataLoader(x, batchsize=batchsize))...)
-aae_score_batched_gpu(m,x,alpha,batchsize) = 
-	vcat(map(y-> cpu(Base.invokelatest(GenerativeAD.Models.aae_score, m, gpu(Array(y)), alpha)), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+sample_score_batched(m,x,L,batchsize) = 
+	vcat(map(y-> Base.invokelatest(GenerativeAD.Models.latent_score, m, y, L), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+sample_score_batched_gpu(m,x,L,batchsize) = 
+	vcat(map(y-> cpu(Base.invokelatest(GenerativeAD.Models.latent_score, m, gpu(Array(y)), L)), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 
-function save_aae_disc_score(f::String, data, seed::Int, ac=nothing)
+function save_sample_score(f::String, data, seed::Int, ac=nothing)
 	# get model
 	savepath = dirname(f)
 	mdata = load(f)
 	model = mdata["model"]
+	L = 100
 
 	# setup entries to be saved
 	save_entries = (
@@ -67,22 +68,18 @@ function save_aae_disc_score(f::String, data, seed::Int, ac=nothing)
 		)
 	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (anomaly_class=ac,))
 	if ac == nothing
-		results = [(x -> aae_score_batched(model, x, alpha, 512), 
-			merge(mdata["parameters"], (alpha = alpha, score = "disc"))) 
-			for alpha in 0f0:0.1f0:1f0]
+		result = (x -> sample_score_batched(model, x, L, 512), 
+			merge(mdata["parameters"], (L = L, score = "latent-sampled"))) 
 	else
-		results = [(x -> aae_score_batched_gpu(gpu(model), x, alpha, 512), 
-			merge(mdata["parameters"], (alpha = alpha, score = "disc"))) 
-			for alpha in 0f0:0.1f0:1f0]
+		result = (x -> sample_score_batched_gpu(gpu(model), x, L, 256), 
+			merge(mdata["parameters"], (L = L, score = "latent-sampled"))) 
 	end
 
 	# if the file does not exist already, compute the scores
-	for result in results
-		savef = joinpath(savepath, savename(result[2], "bson", digits=5))
-		if !isfile(savef)
-			@info "computing AAE discriminator score for $f"
-			GenerativeAD.experiment(result..., data, savepath; save_entries...)
-		end
+	savef = joinpath(savepath, savename(result[2], "bson", digits=5))
+	if !isfile(savef)
+		@info "computing sample score for $f"
+		GenerativeAD.experiment(result..., data, savepath; save_entries...)
 	end
 end
 
@@ -96,5 +93,6 @@ for f in mfiles
 		GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac)
 		
 	# compute and save the score
-	save_aae_disc_score(f, data, seed, ac)
+	save_sample_score(f, data, seed, ac)
 end
+@info "DONE"

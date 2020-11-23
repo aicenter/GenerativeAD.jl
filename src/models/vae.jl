@@ -43,9 +43,10 @@ Constructs a classical variational autoencoder.
 	- `prior="normal"`: one of ["normal", "vamp"].
 	- `pseudoinput_mean=nothing`: mean of data used to initialize the VAMP prior.
 	- `k::Int=1`: number of VAMP components. 
+	- `var="scalar"`: covariance computation, one of ["scalar", "diag"].
 """
 function vae_constructor(;idim::Int=1, zdim::Int=1, activation="relu", hdim=128, nlayers::Int=3, 
-	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
+	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, var="scalar", kwargs...)
 	(nlayers < 3) ? error("Less than 3 layers are not supported") : nothing
 	
 	# if seed is given, set it
@@ -60,10 +61,17 @@ function vae_constructor(;idim::Int=1, zdim::Int=1, activation="relu", hdim=128,
 	encoder = ConditionalMvNormal(encoder_map)
 	
 	# decoder - we will optimize only a shared scalar variance for all dimensions
-	decoder_map = Chain(
-		build_mlp(zdim, hdim, hdim, nlayers-1, activation=activation)...,
-		ConditionalDists.SplitLayer(hdim, [idim, 1], [identity, safe_softplus])
-		)
+	if var=="scalar"
+		decoder_map = Chain(
+			build_mlp(zdim, hdim, hdim, nlayers-1, activation=activation)...,
+			ConditionalDists.SplitLayer(hdim, [idim, 1], [identity, safe_softplus])
+			)
+	else
+		decoder_map = Chain(
+				build_mlp(zdim, hdim, hdim, nlayers-1, activation=activation)...,
+				ConditionalDists.SplitLayer(hdim, [idim, idim], [identity, safe_softplus])
+				)
+	end
 	decoder = ConditionalMvNormal(decoder_map)
 
 	# prior
