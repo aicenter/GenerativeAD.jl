@@ -59,7 +59,7 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	# cat it together
 	if method == "leave-one-in"
 		tr_x = tr_n
-		tr_y = zeros(Float32, size(tr_x))
+		tr_y = zeros(Float32, size(tr_x, nd))
 	else	
 		tr_x = cat(tr_n, tr_a, dims = nd)
 		tr_y = vcat(zeros(Float32, size(tr_n, nd)), ones(Float32, size(tr_a,nd)))
