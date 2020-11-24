@@ -13,7 +13,7 @@ using ValueHistories
 s = ArgParseSettings()
 @add_arg_table! s begin
 	"modelname"
-		default = "vae"
+		default = "aae"
 		arg_type = String
 		help = "model name"
 	"datatype"
@@ -44,13 +44,12 @@ if anomaly_class != nothing
 	filter!(x->occursin("/ac=$(anomaly_class)/", x), mfiles)
 end
 
-jacodeco_batched(m,x,batchsize) = 
-	vcat(map(y-> - Base.invokelatest(GenerativeAD.Models.jacodeco, m, y), Flux.Data.DataLoader(x, batchsize=batchsize))...)
-# gpu version of jacodeco does not work
-#jacodeco_batched_gpu(m,x,batchsize) = 
-#	vcat(map(y-> cpu(-GenerativeAD.Models.jacodeco(gpu(m), gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+aae_score_batched(m,x,alpha,batchsize) = 
+	vcat(map(y-> Base.invokelatest(GenerativeAD.Models.aae_score, m, y, alpha), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+aae_score_batched_gpu(m,x,alpha,batchsize) = 
+	vcat(map(y-> cpu(Base.invokelatest(GenerativeAD.Models.aae_score, m, gpu(Array(y)), alpha)), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 
-function save_jacodeco(f::String, data, seed::Int, ac=nothing)
+function save_aae_disc_score(f::String, data, seed::Int, ac=nothing)
 	# get model
 	savepath = dirname(f)
 	mdata = load(f)
@@ -67,14 +66,23 @@ function save_jacodeco(f::String, data, seed::Int, ac=nothing)
 		seed = seed
 		)
 	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (anomaly_class=ac,))
-	result = (x -> jacodeco_batched(model, x, 512), 
-			merge(mdata["parameters"], (score = "jacodeco",)))
+	if ac == nothing
+		results = [(x -> aae_score_batched(model, x, alpha, 512), 
+			merge(mdata["parameters"], (alpha = alpha, score = "disc"))) 
+			for alpha in 0f0:0.1f0:1f0]
+	else
+		results = [(x -> aae_score_batched_gpu(gpu(model), x, alpha, 512), 
+			merge(mdata["parameters"], (alpha = alpha, score = "disc"))) 
+			for alpha in 0f0:0.1f0:1f0]
+	end
 
 	# if the file does not exist already, compute the scores
-	savef = joinpath(savepath, savename(result[2], "bson", digits=5))
-	if !isfile(savef)
-		@info "computing jacodeco for $f"
-		GenerativeAD.experiment(result..., data, savepath; save_entries...)
+	for result in results
+		savef = joinpath(savepath, savename(result[2], "bson", digits=5))
+		if !isfile(savef)
+			@info "computing AAE discriminator score for $f"
+			GenerativeAD.experiment(result..., data, savepath; save_entries...)
+		end
 	end
 end
 
@@ -88,5 +96,5 @@ for f in mfiles
 		GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac)
 		
 	# compute and save the score
-	save_jacodeco(f, data, seed, ac)
+	save_aae_disc_score(f, data, seed, ac)
 end

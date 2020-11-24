@@ -7,40 +7,48 @@ using BSON
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-   "max_seed"
-        required = true
-        arg_type = Int
-        help = "seed"
-    "dataset"
-        required = true
-        arg_type = String
-        help = "dataset"
+	"max_seed"
+		default = 1
+		arg_type = Int
+		help = "maximum number of seeds to run through"
+	"dataset"
+		default = "iris"
+		arg_type = String
+		help = "dataset"
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed = parsed_args
 
 modelname = "RealNVP"
-function sample_params()
-	par_vec = ([2, 5, 10], 2 .^(4:10), 2:3, [1f-4], [100], [30], [1f-6])
-	argnames = (:nflows, :hdim, :nlayers, :lr, :batchsize, :patience, :wreg)
 
-	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
+function sample_params()
+	parameter_rng = (
+		nflows 		= 2 .^ (1:3),
+		hdim 		= 2 .^(4:10),
+		nlayers 	= 2:3,
+		lr 			= [1f-4],
+		batchsize 	= 2 .^ (5:7),
+		act_loc		= ["relu", "tanh"],
+		act_scl		= ["relu", "tanh"],
+		bn 			= [true, false],
+		wreg 		= [0.0f0, 1f-5, 1f-6],
+		init_seed 	= 1:Int(1e8),
+		init_I 		= [true, false],
+		tanhscaling = [true, false]
+	)
+
+	(;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
 end
 
 function fit(data, parameters)
-	idim = size(data[1][1], 1)
-
-	model = GenerativeAD.Models.RealNVPFlow(
-				parameters.nflows,
-				idim,
-				parameters.hdim,
-				parameters.nlayers)
+	model = GenerativeAD.Models.RealNVPFlow(;idim=size(data[1][1], 1), parameters...)
 
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data, parameters)
- 	catch e
+		global info, fit_t, _, _, _ = @timed fit!(model, data; max_train_time=82800/max_seed, 
+										patience=200, check_interval=10, parameters...)
+	catch e
 		@info "Failed training due to \n$e"
-		return (fit_t = NaN, model = nothing,), []
+		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), []
 	end
 
 	training_info = (
@@ -58,9 +66,9 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 while try_counter < max_tries
-    parameters = sample_params()
+	parameters = sample_params()
 
-    for seed in 1:max_seed
+	for seed in 1:max_seed
 		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
 		mkpath(savepath)
 

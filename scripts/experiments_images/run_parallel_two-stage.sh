@@ -9,6 +9,7 @@ MAX_SEED=$3		# how many folds over dataset
 NUM_CONC=$4		# number of concurrent tasks in the array job
 DATASET_FILE=$5	# file with dataset list
 TAB_NAME=$6
+MI_ONLY=$7
 
 LOG_DIR="${HOME}/logs/${MODEL}-${TAB_NAME}"
 
@@ -21,7 +22,7 @@ while read d; do
     sbatch \
     --array=1-${NUM_SAMPLES}%${NUM_CONC} \
     --output="${LOG_DIR}/${d}-%A_%a.out" \
-     ./${MODEL}_run.sh $MAX_SEED $d 10 ${TAB_NAME}
+     ./${MODEL}_run.sh $MAX_SEED $d 10 $MI_ONLY ${TAB_NAME}
 
     # for local testing    
     # ./${MODEL}_run.sh $MAX_SEED $d 10

@@ -123,3 +123,21 @@ function clip_weights!(ps::Flux.Zygote.Params,low::Real,high::Real)
 end
 clip_weights!(ps::Flux.Zygote.Params,c::Real) = clip_weights!(ps,-abs(c),abs(c))
 
+"""
+	function check_scaling(idims, scalings)
+
+Function checks if input is compatible with scaling. Works with our nn_builders: conv_dcoder, conv_encoder. 
+"""
+function check_scaling(idims, scalings)
+    try
+        ho = idims[1]/(reduce(*, scalings)) # height before reshaping
+        wo = idims[2]/(reduce(*, scalings)) # width before reshaping
+        # this ensures size compatibility, ho/wo are Ints
+        (ho == floor(Int, ho)) ? ho = floor(Int, ho) : error("your input size and scaling is not compatible")
+        (wo == floor(Int, wo)) ? wo = floor(Int, wo) : error("your input size and scaling is not compatible")
+        return true
+    catch e
+        println(e)
+        return false
+    end
+end

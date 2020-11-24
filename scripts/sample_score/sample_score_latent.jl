@@ -44,17 +44,17 @@ if anomaly_class != nothing
 	filter!(x->occursin("/ac=$(anomaly_class)/", x), mfiles)
 end
 
-jacodeco_batched(m,x,batchsize) = 
-	vcat(map(y-> - Base.invokelatest(GenerativeAD.Models.jacodeco, m, y), Flux.Data.DataLoader(x, batchsize=batchsize))...)
-# gpu version of jacodeco does not work
-#jacodeco_batched_gpu(m,x,batchsize) = 
-#	vcat(map(y-> cpu(-GenerativeAD.Models.jacodeco(gpu(m), gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+sample_score_batched(m,x,L,batchsize) = 
+	vcat(map(y-> Base.invokelatest(GenerativeAD.Models.latent_score, m, y, L), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+sample_score_batched_gpu(m,x,L,batchsize) = 
+	vcat(map(y-> cpu(Base.invokelatest(GenerativeAD.Models.latent_score, m, gpu(Array(y)), L)), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 
-function save_jacodeco(f::String, data, seed::Int, ac=nothing)
+function save_sample_score(f::String, data, seed::Int, ac=nothing)
 	# get model
 	savepath = dirname(f)
 	mdata = load(f)
 	model = mdata["model"]
+	L = 100
 
 	# setup entries to be saved
 	save_entries = (
@@ -67,13 +67,18 @@ function save_jacodeco(f::String, data, seed::Int, ac=nothing)
 		seed = seed
 		)
 	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (anomaly_class=ac,))
-	result = (x -> jacodeco_batched(model, x, 512), 
-			merge(mdata["parameters"], (score = "jacodeco",)))
+	if ac == nothing
+		result = (x -> sample_score_batched(model, x, L, 512), 
+			merge(mdata["parameters"], (L = L, score = "latent-sampled"))) 
+	else
+		result = (x -> sample_score_batched_gpu(gpu(model), x, L, 256), 
+			merge(mdata["parameters"], (L = L, score = "latent-sampled"))) 
+	end
 
 	# if the file does not exist already, compute the scores
 	savef = joinpath(savepath, savename(result[2], "bson", digits=5))
 	if !isfile(savef)
-		@info "computing jacodeco for $f"
+		@info "computing sample score for $f"
 		GenerativeAD.experiment(result..., data, savepath; save_entries...)
 	end
 end
@@ -88,5 +93,6 @@ for f in mfiles
 		GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac)
 		
 	# compute and save the score
-	save_jacodeco(f, data, seed, ac)
+	save_sample_score(f, data, seed, ac)
 end
+@info "DONE"
