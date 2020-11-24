@@ -9,7 +9,7 @@ include("./utils/ranks.jl")
 
 using GenerativeAD.Evaluation: MODEL_MERGE, MODEL_ALIAS, DATASET_ALIAS, MODEL_TYPE, apply_aliases!
 using GenerativeAD.Evaluation: _prefix_symbol, aggregate_stats_mean_max, aggregate_stats_max_mean
-using GenerativeAD.Evaluation: PAT_METRICS, PATN_METRICS, PAC_METRICS
+using GenerativeAD.Evaluation: PAT_METRICS, PATN_METRICS, PAC_METRICS, BASE_METRICS, TRAIN_EVAL_TIMES
 using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, convert_anomaly_class
 
 const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@\\%5\$","\$PR@\\%10\$","\$PR@\\%20\$"]
@@ -24,9 +24,9 @@ function basic_tables_tabular(df; suffix="")
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
 
     for metric in [:auc, :tpr_5]
-        for (name, agg) in zip(
-                    ["maxmean", "meanmax"], 
-                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
+        agg_names = ["maxmean", "meanmax", "meanmax10", "maxmean10"]
+        agg_funct = [aggregate_stats_max_mean, aggregate_stats_mean_max, aggregate_stats_mean_max_top_10, aggregate_stats_max_mean_top_10]
+        for (name, agg) in zip(agg_names, agg_funct)
             val_metric = _prefix_symbol("val", metric)
             tst_metric = _prefix_symbol("tst", metric)    
 
@@ -122,14 +122,14 @@ plot_knowledge_tabular_type(copy(df_tabular); format="tex")
 # plot_knowledge_tabular_type(copy(df_tabular_ens), suffix="_ensembles", format="tex")
 @info "plot_knowledge_tabular_type"
 
-function rank_comparison_agg(df, tm=("AUC", :auc); suffix="")
+function rank_comparison_agg(df, tm=("AUC", :auc); prefix="tabular", suffix="")
     mn, metric = tm
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
 
     ranks = []
-    for (name, agg) in zip(
-                ["maxmean", "meanmax"], 
-                [aggregate_stats_max_mean, aggregate_stats_mean_max])
+    agg_names = ["maxmean", "meanmax", "maxmean10", "meanmax10"]
+    agg_funct = [aggregate_stats_max_mean, aggregate_stats_mean_max, aggregate_stats_max_mean_top_10, aggregate_stats_mean_max_top_10]
+    for (name, agg) in zip(agg_names, agg_funct)
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)    
 
@@ -155,7 +155,7 @@ function rank_comparison_agg(df, tm=("AUC", :auc); suffix="")
                     (data, i, j) -> (data[i,j] == minimum(df_ranks[i, 2:end])),
                     ["color{red}","textbf"])
         
-    filename = "$(projectdir())/paper/tables/tabular_aggcomp_$(metric)$(suffix).tex"
+    filename = "$(projectdir())/paper/tables/$(prefix)_aggcomp_$(metric)$(suffix).tex"
     open(filename, "w") do io
         pretty_table(
             io, df_ranks,
@@ -517,7 +517,7 @@ end
 
 per_seed_ranks_tabular(copy(df_tabular))
 per_seed_ranks_tabular(copy(df_tabular_ens); suffix="_ensembles")
-@info "Per seed average ranks"
+@info "per_seed_ranks_tabular"
 
 
 ######################################################################################
@@ -532,9 +532,9 @@ function basic_tables_images(df; suffix="")
     apply_aliases!(dff, col="modelname", d=MODEL_MERGE)
 
     for metric in [:auc, :tpr_5]
-        for (name, agg) in zip(
-                    ["maxmean", "meanmax"], 
-                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
+        agg_names = ["maxmean", "meanmax", "maxmean10", "meanmax10"]
+        agg_funct = [aggregate_stats_max_mean, aggregate_stats_mean_max, aggregate_stats_max_mean_top_10, aggregate_stats_mean_max_top_10]
+        for (name, agg) in zip(agg_names, agg_funct)
             val_metric = _prefix_symbol("val", metric)
             tst_metric = _prefix_symbol("tst", metric)    
 
@@ -562,6 +562,15 @@ end
 basic_tables_images(copy(df_images))
 basic_tables_images(copy(df_images_ens), suffix="_ensembles")
 @info "basic_tables_images"
+
+function rank_comparison_agg_images(df, tm=("AUC", :auc); suffix="")
+    filter!(x -> (x.seed == 1), df)
+    rank_comparison_agg(df, tm; prefix="images", suffix=suffix)
+end
+
+rank_comparison_agg_images(copy(df_images), ("AUC", :auc))
+rank_comparison_agg_images(copy(df_images), ("TPR@5", :tpr_5))
+@info "rank_comparison_agg_images"
 
 function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="")
     mn, metric = tm
