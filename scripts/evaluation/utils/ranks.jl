@@ -10,7 +10,10 @@ function compute_ranks(rt)
 end
 
 # top 10 mean-max
-function aggregate_stats_mean_max_top_10(df::DataFrame, criterion_col=:val_auc; add_col=nothing)
+function aggregate_stats_mean_max_top_10(df::DataFrame, 
+										criterion_col=:val_auc; 
+										min_samples=("anomaly_class" in names(df)) ? 10 : 3,
+										add_col=nothing)
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PATN_METRICS), _prefix_symbol.("tst", PATN_METRICS))
@@ -25,7 +28,8 @@ function aggregate_stats_mean_max_top_10(df::DataFrame, criterion_col=:val_auc; 
 	for (dkey, dg) in pairs(groupby(df, :dataset))
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
 			pg = groupby(mg, :phash)
-			pg_agg = combine(pg, 
+			mg_suff = reduce(vcat, [g for g in pg if nrow(g) >= min_samples])	
+			pg_agg = combine(groupby(mg_suff, :phash), 
 						nrow => :psamples, 
 						agg_cols .=> mean .=> agg_cols, 
 						agg_cols .=> std, 
@@ -69,6 +73,20 @@ function aggregate_stats_max_mean_top_10(df::DataFrame, criterion_col=:val_auc; 
 	for (dkey, dg) in pairs(groupby(df, :dataset))
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
 			partial_results = []
+
+			if ("anomaly_class" in names(df))
+				classes = unique(mg.anomaly_class)
+				dif = setdiff(classes, collect(1:10))
+				if (length(classes) < 10) 
+					@warn "$(mkey.modelname) - $(dkey.dataset): missing runs on anomaly_class $(dif)."
+				end
+			else
+				seeds = unique(mg.seed)
+				dif = setdiff(seeds, collect(1:5))
+				if (length(seeds) < 3) 
+					@warn "$(mkey.modelname) - $(dkey.dataset): missing runs on seed $(dif)."
+				end
+			end
 
 			# iterate over seed-anomaly_class groups
 			for (skey, sg) in pairs(groupby(mg, agg_keys))			
