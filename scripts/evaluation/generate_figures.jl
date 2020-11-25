@@ -524,6 +524,7 @@ per_seed_ranks_tabular(copy(df_tabular_ens); suffix="_ensembles")
 #######################               IMAGES                ##########################
 ######################################################################################
 df_images = load(datadir("evaluation/images_eval.bson"))[:df];
+df_images_loi = load(datadir("evaluation/images_leave-one-in_eval.bson"))[:df];
 df_images_ens = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
 @info "Loaded results from images"
 
@@ -560,6 +561,7 @@ function basic_tables_images(df; suffix="")
 end
 
 basic_tables_images(copy(df_images))
+basic_tables_images(copy(df_images_loi), suffix="_loi")
 basic_tables_images(copy(df_images_ens), suffix="_ensembles")
 @info "basic_tables_images"
 
@@ -698,6 +700,7 @@ function basic_tables_images_per_ac(df; suffix="")
 end
 
 basic_tables_images_per_ac(copy(df_images))
+basic_tables_images_per_ac(copy(df_images_loi), suffix="_loi")
 basic_tables_images_per_ac(copy(df_images_ens), suffix="_ensembles")
 @info "basic_tables_images_per_ac"
 
