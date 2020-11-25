@@ -70,7 +70,7 @@ function save_elbo_score(f::String, data, seed::Int, ac=nothing)
 	save_entries = (ac == nothing) ? save_entries : merge(save_entries, (anomaly_class=ac,))
 
 	# test if the file alread exists
-	parameters = merge(mdata["parameters"], (score = "elbo",))
+	parameters = merge(mdata["parameters"], (L=100, score = "elbo",))
 	savef = joinpath(savepath, savename(parameters, "bson", digits=5))
 	if !isfile(savef)
 		@info "computing sample score for $f"

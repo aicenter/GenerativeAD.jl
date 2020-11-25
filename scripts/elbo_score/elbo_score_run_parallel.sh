@@ -8,7 +8,7 @@ DATASET_FILE=$3	# file with dataset list
 SEED=$4
 AC=$5
 
-LOG_DIR="${HOME}/logs/sample_score"
+LOG_DIR="${HOME}/logs/elbo_score"
 
 if [ ! -d "$LOG_DIR" ]; then
 	mkdir $LOG_DIR
