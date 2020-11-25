@@ -76,14 +76,14 @@ function aggregate_stats_max_mean_top_10(df::DataFrame, criterion_col=:val_auc; 
 
 			if ("anomaly_class" in names(df))
 				classes = unique(mg.anomaly_class)
-				dif = setdiff(classes, collect(1:10))
-				if (length(classes) < 10) 
+				dif = setdiff(collect(1:10), classes)
+				if (length(classes) < 10)
 					@warn "$(mkey.modelname) - $(dkey.dataset): missing runs on anomaly_class $(dif)."
 				end
 			else
 				seeds = unique(mg.seed)
-				dif = setdiff(seeds, collect(1:5))
-				if (length(seeds) < 3) 
+				dif = setdiff(collect(1:5), seeds)
+				if (length(seeds) < 3)
 					@warn "$(mkey.modelname) - $(dkey.dataset): missing runs on seed $(dif)."
 				end
 			end
