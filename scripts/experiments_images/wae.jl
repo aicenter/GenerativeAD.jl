@@ -142,7 +142,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
 		for seed in 1:max_seed
 			for i in 1:anomaly_classes
-				savepath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
+				savepath = "/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)"
 				mkpath(savepath)
 
 				# get data
