@@ -22,13 +22,20 @@ s = ArgParseSettings()
 		arg_type = Int
 		default = 10
 		help = "number of anomaly classes"
+	"method"
+		arg_type = String
+		default = "leave-one-out"
+		help = "method for data creation -> \"leave-one-out\" or \"leave-one-in\" "
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, anomaly_classes = parsed_args
+@unpack dataset, max_seed, anomaly_classes, method = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
+
 modelname = "fmgan"
+DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
+
 # sample parameters, should return a Dict of model kwargs 
 """
 	sample_params()
@@ -98,7 +105,7 @@ function fit(data, parameters)
 
 	# fit train data
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data, gloss, dloss; 
+		global info, fit_t, _, _, _ = @timed fit!(model, data, gloss, dloss; max_iters=10000,
 			max_train_time=23*3600/max_seed/anomaly_classes/4, patience=200, 
 			check_interval=10,
 			usegpu=true, parameters...)
@@ -135,11 +142,11 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
 		for seed in 1:max_seed
 			for i in 1:anomaly_classes
-				savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
+				savepath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 				mkpath(savepath)
 
 				# get data
-				data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
+				data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method)
 				
 				# edit parameters
 				edited_parameters = GenerativeAD.edit_params(data, parameters)
