@@ -396,6 +396,9 @@ function basic_tables_tabular_autoencoders(df; suffix="")
     d_mask = occursin.("disc_", df.parameters)
     df[d_mask, :modelname] .=  df[d_mask, :modelname] .*"-d"
 
+    el_mask = occursin.("elbo_", df.parameters)
+    df[el_mask, :modelname] .=  df[el_mask, :modelname] .*"-el"
+
     filter!(x -> (x.modelname != "disregard"), df)
 
     for metric in [:auc, :tpr_5]
@@ -429,11 +432,13 @@ function basic_tables_tabular_autoencoders(df; suffix="")
             mgroups[startswith.(models, "gano")] .= 2
             mgroups[startswith.(models, "aae-")] .= 3
             mgroups[startswith.(models, "aaev")] .= 4
-            mgroups[startswith.(models, "vae-")] .= 5
-            mgroups[startswith.(models, "vaef")] .= 6
-            mgroups[startswith.(models, "vaes")] .= 7
-            mgroups[startswith.(models, "wae-")] .= 8
-            mgroups[startswith.(models, "waev")] .= 9
+            mgroups[startswith.(models, "aaef")] .= 5
+            mgroups[startswith.(models, "vae-")] .= 6
+            mgroups[startswith.(models, "vaef")] .= 7
+            mgroups[startswith.(models, "vaes")] .= 8
+            mgroups[startswith.(models, "wae-")] .= 9
+            mgroups[startswith.(models, "waev")] .= 10
+            mgroups[startswith.(models, "waef")] .= 11
 
             sm = sortperm(mgroups)
             mgroups = mgroups[sm]
@@ -441,12 +446,13 @@ function basic_tables_tabular_autoencoders(df; suffix="")
             models = models[sm]
             ranks = ranks[sm, :]
 
-            #### grouping by score
-            groups = 5*ones(Int, length(models))
+            #### grouping by score, 5 types + 1 for other scores
+            groups = 6*ones(Int, length(models))
             groups[endswith.(models, "-rm")] .= 1
             groups[endswith.(models, "-rs")] .= 2
             groups[endswith.(models, "-jc")] .= 3
             groups[endswith.(models, "-d")] .= 4
+            groups[endswith.(models, "-el")] .= 5
             ####
 
 
