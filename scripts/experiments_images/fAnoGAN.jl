@@ -22,13 +22,17 @@ s = ArgParseSettings()
 		arg_type = Int
 		default = 10
 		help = "number of anomaly classes"
+	"method"
+		arg_type = String
+		default = "leave-one-out"
+		help = "method for data creation -> \"leave-one-out\" or \"leave-one-in\" "
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, anomaly_classes = parsed_args
+@unpack dataset, max_seed, anomaly_classes, method = parsed_args
 
 
 modelname = "fAnoGAN"
-
+DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
 """
 	sample_params()
 
@@ -119,10 +123,10 @@ while try_counter < max_tries
 
 	for seed in 1:max_seed
 		for i in 1:anomaly_classes
-			savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
+			savepath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 			mkpath(savepath)
 
-			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
+			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method)
 
 			@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
 			@info "Train/validation/test splits: $(size(data[1][1], 4)) | $(size(data[2][1], 4)) | $(size(data[3][1], 4))"
