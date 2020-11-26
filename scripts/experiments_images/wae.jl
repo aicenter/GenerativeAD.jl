@@ -97,7 +97,7 @@ function fit(data, parameters)
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data, loss; max_iters = 10000, 
 			max_train_time=23*3600/max_seed/anomaly_classes/4, 
-			patience=10 check_interval=50, parameters...)
+			patience=10, check_interval=50, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
