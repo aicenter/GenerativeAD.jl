@@ -211,7 +211,7 @@ gpuloss(m::AAE,x, batchsize::Int) =
 	StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, 
 	lr=0.001, batchsize=64, patience=30, check_interval::Int=10, kwargs...)
 """
-function StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, lr=0.001, 
+function StatsBase.fit!(model::AAE, data::Tuple; max_iters=10000, max_train_time=82800, lr=0.001, 
 	batchsize=64, patience=30, check_interval::Int=10, usegpu=false, kwargs...)
 	history = MVHistory()
 	aeopt = ADAM(lr)
@@ -265,16 +265,8 @@ function StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, lr=0.001,
 		end, gps)
 	 	Flux.update!(gopt, gps, gs)
 
-		# validation
-		if usegpu
-			val_loss = (val_N > 5000) ? gpuloss(tr_model, val_x, 256) : gpuloss(tr_model, val_x)
-		else
-			val_loss = (val_N > 5000) ? loss(tr_model, val_x, 256) : loss(tr_model, val_x)
-		end
-		(i%check_interval == 0) ? (@info "$i - loss: $(batch_aeloss) (autoencoder) $(batch_dloss) (discriminator) $(batch_gloss) (generator)  | $(val_loss) (validation)") : nothing
-		
 		# check nans
-		if isnan(val_loss) || isnan(batch_aeloss) || isnan(batch_dloss) || isnan(batch_gloss)
+		if isnan(batch_aeloss) || isnan(batch_dloss) || isnan(batch_gloss)
 			error("Encountered invalid values in loss function.")
 		end
 
@@ -282,28 +274,44 @@ function StatsBase.fit!(model::AAE, data::Tuple; max_train_time=82800, lr=0.001,
 		push!(history, :training_aeloss, i, batch_aeloss)
 		push!(history, :training_dloss, i, batch_dloss)
 		push!(history, :training_gloss, i, batch_gloss)
-		push!(history, :validation_loss, i, val_loss)
-			
-		# early stopping
-		if val_loss < best_val_loss
-			best_val_loss = val_loss
-			_patience = patience
 
-			# this should save the model at least once
-			# when the validation loss is decreasing 
-			if mod(i, 10) == 0
-				model = deepcopy(tr_model)
+		if mod(i, check_interval) == 0
+			
+			# validation/early stopping
+			# validation
+			if usegpu
+				val_loss = (val_N > 5000) ? gpuloss(tr_model, val_x, 256) : gpuloss(tr_model, val_x)
+			else
+				val_loss = (val_N > 5000) ? loss(tr_model, val_x, 256) : loss(tr_model, val_x)
 			end
-		elseif time() - start_time > max_train_time # stop early if time is running out
+
+			@info "$i - loss: $(batch_loss) (batch) | $(val_loss) (validation)"
+				
+			if isnan(val_loss) || isnan(batch_loss)
+				error("Encountered invalid values in loss function.")
+			end
+
+			push!(history, :validation_loss, i, val_loss)
+			
+			if val_loss < best_val_loss
+				best_val_loss = val_loss
+				_patience = patience
+
+				# this should save the model at least once
+				# when the validation loss is decreasing 
+				model = deepcopy(tr_model)
+			else # else stop if the model has not improved for `patience` iterations
+				_patience -= 1
+				if _patience == 0
+					@info "Stopped training after $(i) iterations."
+					break
+				end
+			end
+		end
+		if (time() - start_time > max_train_time) | (i > max_iters) # stop early if time is running out
 			model = deepcopy(tr_model)
 			@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
 			break
-		else # else stop if the model has not improved for `patience` iterations
-			_patience -= 1
-			if _patience == 0
-				@info "Stopped training after $(i) iterations."
-				break
-			end
 		end
 		i += 1
 	end
