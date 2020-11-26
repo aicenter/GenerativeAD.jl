@@ -285,11 +285,7 @@ function StatsBase.fit!(model::AAE, data::Tuple; max_iters=10000, max_train_time
 				val_loss = (val_N > 5000) ? loss(tr_model, val_x, 256) : loss(tr_model, val_x)
 			end
 
-			@info "$i - loss: $(batch_loss) (batch) | $(val_loss) (validation)"
-				
-			if isnan(val_loss) || isnan(batch_loss)
-				error("Encountered invalid values in loss function.")
-			end
+			@info "$i - loss: $(batch_aeloss) (batch) | $(val_loss) (validation)"
 
 			push!(history, :validation_loss, i, val_loss)
 			
