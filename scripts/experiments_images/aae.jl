@@ -33,6 +33,9 @@ parsed_args = parse_args(ARGS, s)
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "aae"
+
+DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
+
 # sample parameters, should return a Dict of model kwargs 
 """
 	sample_params()
@@ -124,7 +127,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
 		for seed in 1:max_seed
 			for i in 1:anomaly_classes
-				savepath = "/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)"
+				savepath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 				mkpath(savepath)
 
 				# get data
