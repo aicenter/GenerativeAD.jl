@@ -100,7 +100,9 @@ function compute_stats(f::String)
 		tr_eval_t = r[:tr_eval_t],
 		tst_eval_t = r[:tst_eval_t],
 		val_eval_t = r[:val_eval_t],
-		seed = r[:seed])
+		seed = r[:seed],
+		npars = (Symbol("npars") in keys(r)) ? r[:npars] : 0
+	)
 	
 	if Symbol("anomaly_class") in keys(r)
 		row = merge(row, (anomaly_class = r[:anomaly_class],))
