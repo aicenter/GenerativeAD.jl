@@ -16,6 +16,8 @@ const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@
 const PAC_METRICS_NAMES = ["\$AUC@\\#5\$","\$AUC@\\#10\$","\$AUC@\\#50\$","\$AUC@\\#100\$","\$AUC@\\#500\$","\$AUC@\\#1000\$"]
 const PATN_METRICS_NAMES = ["\$PR@\\#5\$","\$PR@\\#10\$","\$PR@\\#50\$","\$PR@\\#100\$","\$PR@\\#500\$","\$PR@\\#1000\$"]
 
+AE_MERGE = Dict("aae_full" => "aae", "wae_full" => "wae", "vae_full" => "vae")
+
 df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
 df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
 @info "Loaded results from tabular evaluation."
@@ -52,6 +54,7 @@ function basic_tables_tabular(df; suffix="")
 end
 
 basic_tables_tabular(copy(df_tabular))
+basic_tables_tabular(apply_aliases!(copy(df_tabular), col="modelname", d=AE_MERGE), suffix="_merge_ae")
 basic_tables_tabular(copy(df_tabular_ens), suffix="_ensembles")
 @info "basic_tables_tabular"
 
