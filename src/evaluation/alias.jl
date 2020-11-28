@@ -14,6 +14,7 @@ const MODEL_TYPE = Dict{String, String}(
 	"fmgan" 			=> "gans",
 	"gan" 				=> "gans",
 	"fAnoGAN" 			=> "gans",
+	"fAnoGAN-GP" 		=> "gans",
 	"abod" 				=> "classical",
 	"hbos" 				=> "classical",
 	"if" 				=> "classical",
@@ -51,6 +52,7 @@ const MODEL_ALIAS = Dict{String, String}(
 	"fmgan" 			=> "fmgn",
 	"gan" 				=> "gan",
 	"fAnoGAN" 			=> "fano",
+	"fAnoGAN-GP" 		=> "fngp",
 	"abod" 				=> "abod",
 	"hbos" 				=> "hbos",
 	"if" 				=> "if",
@@ -130,7 +132,7 @@ const DATASET_ALIAS = Dict{String, String}(
 const AC_CONVERSION = Dict(
 	"mnist" 			=> ["5", "0", "4", "1", "9", "2", "3", "6", "7", "8"],
 	"svhn2"				=> ["1", "9", "2", "3", "5", "8", "7", "4", "6", "0"],
-	"fmnist" 			=> ["Ankle boot", "T-Shirt", "Dress", "Pullover", "Sneaker", "Sandal", "Trouser", "Shirt", "Shirt", "Coat", "Bag"],
+	"fmnist" 			=> ["Ankle boot", "T-Shirt", "Dress", "Pullover", "Sneaker", "Sandal", "Trouser", "Shirt", "Coat", "Bag"],
 	"cifar10"			=> ["frog", "truck", "deer", "automobile", "bird", "horse", "ship", "cat", "dog", "airplane"]
 )
 
@@ -143,6 +145,7 @@ Renames entries of column `col` according to dictionary `d`.
 function apply_aliases!(df::D; col="modelname", d=MODEL_ALIAS) where {D <: AbstractDataFrame}
     !(col in names(df)) && error("$col is not in the DataFrame columns.")
     df[:,col] = map(x -> get(d, x, x), df[:, col])
+    df
 end
 
 
