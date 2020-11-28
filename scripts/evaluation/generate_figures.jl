@@ -399,6 +399,9 @@ function basic_tables_tabular_autoencoders(df; suffix="")
     el_mask = occursin.("elbo_", df.parameters)
     df[el_mask, :modelname] .=  df[el_mask, :modelname] .*"-el"
 
+    mse_mask = occursin.("score=mse_", df.parameters)
+    df[mse_mask, :modelname] .=  df[mse_mask, :modelname] .*"-rm"
+
     filter!(x -> (x.modelname != "disregard"), df)
 
     for metric in [:auc, :tpr_5]
