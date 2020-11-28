@@ -295,16 +295,16 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="
     end
 
     ### shows better the difference
-    rt[1:end-3, 2:end] .= dif
-    rt[end-2, 1] = "σ"
-    rt[end-1, 1] = "σ_1"
-    # print rank change rather than just the baseline rank
-    rt[end, 1] = "rnk. chng."
-    rt[end, 2:end] .=  Vector(rt_ensemble[end, 2:end]) .- Vector(rt[end, 2:end])
-    filename = "$(projectdir())/paper/tables/tabular_ensemblecomp_$(metric)_detail$(suffix).html"
-    open(filename, "w") do io
-        print_rank_table(io, rt; backend=:html)
-    end
+    # rt[1:end-3, 2:end] .= dif
+    # rt[end-2, 1] = "σ"
+    # rt[end-1, 1] = "σ_1"
+    # # print rank change rather than just the baseline rank
+    # rt[end, 1] = "rnk. chng."
+    # rt[end, 2:end] .=  Vector(rt_ensemble[end, 2:end]) .- Vector(rt[end, 2:end])
+    # filename = "$(projectdir())/paper/tables/tabular_ensemblecomp_$(metric)_detail$(suffix).html"
+    # open(filename, "w") do io
+    #     print_rank_table(io, rt; backend=:html)
+    # end
 end
 
 
@@ -505,9 +505,10 @@ function per_seed_ranks_tabular(df; suffix="")
         tst_metric = _prefix_symbol("tst", metric)    
 
         ranks = []
-        for seed in 1:5
-            dff = filter(x -> (x.seed == seed), df)
-            df_agg = aggregate_stats_max_mean(dff, val_metric)
+        for seed in 0:5
+            dff = seed > 0 ? filter(x -> (x.seed == seed), df) : df
+            # silence the warnings for insufficient number of seeds
+            df_agg = aggregate_stats_max_mean(dff, val_metric; verbose=false)
 
             df_agg["model_type"] = copy(df_agg["modelname"])
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
@@ -518,7 +519,7 @@ function per_seed_ranks_tabular(df; suffix="")
             
             rt = rank_table(df_agg, tst_metric)
             models = names(rt)[2:end]
-            rt["seed"] = "$seed"
+            rt["seed"] = seed > 0 ? "seed=$seed" : "maxmean"
 
             select!(rt, vcat(["seed"], models))
             push!(ranks, rt[end:end,:])
@@ -543,6 +544,7 @@ function per_seed_ranks_tabular(df; suffix="")
 end
 
 per_seed_ranks_tabular(copy(df_tabular))
+per_seed_ranks_tabular(apply_aliases!(copy(df_tabular), col="modelname", d=AE_MERGE); suffix="_merge_ae")
 per_seed_ranks_tabular(copy(df_tabular_ens); suffix="_ensembles")
 @info "per_seed_ranks_tabular"
 
@@ -659,16 +661,16 @@ function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix=""
     end
 
     ### shows better the difference
-    rt[1:end-3, 2:end] .= dif
-    rt[end-2, 1] = "σ"
-    rt[end-1, 1] = "σ_1"
-    # print rank change rather than just the baseline rank
-    rt[end, 1] = "rnk. chng."
-    rt[end, 2:end] .=  Vector(rt_ensemble[end, 2:end]) .- Vector(rt[end, 2:end])
-    filename = "$(projectdir())/paper/tables/images_ensemblecomp_$(metric)_detail$(suffix).html"
-    open(filename, "w") do io
-        print_rank_table(io, rt; backend=:html)
-    end
+    # rt[1:end-3, 2:end] .= dif
+    # rt[end-2, 1] = "σ"
+    # rt[end-1, 1] = "σ_1"
+    # # print rank change rather than just the baseline rank
+    # rt[end, 1] = "rnk. chng."
+    # rt[end, 2:end] .=  Vector(rt_ensemble[end, 2:end]) .- Vector(rt[end, 2:end])
+    # filename = "$(projectdir())/paper/tables/images_ensemblecomp_$(metric)_detail$(suffix).html"
+    # open(filename, "w") do io
+    #     print_rank_table(io, rt; backend=:html)
+    # end
     ###
 end
 
@@ -749,11 +751,101 @@ end
 
 representatives=["ocsvm", "aae", "fmgan", "vae_ocsvm"]
 plot_knowledge_images_repre(copy(df_images), representatives; format="tex", suffix="_representatives")
-plot_knowledge_images_repre(copy(df_images_ens), representatives; suffix="_representatives_ensembles", format="tex")
+# plot_knowledge_images_repre(copy(df_images_ens), representatives; suffix="_representatives_ensembles", format="tex")
 @info "plot_knowledge_images_repre"
 
 # these ones are really costly as there are 12 aggregations over all models
 plot_knowledge_images_type(copy(df_images); format="tex") 
-plot_knowledge_images_type(copy(df_images_ens), suffix="_ensembles", format="tex")
+# plot_knowledge_images_type(copy(df_images_ens), suffix="_ensembles", format="tex")
 @info "plot_knowledge_images_type"
+
+
+# this is just specific figure for the main text
+function plot_knowledge_combined(df_tab, df_img; format="pdf")
+    filter!(x -> (x.seed == 1), df_img);
+    apply_aliases!(df_img, col="modelname", d=MODEL_MERGE);
+    apply_aliases!(df_img, col="modelname", d=MODEL_TYPE);
+
+    apply_aliases!(df_tab, col="modelname", d=MODEL_MERGE);
+    apply_aliases!(df_tab, col="modelname", d=MODEL_TYPE);
+    
+    for (mn, metric) in [collect(zip(["AUC", "TPR@5"],[:auc, :tpr_5]))[1]]
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric)
+
+        for (ctype, cnames, criterions) in [collect(zip(
+                            ["pat", "pac", "patn"],
+                            [PAT_METRICS_NAMES, PAC_METRICS_NAMES, PATN_METRICS_NAMES],
+                            [_prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("val", PAC_METRICS), _prefix_symbol.("val", PATN_METRICS)]))[end]]
+
+            function _rank(df, criterions, agg)
+                ranks, metric_means = [], []
+                for criterion in criterions
+                    df_agg = agg(df, criterion)
+                    sort!(df_agg, (order(:dataset), order(:modelname)))
+                    rt = rank_table(df_agg, tst_metric)
+                    push!(ranks, rt[end:end, 2:end])
+                    push!(metric_means, mean(Matrix(rt[1:end-3, 2:end]), dims=1))
+                end
+                vcat(ranks...), vcat(metric_means...)
+            end
+
+            function _plot(df_ranks, metric_mean, criterions, cnames, models)
+                a = PGFPlots.Axis([PGFPlots.Plots.Linear(
+                            1:length(criterions), 
+                            df_ranks[:, i]) for (i, m) in enumerate(models)], 
+                    ylabel="avg. rnk",
+                    style="xtick=$(_pgf_array(1:length(criterions))), 
+                        xticklabels=$(_pgf_array(cnames)),
+                        width=6cm, height=3cm, scale only axis=true,
+                        x tick label style={rotate=50,anchor=east}")
+                b = PGFPlots.Axis([PGFPlots.Plots.Linear(
+                            1:length(criterions), 
+                            metric_mean[:, i], 
+                                legendentry=m) for (i, m) in enumerate(models)], 
+                    ylabel="avg. $mn",
+                    legendStyle = "at={(0.33,1.15)}, anchor=west",
+                    style="width=6cm, height=3cm, scale only axis=true, 
+                    xtick=$(_pgf_array(1:length(criterions))), 
+                    xticklabels={}, legend columns = -1")
+                a, b
+            end
+
+            extended_criterions = (ctype == "pat") ? criterions[4:end] : criterions
+            extended_criterions = vcat(extended_criterions, [val_metric, tst_metric])
+            extended_cnames = (ctype == "pat") ? cnames[4:end] : cnames
+            extended_cnames = vcat(extended_cnames, ["\$$(mn)_{val}\$", "\$$(mn)_{tst}\$"])
+
+            ranks_tab, metric_means_tab = _rank(df_tab, extended_criterions, aggregate_stats_mean_max)
+            p = [1,2,4,5,3] # make sure that flows are last
+            models_tab = names(ranks_tab)[p]
+            select!(ranks_tab, p)
+            metric_means_tab = metric_means_tab[:, p]
+            a_tab, b_tab = _plot(ranks_tab, metric_means_tab, extended_criterions, extended_cnames, models_tab)
+
+            extended_criterions = vcat(criterions, [val_metric, tst_metric])
+            extended_cnames = vcat(cnames, ["\$$(mn)_{val}\$", "\$$(mn)_{tst}\$"])
+
+            ranks_img, metric_means_img = _rank(df_img, extended_criterions, aggregate_stats_max_mean)
+            models_img = names(ranks_img)
+            a_img, b_img = _plot(ranks_img, metric_means_img, extended_criterions, extended_cnames, models_img)
+            a_img.ylabel = ""
+            b_img.ylabel = ""
+            for b in b_img.plots
+                b.legendentry=nothing
+            end
+
+            g = PGFPlots.GroupPlot(2, 2, groupStyle = "vertical sep = 0.0cm, horizontal sep = 1.0cm")
+            push!(g, b_tab); push!(g, b_img); 
+            push!(g, a_tab); push!(g, a_img);
+
+            filename = "$(projectdir())/paper/figures/combined_knowledge_rank_$(ctype)_$(metric).$(format)"
+            PGFPlots.save(filename, g; include_preamble=false)
+        end
+    end
+end
+
+plot_knowledge_combined(copy(df_tabular), copy(df_images); format="tex")
+@info "plot_combine_knowledge_type"
+
 @info "----------------- DONE ---------------------"

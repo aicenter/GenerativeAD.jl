@@ -1,6 +1,6 @@
 _pgf_array(a) = "{$(join(a, ','))}"
 
-const COLORS = ["cyan", "red", "orange", "lime", "lightgray", "darkgray"]
+const COLORS = ["cyan", "red", "orange", "lime", "magenta", "lightgray", "darkgray"]
 
 function pgf_boxplot(lqs, hqs, mds, mns, mxs, labels; h="10cm", w="6cm")
 	s = """

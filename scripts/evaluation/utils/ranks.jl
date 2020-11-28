@@ -13,7 +13,7 @@ end
 function aggregate_stats_mean_max_top_10(df::DataFrame, 
 										criterion_col=:val_auc; 
 										min_samples=("anomaly_class" in names(df)) ? 10 : 3,
-										add_col=nothing)
+										add_col=nothing, verbose=true)
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PATN_METRICS), _prefix_symbol.("tst", PATN_METRICS))
@@ -56,7 +56,8 @@ function aggregate_stats_mean_max_top_10(df::DataFrame,
 end
 
 # top 10 max-mean
-function aggregate_stats_max_mean_top_10(df::DataFrame, criterion_col=:val_auc; add_col=nothing)
+function aggregate_stats_max_mean_top_10(df::DataFrame, 
+										criterion_col=:val_auc; add_col=nothing, verbose=true)
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PATN_METRICS), _prefix_symbol.("tst", PATN_METRICS))
@@ -77,13 +78,13 @@ function aggregate_stats_max_mean_top_10(df::DataFrame, criterion_col=:val_auc; 
 			if ("anomaly_class" in names(df))
 				classes = unique(mg.anomaly_class)
 				dif = setdiff(collect(1:10), classes)
-				if (length(classes) < 10)
+				if (length(classes) < 10) && verbose
 					@warn "$(mkey.modelname) - $(dkey.dataset): missing runs on anomaly_class $(dif)."
 				end
 			else
 				seeds = unique(mg.seed)
 				dif = setdiff(collect(1:5), seeds)
-				if (length(seeds) < 3)
+				if (length(seeds) < 3) && verbose
 					@warn "$(mkey.modelname) - $(dkey.dataset): missing runs on seed $(dif)."
 				end
 			end
