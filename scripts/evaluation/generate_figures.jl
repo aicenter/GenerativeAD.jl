@@ -74,28 +74,43 @@ function plot_knowledge_ranks(df; prefix="tabular", suffix="", format="pdf")
                                 [PAT_METRICS_NAMES[n:end], PAC_METRICS_NAMES, PATN_METRICS_NAMES],
                                 [_prefix_symbol.("val", PAT_METRICS[n:end]), _prefix_symbol.("val", PAC_METRICS), _prefix_symbol.("val", PATN_METRICS)])
                 ranks = []
+                metric_means = []
                 extended_criterions = vcat(criterions, [val_metric, tst_metric])
                 extended_cnames = vcat(cnames, ["\$$(mn)_{val}\$", "\$$(mn)_{tst}\$"])
 
                 for criterion in extended_criterions
                     df_agg = agg(df, criterion)
+                    sort!(df_agg, (order(:dataset), order(:modelname)))
                     rt = rank_table(df_agg, tst_metric)
                     push!(ranks, rt[end:end, :])
+                    push!(metric_means, mean(Matrix(rt[1:end-3, 2:end]), dims=1))
                 end
 
                 df_ranks = vcat(ranks...)
+                metric_mean = vcat(metric_means...)
 
                 models = names(df_ranks)[2:end]
+                
                 a = PGFPlots.Axis([PGFPlots.Plots.Linear(
                                 1:length(extended_criterions), 
-                                df_ranks[:, i + 1], 
-                                legendentry=m) for (i, m) in enumerate(models)], 
-                        ylabel="avg. rnk", ymax=length(models) + 1,
+                                df_ranks[:, i + 1]) for (i, m) in enumerate(models)], 
+                        ylabel="avg. rnk",
                         style="xtick=$(_pgf_array(1:length(extended_criterions))), 
                             xticklabels=$(_pgf_array(extended_cnames)),
+                            width=6cm, height=4cm, scale only axis=true,
                             x tick label style={rotate=50,anchor=east}")
+                b = PGFPlots.Axis([PGFPlots.Plots.Linear(
+                                1:length(extended_criterions), 
+                                metric_mean[:,i], 
+                                legendentry=m) for (i, m) in enumerate(models)], 
+                        ylabel="avg. $mn",
+                        legendStyle = "at={(0.5,1.02)}, anchor=south",
+                        style="width=6cm, height=3cm, scale only axis=true, 
+                        axis x line=none, legend columns = -1")
+                g = PGFPlots.GroupPlot(1, 2, groupStyle = "vertical sep = 0.0cm")
+                push!(g, b); push!(g, a); 
                 filename = "$(projectdir())/paper/figures/$(prefix)_knowledge_rank_$(ctype)_$(metric)_$(name)$(suffix).$(format)"
-                PGFPlots.save(filename, a; include_preamble=false)
+                PGFPlots.save(filename, g; include_preamble=false)
             end
         end
     end
