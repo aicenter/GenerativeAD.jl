@@ -382,12 +382,22 @@ plot_tabular_fit_time(copy(df_tabular); time_col=:total_eval_t, format="tex")
 @info "plot_tabular_fit_time"
 
 # show basic table only for autoencoders
-function basic_tables_tabular_autoencoders(df; suffix="")
+function basic_tables_tabular_autoencoders(df; split_vamp=false, suffix="")
     df["model_type"] = copy(df["modelname"])
     apply_aliases!(df, col="model_type", d=MODEL_TYPE)
     filter!(x -> (x.model_type == "autoencoders"), df)
     apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
     apply_aliases!(df, col="dataset", d=DATASET_ALIAS)
+
+    # split aae_full and wae_full based on used prior
+    if split_vamp
+        aaefv_mask = (df.modelname .== "aaef") .& occursin.("prior=vamp", df.parameters)
+        df[aaefv_mask, :modelname] .=  "aaefv"
+        waefv_mask = (df.modelname .== "waef") .& occursin.("prior=vamp", df.parameters)
+        df[waefv_mask, :modelname] .=  "waefv"
+    else
+        apply_aliases!(df, col="modelname", d=Dict("aaev" => "aae", "waev" => "wae"))
+    end
 
     # define further splitting of models based on parameters
     jc_mask = occursin.("jacodeco", df.parameters)
@@ -453,13 +463,15 @@ function basic_tables_tabular_autoencoders(df; suffix="")
             mgroups[startswith.(models, "gano")] .= 2
             mgroups[startswith.(models, "aae-")] .= 3
             mgroups[startswith.(models, "aaev")] .= 4
-            mgroups[startswith.(models, "aaef")] .= 5
-            mgroups[startswith.(models, "vae-")] .= 6
-            mgroups[startswith.(models, "vaef")] .= 7
-            mgroups[startswith.(models, "vaes")] .= 8
-            mgroups[startswith.(models, "wae-")] .= 9
-            mgroups[startswith.(models, "waev")] .= 10
-            mgroups[startswith.(models, "waef")] .= 11
+            mgroups[startswith.(models, "aaef-")] .= 5
+            mgroups[startswith.(models, "aaefv")] .= 6
+            mgroups[startswith.(models, "vae-")] .= 7
+            mgroups[startswith.(models, "vaef")] .= 8
+            mgroups[startswith.(models, "vaes")] .= 9
+            mgroups[startswith.(models, "wae-")] .= 10
+            mgroups[startswith.(models, "waev")] .= 11
+            mgroups[startswith.(models, "waef-")] .= 12
+            mgroups[startswith.(models, "waefv")] .= 13
 
             sm = sortperm(mgroups)
             mgroups = mgroups[sm]
@@ -494,6 +506,7 @@ function basic_tables_tabular_autoencoders(df; suffix="")
 end
 
 basic_tables_tabular_autoencoders(copy(df_tabular))
+basic_tables_tabular_autoencoders(copy(df_tabular); split_vamp=true, suffix="_split_vamp")
 @info "basic_tables_tabular_autoencoders"
 
 # does crossvalidation matters?
