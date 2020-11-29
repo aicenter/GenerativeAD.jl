@@ -93,7 +93,7 @@ end
 function pgf_boxplot_grouped_colorpos(lqs, hqs, mds, mns, mxs, labels, groups, mgroups; h="10cm", w="6cm")
 	yticks = [1]
 	for (cg, ng) in zip(mgroups[1:end-1], mgroups[2:end-1])
-		if ng == cg
+		if ng == cg # if next item belongs to a group with the same id move by one otherwise skip row
 			push!(yticks, yticks[end] + 1)
 		else
 			push!(yticks, yticks[end] + 2)

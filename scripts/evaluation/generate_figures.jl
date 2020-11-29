@@ -16,23 +16,36 @@ const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@
 const PAC_METRICS_NAMES = ["\$AUC@\\#5\$","\$AUC@\\#10\$","\$AUC@\\#50\$","\$AUC@\\#100\$","\$AUC@\\#500\$","\$AUC@\\#1000\$"]
 const PATN_METRICS_NAMES = ["\$PR@\\#5\$","\$PR@\\#10\$","\$PR@\\#50\$","\$PR@\\#100\$","\$PR@\\#500\$","\$PR@\\#1000\$"]
 
-AE_MERGE = Dict("aae_full" => "aae", "wae_full" => "wae", "vae_full" => "vae")
+AE_MERGE = Dict(
+    "aae_full" => "aae",
+    "aae_vamp" => "aae",
+    "wae_full" => "wae", 
+    "wae_vamp" => "wae",
+    "vae_full" => "vae")
+
+function _merge_ae_filter_rs!(df)
+    # merge autoencoders
+    apply_aliases!(df, col="modelname", d=AE_MERGE)
+
+    # filter only reconstruction_samples score
+    filter!(x -> ~(x.modelname in (["aae", "vae", "wae"])) || occursin("_score=reconstruction-sampled", x.parameters), df)
+end
 
 df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
 df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
 @info "Loaded results from tabular evaluation."
 
-function basic_tables_tabular(df; suffix="")
+function basic_tables_tabular(df; suffix="", downsample=Dict{String, Int}())
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
 
     for metric in [:auc, :tpr_5]
-        agg_names = ["maxmean", "meanmax", "meanmax10", "maxmean10"]
-        agg_funct = [aggregate_stats_max_mean, aggregate_stats_mean_max, aggregate_stats_mean_max_top_10, aggregate_stats_max_mean_top_10]
+        agg_names = ["maxmean", "meanmax"]
+        agg_funct = [aggregate_stats_max_mean, aggregate_stats_mean_max]
         for (name, agg) in zip(agg_names, agg_funct)
             val_metric = _prefix_symbol("val", metric)
             tst_metric = _prefix_symbol("tst", metric)    
 
-            df_agg = agg(df, val_metric)
+            df_agg = agg(df, val_metric, downsample=downsample)
 
             df_agg["model_type"] = copy(df_agg["modelname"])
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
@@ -54,7 +67,8 @@ function basic_tables_tabular(df; suffix="")
 end
 
 basic_tables_tabular(copy(df_tabular))
-basic_tables_tabular(apply_aliases!(copy(df_tabular), col="modelname", d=AE_MERGE), suffix="_merge_ae")
+basic_tables_tabular(_merge_ae_filter_rs!(copy(df_tabular)), suffix="_merge_ae")
+basic_tables_tabular(_merge_ae_filter_rs!(copy(df_tabular)), suffix="_merge_ae_down", downsample=Dict(zip(["aae", "vae", "wae"], [100, 100, 100])))
 basic_tables_tabular(copy(df_tabular_ens), suffix="_ensembles")
 @info "basic_tables_tabular"
 
@@ -510,7 +524,7 @@ basic_tables_tabular_autoencoders(copy(df_tabular); split_vamp=true, suffix="_sp
 @info "basic_tables_tabular_autoencoders"
 
 # does crossvalidation matters?
-function per_seed_ranks_tabular(df; suffix="")
+function per_seed_ranks_tabular(df; suffix="", downsample=Dict{String, Int}())
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
 
     for metric in [:auc, :tpr_5]
@@ -521,7 +535,7 @@ function per_seed_ranks_tabular(df; suffix="")
         for seed in 0:5
             dff = seed > 0 ? filter(x -> (x.seed == seed), df) : df
             # silence the warnings for insufficient number of seeds
-            df_agg = aggregate_stats_max_mean(dff, val_metric; verbose=false)
+            df_agg = aggregate_stats_max_mean(dff, val_metric; verbose=false, downsample=downsample)
 
             df_agg["model_type"] = copy(df_agg["modelname"])
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
@@ -557,7 +571,8 @@ function per_seed_ranks_tabular(df; suffix="")
 end
 
 per_seed_ranks_tabular(copy(df_tabular))
-per_seed_ranks_tabular(apply_aliases!(copy(df_tabular), col="modelname", d=AE_MERGE); suffix="_merge_ae")
+per_seed_ranks_tabular(_merge_ae_filter_rs!(copy(df_tabular)), suffix="_merge_ae")
+per_seed_ranks_tabular(_merge_ae_filter_rs!(copy(df_tabular)), suffix="_merge_ae_down", downsample=Dict(zip(["aae", "vae", "wae"], [100, 100, 100])))
 per_seed_ranks_tabular(copy(df_tabular_ens); suffix="_ensembles")
 @info "per_seed_ranks_tabular"
 
@@ -810,15 +825,15 @@ function plot_knowledge_combined(df_tab, df_img; format="pdf")
                     ylabel="avg. rnk",
                     style="xtick=$(_pgf_array(1:length(criterions))), 
                         xticklabels=$(_pgf_array(cnames)),
-                        width=6cm, height=3cm, scale only axis=true,
+                        width=5cm, height=3cm, scale only axis=true,
                         x tick label style={rotate=50,anchor=east}")
                 b = PGFPlots.Axis([PGFPlots.Plots.Linear(
                             1:length(criterions), 
                             metric_mean[:, i], 
                                 legendentry=m) for (i, m) in enumerate(models)], 
                     ylabel="avg. $mn",
-                    legendStyle = "at={(0.33,1.15)}, anchor=west",
-                    style="width=6cm, height=3cm, scale only axis=true, 
+                    legendStyle = "at={(0.1,1.15)}, anchor=west",
+                    style="width=5cm, height=3cm, scale only axis=true, 
                     xtick=$(_pgf_array(1:length(criterions))), 
                     xticklabels={}, legend columns = -1")
                 a, b
@@ -848,7 +863,7 @@ function plot_knowledge_combined(df_tab, df_img; format="pdf")
                 b.legendentry=nothing
             end
 
-            g = PGFPlots.GroupPlot(2, 2, groupStyle = "vertical sep = 0.0cm, horizontal sep = 1.0cm")
+            g = PGFPlots.GroupPlot(2, 2, groupStyle = "vertical sep = 0.5cm, horizontal sep = 1.0cm")
             push!(g, b_tab); push!(g, b_img); 
             push!(g, a_tab); push!(g, a_img);
 
