@@ -59,7 +59,7 @@ end
 # LOSSES
 
 # autoencoder loss function
-ae_loss(ŷ, y) = Flux.mean(Flux.sum((ŷ .- y).^2, dims=(1,2,3))) 
+ae_loss(ŷ, y; dims=(1,2,3)) = Flux.mean(Flux.sum((ŷ .- y).^2, dims=dims))
 
 # objective / loss function for Soft-boundary "SVM"
 function sb_loss(ŷ, c, R, nu)
@@ -123,6 +123,33 @@ function conv_ae_constructor(
 	model = DeepSVDD(encoder, decoder, objective, c_, R, nu)
 end
 
+
+function ae_constructor(
+	;idim::Int=1, 
+	zdim::Int=1, 
+	hdim::Int=64, 
+	activation = "relu", 
+	nlayers::Int=3, 
+	init_seed=nothing, 
+	objective="soft-boundary",
+	nu::Float32 = 0.1f0,
+	R::Float32 = 0f0,
+	c = nothing,
+	kwargs...
+	)
+	(init_seed !== nothing) ? Random.seed!(init_seed) : nothing
+
+	encoder = build_mlp(idim, hdim, zdim, nlayers, activation=activation, lastlayer="linear")
+
+	decoder = build_mlp(zdim, hdim, idim, nlayers, activation=activation, lastlayer="linear")
+
+	(init_seed !== nothing) ? Random.seed!() : nothing
+
+	c_ = (c !== nothing) ? c : zeros(Float32, zdim)
+
+	return DeepSVDD(encoder, decoder, objective, c_, R, nu)
+end
+
 ##################################################################################
 
 # fit Autoencoder
@@ -135,14 +162,22 @@ function fit_ae(svdd::DeepSVDD, optim, data, params)
 	best_svdd = deepcopy(svdd)
 	patience = params.patience
 	val_batches = length(val_loader)
-	best_val_loss = 1e10
+	best_val_loss = Inf
+
+	if ndims(first(train_loader)) == 2
+		dims = 1
+	elseif ndims(first(train_loader)) == 4
+		dims = (1,2,3)
+	else 
+		error("unknown data type (no 2D or 4D tensor)")
+	end
 
 	svdd = svdd |> gpu
 	ps_ae = Flux.params(svdd.encoder, svdd.decoder)
 	for (iter, X) in enumerate(train_loader)
 		X = getobs(X)|>gpu
 		loss_ae, back = Flux.pullback(ps_ae) do
-			ae_loss(AE(svdd, X), X)
+			ae_loss(AE(svdd, X), X, dims=dims)
 		end
 		grad_ae = back(1f0)
 		Flux.Optimise.update!(optim, ps_ae, grad_ae)
