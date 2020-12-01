@@ -23,19 +23,36 @@ AE_MERGE = Dict(
     "wae_vamp" => "wae",
     "vae_full" => "vae")
 
-function _merge_ae_filter_rs!(df)
-    # merge autoencoders
-    apply_aliases!(df, col="modelname", d=AE_MERGE)
+DOWNSAMPLE = Dict(
+    zip(["aae", "vae", "wae", "MAF", "RealNVP"], [100, 100, 100, 100, 100]))
 
-    # filter only reconstruction_samples score
-    filter!(x -> ~(x.modelname in (["aae", "vae", "wae"])) || occursin("_score=reconstruction-sampled", x.parameters), df)
+function _merge_ae_filter!(df; ensembles=false)
+    # filter out simple vae as its properties are shown in the separate table focused on ae
+    filter!(x -> (x.modelname != "vae_simple"), df)
+
+    # filter out ocsvm_nu
+    filter!(x -> (x.modelname != "ocsvm_nu"), df)
+
+    if ~ensembles
+        # merge autoencoders
+        apply_aliases!(df, col="modelname", d=AE_MERGE)
+        
+        # filter only reconstruction_samples score
+        filter!(x -> ~(x.modelname in (["aae", "vae", "wae"])) || occursin("_score=reconstruction-sampled", x.parameters), df)        
+        
+        # filter only default parameters of "ocsvm" - rbf + nu = 0.5, tune gamma
+        filter!(x -> (x.modelname != "ocsvm_rbf") || occursin("nu=0.5", x.parameters), df)
+    else
+        filter!(x -> ~(x.modelname in keys(AE_MERGE)), df)
+    end
+    df
 end
 
 df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
 df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
 @info "Loaded results from tabular evaluation."
 
-function basic_tables_tabular(df; suffix="", downsample=Dict{String, Int}())
+function basic_summary_table(df; suffix="", prefix="", downsample=Dict{String, Int}())
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
 
     for metric in [:auc, :tpr_5]
@@ -58,7 +75,7 @@ function basic_tables_tabular(df; suffix="", downsample=Dict{String, Int}())
             rt[end-1, 1] = "\$\\sigma_{10}\$"
             rt[end, 1] = "rnk"
 
-            filename = "$(projectdir())/paper/tables/tabular_$(metric)_$(metric)_$(name)$(suffix).tex"
+            filename = "$(projectdir())/paper/tables/$(prefix)_$(metric)_$(metric)_$(name)$(suffix).tex"
             open(filename, "w") do io
                 print_rank_table(io, rt; backend=:tex)
             end
@@ -66,14 +83,20 @@ function basic_tables_tabular(df; suffix="", downsample=Dict{String, Int}())
     end
 end
 
-basic_tables_tabular(copy(df_tabular))
-basic_tables_tabular(_merge_ae_filter_rs!(copy(df_tabular)), suffix="_merge_ae")
-basic_tables_tabular(_merge_ae_filter_rs!(copy(df_tabular)), suffix="_merge_ae_down", downsample=Dict(zip(["aae", "vae", "wae"], [100, 100, 100])))
-basic_tables_tabular(copy(df_tabular_ens), suffix="_ensembles")
-@info "basic_tables_tabular"
+function basic_summary_table_tabular(df; suffix="", downsample=Dict{String, Int}())
+    basic_summary_table(df; prefix="tabular", suffix=suffix, downsample=downsample)
+end
+
+
+# basic_summary_table_tabular(copy(df_tabular))
+# basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular)), suffix="_merge_ae")
+basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular)), suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+# basic_summary_table_tabular(copy(df_tabular_ens), suffix="_ensembles")
+basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular_ens), ensembles=true), suffix="_ensembles_merge_ae_down")
+@info "basic_summary_table_tabular"
 
 # generic for both images and tabular data just change prefix and filter input
-function plot_knowledge_ranks(df; prefix="tabular", suffix="", format="pdf")
+function plot_knowledge_ranks(df; prefix="tabular", suffix="", format="pdf", downsample=Dict{String, Int}())
     for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)
@@ -93,7 +116,7 @@ function plot_knowledge_ranks(df; prefix="tabular", suffix="", format="pdf")
                 extended_cnames = vcat(cnames, ["\$$(mn)_{val}\$", "\$$(mn)_{tst}\$"])
 
                 for criterion in extended_criterions
-                    df_agg = agg(df, criterion)
+                    df_agg = agg(df, criterion; downsample=downsample)
                     sort!(df_agg, (order(:dataset), order(:modelname)))
                     rt = rank_table(df_agg, tst_metric)
                     push!(ranks, rt[end:end, :])
@@ -120,8 +143,9 @@ function plot_knowledge_ranks(df; prefix="tabular", suffix="", format="pdf")
                         ylabel="avg. $mn",
                         legendStyle = "at={(0.5,1.02)}, anchor=south",
                         style="width=6cm, height=3cm, scale only axis=true, 
-                        axis x line=none, legend columns = -1")
-                g = PGFPlots.GroupPlot(1, 2, groupStyle = "vertical sep = 0.0cm")
+                        xtick=$(_pgf_array(1:length(criterions))), 
+                        xticklabels={}, legend columns = -1")
+                g = PGFPlots.GroupPlot(1, 2, groupStyle = "vertical sep = 0.5cm")
                 push!(g, b); push!(g, a); 
                 filename = "$(projectdir())/paper/figures/$(prefix)_knowledge_rank_$(ctype)_$(metric)_$(name)$(suffix).$(format)"
                 PGFPlots.save(filename, g; include_preamble=false)
@@ -130,11 +154,11 @@ function plot_knowledge_ranks(df; prefix="tabular", suffix="", format="pdf")
     end
 end
 
-function plot_knowledge_tabular_repre(df, models; suffix="", format="pdf")
+function plot_knowledge_tabular_repre(df, models; suffix="", format="pdf", downsample=Dict{String, Int}())
     filter!(x -> (x.modelname in models), df)
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
     apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
-    plot_knowledge_ranks(df; prefix="tabular", suffix=suffix, format=format)
+    plot_knowledge_ranks(df; prefix="tabular", suffix=suffix, format=format, downsample=downsample)
 end
 
 function plot_knowledge_tabular_type(df; suffix="", format="pdf")
@@ -144,13 +168,15 @@ function plot_knowledge_tabular_type(df; suffix="", format="pdf")
 end
 
 
-representatives=["ocsvm", "wae", "MAF", "fmgan"]
-plot_knowledge_tabular_repre(copy(df_tabular), representatives; format="tex", suffix="_representatives")
+representatives=["ocsvm", "wae", "MAF", "fmgan", "vae_ocsvm", "vae+ocsvm"]
+# plot_knowledge_tabular_repre(copy(df_tabular), representatives; format="tex", suffix="_representatives")
 # plot_knowledge_tabular_repre(copy(df_tabular_ens), representatives; suffix="_representatives_ensembles", format="tex")
+plot_knowledge_tabular_repre(
+    _merge_ae_filter!(copy(df_tabular); ensembles=false), representatives; suffix="_representatives_merge_ae_down", format="tex", downsample=DOWNSAMPLE)
 @info "plot_knowledge_tabular_repre"
 
 # these ones are really costly as there are 12 aggregations over all models
-plot_knowledge_tabular_type(copy(df_tabular); format="tex") 
+# plot_knowledge_tabular_type(copy(df_tabular); format="tex") 
 # plot_knowledge_tabular_type(copy(df_tabular_ens), suffix="_ensembles", format="tex")
 @info "plot_knowledge_tabular_type"
 
@@ -200,12 +226,12 @@ function rank_comparison_agg(df, tm=("AUC", :auc); prefix="tabular", suffix="")
     end
 end
 
+# superseeded by per_seed table
+# rank_comparison_agg(copy(df_tabular), ("AUC", :auc))
+# rank_comparison_agg(copy(df_tabular), ("TPR@5", :tpr_5))
+# @info "rank_comparison_agg"
 
-rank_comparison_agg(copy(df_tabular), ("AUC", :auc))
-rank_comparison_agg(copy(df_tabular), ("TPR@5", :tpr_5))
-@info "rank_comparison_agg"
-
-function rank_comparison_metric(df, ta=("maxmean", aggregate_stats_max_mean); suffix="")
+function rank_comparison_metric(df, ta=("maxmean", aggregate_stats_max_mean); suffix="", downsample=Dict{String, Int}())
     name, agg = ta
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
 
@@ -214,7 +240,7 @@ function rank_comparison_metric(df, ta=("maxmean", aggregate_stats_max_mean); su
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)    
 
-        df_agg = agg(df, val_metric)
+        df_agg = agg(df, val_metric, downsample=downsample)
 
         df_agg["model_type"] = copy(df_agg["modelname"])
         apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
@@ -249,12 +275,14 @@ function rank_comparison_metric(df, ta=("maxmean", aggregate_stats_max_mean); su
     end
 end
 
+# superseeded by per_seed table
+# rank_comparison_metric(copy(df_tabular), ("maxmean", aggregate_stats_max_mean))
+# rank_comparison_metric(copy(df_tabular), ("meanmax", aggregate_stats_mean_max))
+# rank_comparison_metric(_merge_ae_filter!(copy(df_tabular)), ("maxmean", aggregate_stats_max_mean), suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+# rank_comparison_metric(_merge_ae_filter!(copy(df_tabular)), ("meanmax", aggregate_stats_mean_max), suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+# @info "rank_comparison_metric"
 
-rank_comparison_metric(copy(df_tabular), ("maxmean", aggregate_stats_max_mean))
-rank_comparison_metric(copy(df_tabular), ("meanmax", aggregate_stats_mean_max))
-@info "rank_comparison_metric"
-
-function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="")
+function comparison_ensemble(df, df_ensemble, tm=("AUC", :auc); downsample=Dict{String,Int}(), prefix="", suffix="")
     mn, metric = tm
  
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
@@ -267,7 +295,7 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="
     tst_metric = _prefix_symbol("tst", metric)
 
     function _rank(d)
-        df_agg = aggregate_stats_max_mean(d, val_metric)
+        df_agg = aggregate_stats_max_mean(d, val_metric; downsample=downsample)
         df_agg["model_type"] = copy(df_agg["modelname"])
         apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
         apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
@@ -296,7 +324,7 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="
         
     f_float = (v, i, j) -> (j > 1) && (i == 3) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
 
-    filename = "$(projectdir())/paper/tables/tabular_ensemblecomp_$(metric)$(suffix).tex"
+    filename = "$(projectdir())/paper/tables/$(prefix)_ensemblecomp_$(metric)$(suffix).tex"
     open(filename, "w") do io
         pretty_table(
             io, df_ranks,
@@ -307,50 +335,49 @@ function comparison_tabular_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="
             tf=latex_booktabs
         )
     end
+end
 
-    ### shows better the difference
-    # rt[1:end-3, 2:end] .= dif
-    # rt[end-2, 1] = "σ"
-    # rt[end-1, 1] = "σ_1"
-    # # print rank change rather than just the baseline rank
-    # rt[end, 1] = "rnk. chng."
-    # rt[end, 2:end] .=  Vector(rt_ensemble[end, 2:end]) .- Vector(rt[end, 2:end])
-    # filename = "$(projectdir())/paper/tables/tabular_ensemblecomp_$(metric)_detail$(suffix).html"
-    # open(filename, "w") do io
-    #     print_rank_table(io, rt; backend=:html)
-    # end
+function comparison_tabular_ensemble(df, df_ensemble, tm; downsample=DOWNSAMPLE, suffix="")
+    comparison_ensemble(
+        df, df_ensemble, tm; 
+        downsample=downsample, prefix="tabular", suffix=suffix)
 end
 
 
-comparison_tabular_ensemble(copy(df_tabular), copy(df_tabular_ens), ("AUC", :auc))
-comparison_tabular_ensemble(copy(df_tabular), copy(df_tabular_ens), ("TPR@5", :tpr_5))
+# comparison_tabular_ensemble(copy(df_tabular), copy(df_tabular_ens), ("AUC", :auc))
+# comparison_tabular_ensemble(copy(df_tabular), copy(df_tabular_ens), ("TPR@5", :tpr_5))
+comparison_tabular_ensemble(
+    _merge_ae_filter!(copy(df_tabular)), 
+    _merge_ae_filter!(copy(df_tabular_ens), ensembles=true), 
+    ("AUC", :auc); downsample=DOWNSAMPLE, suffix="_merge_ae_down")
+comparison_tabular_ensemble(
+    _merge_ae_filter!(copy(df_tabular)), 
+    _merge_ae_filter!(copy(df_tabular_ens), ensembles=true),
+    ("TPR@5", :tpr_5); downsample=DOWNSAMPLE, suffix="_merge_ae_down")
 @info "comparison_tabular_ensemble"
 
 # join baseline and ensembles, allows to dig into where they help
 # compare only those models for which ensembles are computed
-baseline = copy(df_tabular);
-models = unique(df_tabular_ens.modelname);
-ensembles = copy(vcat(filter(x -> (x.modelname in models), baseline), df_tabular_ens));
-comparison_tabular_ensemble(
-    baseline, 
-    ensembles, ("AUC", :auc); 
-    suffix="_only_improve")
-comparison_tabular_ensemble(
-    baseline, 
-    ensembles, ("TPR@5", :tpr_5);
-    suffix="_only_improve")
-@info "comparison_tabular_ensemble_only_improve"
+# baseline = copy(df_tabular);
+# models = unique(df_tabular_ens.modelname);
+# ensembles = copy(vcat(filter(x -> (x.modelname in models), baseline), df_tabular_ens));
+# comparison_tabular_ensemble(
+#     baseline, 
+#     ensembles, ("AUC", :auc); 
+#     suffix="_only_improve")
+# comparison_tabular_ensemble(
+#     baseline, 
+#     ensembles, ("TPR@5", :tpr_5);
+#     suffix="_only_improve")
+# @info "comparison_tabular_ensemble_only_improve"
 
 # training time rank vs avg rank
-function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf")
+function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf", downsample=Dict{String,Int}())
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
     df["model_type"] = copy(df["modelname"])
     apply_aliases!(df, col="model_type", d=MODEL_TYPE)
     apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
-    # training time with two stage methods shows only the second stage
-    # once the encoding fit time is added to the dataframe add it to the fit column
-    # filter!(x -> (x.model_type != "two-stage"), df)
-
+    
     # add first stage time for encoding and training of encoding
     df["fit_t"] .+= df["fs_fit_t"] .+ df["fs_fit_t"]
     # add all eval times together
@@ -360,11 +387,12 @@ function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf")
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)
 
+        # only meanmax to be consistent
         for (name, agg) in zip(
-                    ["maxmean", "meanmax"], 
-                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
+                    ["meanmax"], 
+                    [aggregate_stats_mean_max])
 
-            df_agg = agg(df, val_metric, add_col=:total_eval_t)
+            df_agg = agg(df, val_metric, add_col=:total_eval_t, downsample=downsample)
             rt = rank_table(df_agg, tst_metric) 
             
             # time is computed only for the best models
@@ -387,16 +415,21 @@ function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf")
     end
 end
 
-plot_tabular_fit_time(copy(df_tabular); time_col=:fit_t, format="tex")
-plot_tabular_fit_time(copy(df_tabular); time_col=:tr_eval_t, format="tex")
-plot_tabular_fit_time(copy(df_tabular); time_col=:val_eval_t, format="tex")
-plot_tabular_fit_time(copy(df_tabular); time_col=:tst_eval_t, format="tex")
-plot_tabular_fit_time(copy(df_tabular); time_col=:total_eval_t, format="tex")
-# plot_tabular_fit_time(copy(filter(x -> (x.modelname in Set(["ocsvm", "wae", "MAF", "fmgan"])), df_tabular)); time_col=:fit_t, format="pdf")
+# plot_tabular_fit_time(copy(df_tabular); time_col=:fit_t, format="tex")
+# plot_tabular_fit_time(copy(df_tabular); time_col=:tr_eval_t, format="tex")
+# plot_tabular_fit_time(copy(df_tabular); time_col=:val_eval_t, format="tex")
+# plot_tabular_fit_time(copy(df_tabular); time_col=:tst_eval_t, format="tex")
+# plot_tabular_fit_time(copy(df_tabular); time_col=:total_eval_t, format="tex")
+
+plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:fit_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:tr_eval_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:val_eval_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:tst_eval_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:total_eval_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
 @info "plot_tabular_fit_time"
 
 # show basic table only for autoencoders
-function basic_tables_tabular_autoencoders(df; split_vamp=false, suffix="")
+function tabular_autoencoders_investigation(df; split_vamp=false, suffix="")
     df["model_type"] = copy(df["modelname"])
     apply_aliases!(df, col="model_type", d=MODEL_TYPE)
     filter!(x -> (x.model_type == "autoencoders"), df)
@@ -519,9 +552,9 @@ function basic_tables_tabular_autoencoders(df; split_vamp=false, suffix="")
     end
 end
 
-basic_tables_tabular_autoencoders(copy(df_tabular))
-basic_tables_tabular_autoencoders(copy(df_tabular); split_vamp=true, suffix="_split_vamp")
-@info "basic_tables_tabular_autoencoders"
+# tabular_autoencoders_investigation(copy(df_tabular))
+tabular_autoencoders_investigation(copy(df_tabular); split_vamp=true, suffix="_split_vamp")
+@info "tabular_autoencoders_investigation"
 
 # does crossvalidation matters?
 function per_seed_ranks_tabular(df; suffix="", downsample=Dict{String, Int}())
@@ -531,12 +564,7 @@ function per_seed_ranks_tabular(df; suffix="", downsample=Dict{String, Int}())
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)    
 
-        ranks = []
-        for seed in 0:5
-            dff = seed > 0 ? filter(x -> (x.seed == seed), df) : df
-            # silence the warnings for insufficient number of seeds
-            df_agg = aggregate_stats_max_mean(dff, val_metric; verbose=false, downsample=downsample)
-
+        function _rank(df_agg)
             df_agg["model_type"] = copy(df_agg["modelname"])
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
             apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
@@ -546,13 +574,31 @@ function per_seed_ranks_tabular(df; suffix="", downsample=Dict{String, Int}())
             
             rt = rank_table(df_agg, tst_metric)
             models = names(rt)[2:end]
-            rt["seed"] = seed > 0 ? "seed=$seed" : "maxmean"
+            rt, models
+        end
 
-            select!(rt, vcat(["seed"], models))
+        ranks = []
+        for (name, agg) in zip(
+                ["maxmean", "meanmax"], 
+                [aggregate_stats_max_mean, aggregate_stats_mean_max])
+            df_agg = agg(df, val_metric; downsample=downsample)
+            rt, models = _rank(df_agg)
+            rt["exp"] = name
+            select!(rt, vcat(["exp"], models))
             push!(ranks, rt[end:end,:])
         end
-        df_ranks = reduce(vcat, ranks)
 
+        for seed in 1:5
+            dff = filter(x -> (x.seed == seed), df)
+            # silence the warnings for insufficient number of seeds
+            df_agg = aggregate_stats_max_mean(dff, val_metric; verbose=false, downsample=downsample)
+            rt, models = _rank(df_agg)
+            rt["exp"] = "seed=$seed"
+            select!(rt, vcat(["exp"], models))
+            push!(ranks, rt[end:end,:])
+        end
+
+        df_ranks = reduce(vcat, ranks)
         hl_best_rank = LatexHighlighter(
                         (data, i, j) -> (data[i,j] == minimum(df_ranks[i, 2:end])),
                         ["color{red}","textbf"])
@@ -570,10 +616,10 @@ function per_seed_ranks_tabular(df; suffix="", downsample=Dict{String, Int}())
     end
 end
 
-per_seed_ranks_tabular(copy(df_tabular))
-per_seed_ranks_tabular(_merge_ae_filter_rs!(copy(df_tabular)), suffix="_merge_ae")
-per_seed_ranks_tabular(_merge_ae_filter_rs!(copy(df_tabular)), suffix="_merge_ae_down", downsample=Dict(zip(["aae", "vae", "wae"], [100, 100, 100])))
-per_seed_ranks_tabular(copy(df_tabular_ens); suffix="_ensembles")
+# per_seed_ranks_tabular(copy(df_tabular))
+# per_seed_ranks_tabular(_merge_ae_filter!(copy(df_tabular)), suffix="_merge_ae")
+per_seed_ranks_tabular(_merge_ae_filter!(copy(df_tabular)), suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+# per_seed_ranks_tabular(copy(df_tabular_ens); suffix="_ensembles")
 @info "per_seed_ranks_tabular"
 
 
@@ -585,141 +631,65 @@ df_images_loi = load(datadir("evaluation/images_leave-one-in_eval.bson"))[:df];
 df_images_ens = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
 @info "Loaded results from images"
 
-function basic_tables_images(df; suffix="")
-    dff = filter(x -> x.seed == 1, df)
-    apply_aliases!(dff, col="modelname", d=MODEL_MERGE)
+function filter_img_models!(df)
+    filter!(x -> (x.modelname != "aae_ocsvm") && (x.modelname != "fAnoGAN-GP"), df)
+end    
 
-    for metric in [:auc, :tpr_5]
-        agg_names = ["maxmean", "meanmax", "maxmean10", "meanmax10"]
-        agg_funct = [aggregate_stats_max_mean, aggregate_stats_mean_max, aggregate_stats_max_mean_top_10, aggregate_stats_mean_max_top_10]
-        for (name, agg) in zip(agg_names, agg_funct)
-            val_metric = _prefix_symbol("val", metric)
-            tst_metric = _prefix_symbol("tst", metric)    
-
-            df_agg = agg(dff, val_metric)
-
-            df_agg["model_type"] = copy(df_agg["modelname"])
-            apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
-            apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
-            apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
-
-            sort!(df_agg, (:dataset, :model_type, :modelname))
-            rt = rank_table(df_agg, tst_metric)
-            rt[end-2, 1] = "\$\\sigma_1\$"
-            rt[end-1, 1] = "\$\\sigma_{10}\$"
-            rt[end, 1] = "rnk"
-
-            filename = "$(projectdir())/paper/tables/images_$(metric)_$(metric)_$(name)$(suffix).tex"
-            open(filename, "w") do io
-                print_rank_table(io, rt; backend=:tex)
-            end
-        end
-    end
+function basic_summary_table_images(df; suffix="")
+    filter!(x -> x.seed == 1, df)
+    basic_summary_table(df; prefix="images", suffix=suffix)
 end
 
-basic_tables_images(copy(df_images))
-basic_tables_images(copy(df_images_loi), suffix="_loi")
-basic_tables_images(copy(df_images_ens), suffix="_ensembles")
-@info "basic_tables_images"
+# basic_summary_table_images(copy(df_images))
+# basic_summary_table_images(copy(df_images_ens), suffix="_ensembles")
+
+basic_summary_table_images(filter_img_models!(copy(df_images)), suffix="_filter")
+basic_summary_table_images(copy(df_images_loi), suffix="_loi")
+basic_summary_table_images(filter_img_models!(copy(df_images_ens)), suffix="_ensembles_filter")
+@info "basic_summary_table_images"
 
 function rank_comparison_agg_images(df, tm=("AUC", :auc); suffix="")
     filter!(x -> (x.seed == 1), df)
     rank_comparison_agg(df, tm; prefix="images", suffix=suffix)
 end
 
-rank_comparison_agg_images(copy(df_images), ("AUC", :auc))
-rank_comparison_agg_images(copy(df_images), ("TPR@5", :tpr_5))
+# rank_comparison_agg_images(copy(df_images), ("AUC", :auc))
+# rank_comparison_agg_images(copy(df_images), ("TPR@5", :tpr_5))
 @info "rank_comparison_agg_images"
 
 function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="")
-    mn, metric = tm
- 
     filter!(x -> (x.seed == 1), df)
-    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
     filter!(x -> (x.seed == 1), df_ensemble)
-    apply_aliases!(df_ensemble, col="modelname", d=MODEL_MERGE)
-
-    models = unique(df_ensemble.modelname)
-    filter!(x -> x.modelname in models, df)
-
-    val_metric = _prefix_symbol("val", metric)
-    tst_metric = _prefix_symbol("tst", metric)
-
-    function _rank(d)
-        df_agg = aggregate_stats_max_mean(d, val_metric)
-        df_agg["model_type"] = copy(df_agg["modelname"])
-        apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
-        apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
-        apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
-        sort!(df_agg, (:dataset, :model_type, :modelname))
-        rank_table(df_agg, tst_metric)
-    end
-        
-    rt = _rank(df)
-    rt[end, 1] = "baseline"
-    rt_ensemble = _rank(df_ensemble)
-    rt_ensemble[end, 1] = "ensembles"
-
-
-    df_ranks = vcat(rt[end:end, :], rt_ensemble[end:end, :])
-    dif = Matrix(rt_ensemble[1:end-3, 2:end]) - Matrix(rt[1:end-3, 2:end])
-    mean_dif = mean(dif, dims=1)
-    push!(df_ranks, ["avg. change", mean_dif...])
-    
-    hl_best_rank = LatexHighlighter(
-                    (data, i, j) -> (i < 3) && (data[i,j] == minimum(df_ranks[i, 2:end])),
-                    ["color{red}","textbf"])
-
-    hl_best_dif = LatexHighlighter(
-                    (data, i, j) -> (i == 3) && (data[i,j] == maximum(df_ranks[i, 2:end])),
-                    ["color{blue}","textbf"])
-        
-    f_float = (v, i, j) -> (i == 3) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
-
-    filename = "$(projectdir())/paper/tables/images_ensemblecomp_$(metric)$(suffix).tex"
-    open(filename, "w") do io
-        pretty_table(
-            io, df_ranks,
-            backend=:latex,
-            formatters=f_float,
-            highlighters=(hl_best_rank, hl_best_dif),
-            nosubheader=true,
-            tf=latex_booktabs
-        )
-    end
-
-    ### shows better the difference
-    # rt[1:end-3, 2:end] .= dif
-    # rt[end-2, 1] = "σ"
-    # rt[end-1, 1] = "σ_1"
-    # # print rank change rather than just the baseline rank
-    # rt[end, 1] = "rnk. chng."
-    # rt[end, 2:end] .=  Vector(rt_ensemble[end, 2:end]) .- Vector(rt[end, 2:end])
-    # filename = "$(projectdir())/paper/tables/images_ensemblecomp_$(metric)_detail$(suffix).html"
-    # open(filename, "w") do io
-    #     print_rank_table(io, rt; backend=:html)
-    # end
-    ###
+    comparison_ensemble(df, df_ensemble, tm; prefix="images", suffix=suffix)
 end
 
-comparison_images_ensemble(copy(df_images), copy(df_images_ens), ("AUC", :auc))
-comparison_images_ensemble(copy(df_images), copy(df_images_ens), ("TPR@5", :tpr_5))
+# comparison_images_ensemble(copy(df_images), copy(df_images_ens), ("AUC", :auc))
+# comparison_images_ensemble(copy(df_images), copy(df_images_ens), ("TPR@5", :tpr_5))
+comparison_images_ensemble(
+    filter_img_models!(copy(df_images)), 
+    filter_img_models!(copy(df_images_ens)), 
+    ("AUC", :auc); suffix="_filter")
+comparison_images_ensemble(
+    filter_img_models!(copy(df_images)), 
+    filter_img_models!(copy(df_images_ens)), 
+    ("TPR@5", :tpr_5); suffix="_filter")
+
 @info "comparison_images_ensemble"
 
 # join baseline and ensembles, allows to dig into where they help
 # compare only those models for which ensembles are computed
-baseline_img = copy(df_images);
-models_img = unique(df_images_ens.modelname);
-ensembles_img = copy(vcat(filter(x -> (x.modelname in models_img), baseline_img), df_images_ens));
-comparison_images_ensemble(
-    baseline_img, 
-    ensembles_img, ("AUC", :auc); 
-    suffix="_only_improve")
-comparison_images_ensemble(
-    baseline_img, 
-    ensembles_img, ("TPR@5", :tpr_5);
-    suffix="_only_improve")
-@info "comparison_images_ensemble_only_improve"
+# baseline_img = copy(df_images);
+# models_img = unique(df_images_ens.modelname);
+# ensembles_img = copy(vcat(filter(x -> (x.modelname in models_img), baseline_img), df_images_ens));
+# comparison_images_ensemble(
+#     baseline_img, 
+#     ensembles_img, ("AUC", :auc); 
+#     suffix="_only_improve")
+# comparison_images_ensemble(
+#     baseline_img, 
+#     ensembles_img, ("TPR@5", :tpr_5);
+#     suffix="_only_improve")
+# @info "comparison_images_ensemble_only_improve"
 
 # basic tables when anomaly_class is treated as separate dataset
 function basic_tables_images_per_ac(df; suffix="")
@@ -756,9 +726,11 @@ function basic_tables_images_per_ac(df; suffix="")
     end
 end
 
-basic_tables_images_per_ac(copy(df_images))
+# basic_tables_images_per_ac(copy(df_images))
+# basic_tables_images_per_ac(copy(df_images_ens), suffix="_ensembles")
+basic_tables_images_per_ac(filter_img_models!(copy(df_images)), suffix="_filter")
 basic_tables_images_per_ac(copy(df_images_loi), suffix="_loi")
-basic_tables_images_per_ac(copy(df_images_ens), suffix="_ensembles")
+basic_tables_images_per_ac(filter_img_models!(copy(df_images_ens)), suffix="_ensembles_filter")
 @info "basic_tables_images_per_ac"
 
 function plot_knowledge_images_repre(df, models; suffix="", format="pdf")
@@ -783,9 +755,9 @@ plot_knowledge_images_repre(copy(df_images), representatives; format="tex", suff
 @info "plot_knowledge_images_repre"
 
 # these ones are really costly as there are 12 aggregations over all models
-plot_knowledge_images_type(copy(df_images); format="tex") 
+# plot_knowledge_images_type(copy(df_images); format="tex") 
 # plot_knowledge_images_type(copy(df_images_ens), suffix="_ensembles", format="tex")
-@info "plot_knowledge_images_type"
+# @info "plot_knowledge_images_type"
 
 
 # this is just specific figure for the main text
@@ -873,6 +845,8 @@ function plot_knowledge_combined(df_tab, df_img; format="pdf")
     end
 end
 
+# no filter applied here as we aggregate all the models into groups
+# shows the best possible performance
 plot_knowledge_combined(copy(df_tabular), copy(df_images); format="tex")
 @info "plot_combine_knowledge_type"
 
