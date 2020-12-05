@@ -26,15 +26,16 @@ end
 
 """
 	train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); seed=nothing,
-	    	contamination::Real=0.0)
+	    	method="leave-one-out", contamination::Real=0.0)
 
 Split data.
 """
-function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); seed=nothing,
-	    	contamination::Real=0.0)
+function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); 
+	seed=nothing, method="leave-one-out", contamination::Real=0.0)
 	# split the normal data, add some anomalies to the train set and divide
 	# the rest between validation and test
 	(0 <= contamination <= 1) ? nothing : error("contamination must be in the interval [0,1]")
+	any(method .== ["leave-one-out","leave-one-in"]) ? nothing : error("unknown method")
 	nd = ndims(data_normal) # differentiate between 2D tabular and 4D image data
 
 	# split normal indices
@@ -56,18 +57,22 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	end
 
 	# cat it together
-	tr_x = cat(tr_n, tr_a, dims = nd)
+	if method == "leave-one-in"
+		tr_x = tr_n
+		tr_y = zeros(Float32, size(tr_x, nd))
+	else	
+		tr_x = cat(tr_n, tr_a, dims = nd)
+		tr_y = vcat(zeros(Float32, size(tr_n, nd)), ones(Float32, size(tr_a,nd)))
+	end
 	val_x = cat(val_n, val_a, dims = nd)
 	tst_x = cat(tst_n, tst_a, dims = nd)
 
 	# now create labels
-	tr_y = vcat(zeros(Float32, size(tr_n, nd)), ones(Float32, size(tr_a,nd)))
 	val_y = vcat(zeros(Float32, size(val_n, nd)), ones(Float32, size(val_a,nd)))
 	tst_y = vcat(zeros(Float32, size(tst_n, nd)), ones(Float32, size(tst_a,nd)))
 
 	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
 end
-
 """
 	load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamination::Real=0.0)
 
