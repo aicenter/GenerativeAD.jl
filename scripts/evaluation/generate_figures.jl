@@ -26,26 +26,30 @@ AE_MERGE = Dict(
 DOWNSAMPLE = Dict(
     zip(["aae", "vae", "wae", "MAF", "RealNVP"], [100, 100, 100, 100, 100]))
 
-function _merge_ae_filter!(df; ensembles=false)
+function _merge_ae_filter!(df)
     # filter out simple vae as its properties are shown in the separate table focused on ae
     filter!(x -> (x.modelname != "vae_simple"), df)
 
     # filter out ocsvm_nu
     filter!(x -> (x.modelname != "ocsvm_nu"), df)
 
-    if ~ensembles
-        # merge autoencoders
-        apply_aliases!(df, col="modelname", d=AE_MERGE)
-        
-        # filter only reconstruction_samples score
-        filter!(x -> ~(x.modelname in (["aae", "vae", "wae"])) || occursin("_score=reconstruction-sampled", x.parameters), df)        
-        
-        # filter only default parameters of "ocsvm" - rbf + nu = 0.5, tune gamma
-        filter!(x -> (x.modelname != "ocsvm_rbf") || occursin("nu=0.5", x.parameters), df)
-    else
-        filter!(x -> ~(x.modelname in keys(AE_MERGE)), df)
-    end
+    # merge autoencoders
+    apply_aliases!(df, col="modelname", d=AE_MERGE)
+    
+    # filter only reconstruction_samples score
+    filter!(x -> ~(x.modelname in (["aae", "vae", "wae"])) || occursin("_score=reconstruction-sampled", x.parameters), df)        
+    
+    # filter only default parameters of "ocsvm" - rbf + nu = 0.5, tune gamma
+    filter!(x -> (x.modelname != "ocsvm_rbf") || occursin("nu=0.5", x.parameters), df)
     df
+end
+
+function _filter_ensembles!(df)
+    filter!(x -> occursin("ignore_nan=true_method=mean", x.parameters), df)
+    # filter!(x -> endswith(x.parameters, "_size=5"), df)
+    # filter!(x -> (startswith(x.parameters, "criterion=val_auc_ignore_nan=true_method=mean_")) && (endswith(x.parameters, "_size=5")), df)
+    # filter!(x -> (startswith(x.parameters, "criterion=val_tpr_5_ignore_nan=true_method=mean_")) && (endswith(x.parameters, "_size=5")), df)
+    # filter!(x -> (startswith(x.parameters, "criterion=val_pat_10_ignore_nan=true_method=mean_")) && (endswith(x.parameters, "_size=5")), df)
 end
 
 df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
@@ -92,7 +96,7 @@ end
 # basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular)), suffix="_merge_ae")
 basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular)), suffix="_merge_ae_down", downsample=DOWNSAMPLE)
 # basic_summary_table_tabular(copy(df_tabular_ens), suffix="_ensembles")
-basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular_ens), ensembles=true), suffix="_ensembles_merge_ae_down")
+basic_summary_table_tabular(_filter_ensembles!(copy(df_tabular_ens)), suffix="_ensembles_merge_ae_down")
 @info "basic_summary_table_tabular"
 
 # generic for both images and tabular data just change prefix and filter input
@@ -172,7 +176,7 @@ representatives=["ocsvm", "wae", "MAF", "fmgan", "vae_ocsvm", "vae+ocsvm"]
 # plot_knowledge_tabular_repre(copy(df_tabular), representatives; format="tex", suffix="_representatives")
 # plot_knowledge_tabular_repre(copy(df_tabular_ens), representatives; suffix="_representatives_ensembles", format="tex")
 plot_knowledge_tabular_repre(
-    _merge_ae_filter!(copy(df_tabular); ensembles=false), representatives; suffix="_representatives_merge_ae_down", format="tex", downsample=DOWNSAMPLE)
+    _merge_ae_filter!(copy(df_tabular)), representatives; suffix="_representatives_merge_ae_down", format="tex", downsample=DOWNSAMPLE)
 @info "plot_knowledge_tabular_repre"
 
 # these ones are really costly as there are 12 aggregations over all models
@@ -348,12 +352,12 @@ end
 # comparison_tabular_ensemble(copy(df_tabular), copy(df_tabular_ens), ("TPR@5", :tpr_5))
 comparison_tabular_ensemble(
     _merge_ae_filter!(copy(df_tabular)), 
-    _merge_ae_filter!(copy(df_tabular_ens), ensembles=true), 
-    ("AUC", :auc); downsample=DOWNSAMPLE, suffix="_merge_ae_down")
+    _filter_ensembles!(copy(df_tabular_ens)), 
+    ("AUC", :auc); downsample=DOWNSAMPLE, suffix="_merge_ae_down_mean")
 comparison_tabular_ensemble(
     _merge_ae_filter!(copy(df_tabular)), 
-    _merge_ae_filter!(copy(df_tabular_ens), ensembles=true),
-    ("TPR@5", :tpr_5); downsample=DOWNSAMPLE, suffix="_merge_ae_down")
+    _filter_ensembles!(copy(df_tabular_ens)),
+    ("TPR@5", :tpr_5); downsample=DOWNSAMPLE, suffix="_merge_ae_down_mean")
 @info "comparison_tabular_ensemble"
 
 # join baseline and ensembles, allows to dig into where they help
@@ -693,7 +697,7 @@ comparison_images_ensemble(
 
 # basic tables when anomaly_class is treated as separate dataset
 function basic_tables_images_per_ac(df; suffix="")
-    dff = filter(x -> x.seed == 1, df)
+    dff = filter(x -> (x.seed == 1), df)
     apply_aliases!(dff, col="dataset", d=DATASET_ALIAS)
     for d in unique(dff.dataset)
         mask = (dff.dataset .== d)
@@ -725,6 +729,18 @@ function basic_tables_images_per_ac(df; suffix="")
         end
     end
 end
+
+# these results are part of supplementary
+# df_images_vae = vcat(load(datadir("evaluation/vae_seeds_eval.bson"))[:df], filter(x -> (x.modelname == "vae"), df_images));
+# df_images_ganomaly = filter(x -> (x.modelname == "Conv-GANomaly"), df_images)
+# function split_seeds!(df)
+#     df["modelname"] = string.(df["seed"]) .* df["modelname"]
+#     df
+# end
+# basic_summary_table(split_seeds!(copy(df_images_vae)), prefix="images", suffix="_vae_seed")
+# basic_summary_table(split_seeds!(copy(df_images_ganomaly)), prefix="images", suffix="_gano_seed")
+# basic_tables_images_per_ac(split_seeds!(copy(df_images_vae)), suffix="_vae_seed")
+# basic_tables_images_per_ac(split_seeds!(copy(df_images_ganomaly)), suffix="_gano_seed")
 
 # basic_tables_images_per_ac(copy(df_images))
 # basic_tables_images_per_ac(copy(df_images_ens), suffix="_ensembles")
