@@ -28,7 +28,7 @@ s = ArgParseSettings()
 		help = "if specified, only results for a given anomaly class will be recomputed"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, datatype, modelname, seed, anomaly_class = parsed_args
+@unpack dataset, modelname, seed, anomaly_class = parsed_args
 
 masterpath = datadir("experiments/images_leave-one-in/$(modelname)/$(dataset)")
 files = GenerativeAD.Evaluation.collect_files(masterpath)
