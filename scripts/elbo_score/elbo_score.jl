@@ -49,7 +49,7 @@ kld_batched(m,x,batchsize) =
 			condition(m.encoder,y), m.prior)), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 kld_batched_gpu(m,x,batchsize) = 
 	vcat(map(y-> cpu(vec(Base.invokelatest(GenerativeModels.kl_divergence, 
-			condition(m.encoder,gpu(Array(y))), m.prior))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+			Base.invokelatest(condition, m.encoder, gpu(Array(y))), m.prior))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 
 function save_elbo_score(f::String, data, seed::Int, ac=nothing)
 	# get model
