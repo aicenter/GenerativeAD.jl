@@ -46,10 +46,6 @@ end
 
 function _filter_ensembles!(df)
     filter!(x -> occursin("ignore_nan=true_method=mean", x.parameters), df)
-    # filter!(x -> endswith(x.parameters, "_size=5"), df)
-    # filter!(x -> (startswith(x.parameters, "criterion=val_auc_ignore_nan=true_method=mean_")) && (endswith(x.parameters, "_size=5")), df)
-    # filter!(x -> (startswith(x.parameters, "criterion=val_tpr_5_ignore_nan=true_method=mean_")) && (endswith(x.parameters, "_size=5")), df)
-    # filter!(x -> (startswith(x.parameters, "criterion=val_pat_10_ignore_nan=true_method=mean_")) && (endswith(x.parameters, "_size=5")), df)
 end
 
 df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
@@ -375,6 +371,83 @@ comparison_tabular_ensemble(
 #     suffix="_only_improve")
 # @info "comparison_tabular_ensemble_only_improve"
 
+# how the choice of creation criterion and size of an ensembles affect results
+function ensemble_sensitivity(df, df_ensemble; prefix="tabular", suffix="")
+    apply_aliases!(df, col="modelname", d=MODEL_MERGE)
+    apply_aliases!(df_ensemble, col="modelname", d=MODEL_MERGE)
+
+    for metric in [:auc, :tpr_5]
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric)    
+
+        function _rank(df_agg)
+            df_agg["model_type"] = copy(df_agg["modelname"])
+            apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+            apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
+            apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
+
+            sort!(df_agg, (:dataset, :model_type, :modelname))
+            
+            _rt = rank_table(df_agg, tst_metric)
+            models = names(_rt)[2:end]
+            _rt, models
+        end
+
+        ranks = []
+
+        # computing baseline
+        df_agg = aggregate_stats_max_mean(df, val_metric)
+        rt, models = _rank(df_agg)
+        rt["criterion-size"] = "baseline"
+        select!(rt, vcat(["criterion-size"], models))
+        push!(ranks, rt[end:end, :])
+
+        # computing different ensembles
+        for (cn, c) in zip(["AUC", "TPR@5"], [:val_auc, :val_tpr_5])
+            for s in [5, 10]
+                dff = filter(x -> startswith(x.parameters, "criterion=$(c)") && endswith(x.parameters, "_size=$(s)"), df_ensemble)
+                df_agg = aggregate_stats_max_mean(dff, val_metric)
+                rt_ensemble, models = _rank(df_agg)
+                rt_ensemble["criterion-size"] = "$(cn)-$(s)"
+                select!(rt_ensemble, vcat(["criterion-size"], models))
+                
+                dif = Matrix(rt_ensemble[1:end-3, 2:end]) - Matrix(rt[1:end-3, 2:end])
+                mean_dif = round.(mean(dif, dims=1), digits=2)
+
+                push!(rt_ensemble, ["avg. change", mean_dif...])
+                push!(ranks, rt_ensemble[end-1:end, :])
+            end
+        end
+
+        df_ranks = reduce(vcat, ranks)
+        hl_best_rank = LatexHighlighter(
+                        (data, i, j) -> ((i == 1) || (i%2 == 0)) && (data[i,j] == minimum(df_ranks[i, 2:end])),
+                        ["color{red}","textbf"])
+
+        hl_best_dif = LatexHighlighter(
+                        (data, i, j) -> (i != 1) && (i%2 == 1) && (data[i,j] == maximum(df_ranks[i, 2:end])),
+                        ["color{blue}","textbf"])
+    
+        f_float = (v, i, j) -> (i != 1) && (i%2 == 1) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
+
+        filename = "$(projectdir())/paper/tables/$(prefix)_ensemble_size_$(metric)$(suffix).tex"
+        open(filename, "w") do io
+            pretty_table(
+                io, df_ranks,
+                backend=:latex,
+                formatters=f_float,
+                highlighters=(hl_best_rank, hl_best_dif),
+                nosubheader=true,
+                tf=latex_booktabs)
+        end
+    end
+end
+
+ensemble_sensitivity(
+    _merge_ae_filter!(copy(df_tabular)),
+    _filter_ensembles!(copy(df_tabular_ens)); prefix="tabular")
+@info "ensemble_sensitivity_images"
+
 # training time rank vs avg rank
 function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf", downsample=Dict{String,Int}())
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
@@ -671,14 +744,26 @@ end
 # comparison_images_ensemble(copy(df_images), copy(df_images_ens), ("TPR@5", :tpr_5))
 comparison_images_ensemble(
     filter_img_models!(copy(df_images)), 
-    filter_img_models!(copy(df_images_ens)), 
+    _filter_ensembles!(filter_img_models!(copy(df_images_ens))), 
     ("AUC", :auc); suffix="_filter")
 comparison_images_ensemble(
     filter_img_models!(copy(df_images)), 
-    filter_img_models!(copy(df_images_ens)), 
+    _filter_ensembles!(filter_img_models!(copy(df_images_ens))), 
     ("TPR@5", :tpr_5); suffix="_filter")
 
 @info "comparison_images_ensemble"
+
+function ensemble_sensitivity_images(df, df_ensemble)
+    filter!(x -> (x.seed == 1), df)
+    filter!(x -> (x.seed == 1), df_ensemble)
+    ensemble_sensitivity(df, df_ensemble; prefix="images")
+end
+
+ensemble_sensitivity_images(
+        filter_img_models!(copy(df_images)),
+        _filter_ensembles!(filter_img_models!(copy(df_images_ens))))
+
+@info "ensemble_sensitivity_images"
 
 # join baseline and ensembles, allows to dig into where they help
 # compare only those models for which ensembles are computed
