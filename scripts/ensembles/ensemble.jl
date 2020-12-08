@@ -6,9 +6,6 @@ using Random
 using FileIO
 using Statistics
 using DataFrames
-using GenerativeAD
-
-using GenerativeAD.Evaluation: _prefix_symbol, compute_stats
 
 # pkgs which come from deserialized BSONs
 # have to be present in the Main module
@@ -104,6 +101,8 @@ end
 
 
 const SPLITS = ["tr", "tst", "val"]
+
+_prefix_symbol(prefix, s) = Symbol("$(prefix)_$(s)")
 
 function _init_ensemble(results)
     ensemble = Dict{Symbol, Any}()      # new ensemble experiment dictionary
