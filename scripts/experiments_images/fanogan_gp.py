@@ -4,6 +4,9 @@ import torch.nn.functional as F
 import numpy as np
 import torch.utils.data as utils
 
+#--------------------------------------------------------------------------------------------------#
+#		This module must be located in the same directory as script which you want to run from!!!  #
+#--------------------------------------------------------------------------------------------------#
 
 class Flatten(nn.Module):
 	def __init__(self, out_features):
