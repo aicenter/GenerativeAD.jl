@@ -23,7 +23,7 @@ pushfirst!(PyVector(pyimport("sys")["path"]), "")
 py"""
 import numpy
 import torch
-import fanogan_gp
+import fanogan_gp # <- this module must be located in directory where you want to run it from. 
 
 def c_fanogan_gp(kwargs):
 	return fanogan_gp.fAnoGAN(**kwargs)
