@@ -32,7 +32,6 @@ parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes, method = parsed_args
 
 modelname = "Conv-GANomaly"
-DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
 
 
 function sample_params()

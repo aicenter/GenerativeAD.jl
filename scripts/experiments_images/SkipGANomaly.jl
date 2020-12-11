@@ -32,7 +32,6 @@ parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes, method = parsed_args
 
 modelname = "Conv-SkipGANomaly"
-DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
 
 function sample_params()
 	argnames = (:num_filters, :extra_layers, :lr, :batch_size,

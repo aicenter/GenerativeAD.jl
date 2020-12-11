@@ -32,7 +32,6 @@ parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes, method = parsed_args
 
 modelname = "ocsvm"
-DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
 
 function sample_params()
 	par_vec = (round.([10^x for x in -4:0.1:2],digits=5),["poly", "rbf", "sigmoid"],[0.01,0.5,0.99])

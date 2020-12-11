@@ -57,7 +57,6 @@ criterion = lowercase(sp[2])
 
 modelname = "$(enc)_knn"
 
-DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
 
 function sample_params()
 	par_vec = (1:2:101,)

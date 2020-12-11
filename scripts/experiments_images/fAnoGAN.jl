@@ -32,7 +32,7 @@ parsed_args = parse_args(ARGS, s)
 
 
 modelname = "fAnoGAN"
-DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
+
 """
 	sample_params()
 

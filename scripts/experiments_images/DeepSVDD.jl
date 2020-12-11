@@ -32,7 +32,6 @@ parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes, method = parsed_args
 
 modelname ="DeepSVDD"
-DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
 
 function sample_params()
 	# first sample the number of layers
