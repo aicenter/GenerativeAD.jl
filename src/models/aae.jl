@@ -44,9 +44,10 @@ Constructs an adversarial autoencoder with encoder-decoder-discriminator compone
 - `prior="normal"`: one of ["normal", "vamp"].
 - `pseudoinput_mean=nothing`: mean of data used to initialize the VAMP prior.
 - `k::Int=1`: number of VAMP components. 
+- `var="scalar"`: decoder covariance computation, one of ["scalar", "diag"].
 """
 function aae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=128, nlayers::Int=3, 
-	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, kwargs...)
+	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1,  var="scalar", kwargs...)
 	(nlayers < 2) ? error("Less than 3 layers are not supported") : nothing
 	
 	# if seed is given, set it
@@ -59,12 +60,19 @@ function aae_constructor(;idim::Int=1, zdim::Int=1, activation = "relu", hdim=12
 		ConditionalDists.SplitLayer(hdim, [zdim, zdim], [identity, safe_softplus])
 		)
 	encoder = ConditionalMvNormal(encoder_map)
-	
+
 	# decoder - we will optimize only a shared scalar variance for all dimensions
-	decoder_map = Chain(
-		build_mlp(zdim, hdim, hdim, nlayers-1, activation=activation)...,
-		ConditionalDists.SplitLayer(hdim, [idim, 1], [identity, safe_softplus])
-		)
+	if var=="scalar"
+		decoder_map = Chain(
+			build_mlp(zdim, hdim, hdim, nlayers-1, activation=activation)...,
+			ConditionalDists.SplitLayer(hdim, [idim, 1], [identity, safe_softplus])
+			)
+	else
+		decoder_map = Chain(
+			build_mlp(zdim, hdim, hdim, nlayers-1, activation=activation)...,
+			ConditionalDists.SplitLayer(hdim, [idim, idim], [identity, safe_softplus])
+			)
+	end
 	decoder = ConditionalMvNormal(decoder_map)
 
 	# discriminator
@@ -179,8 +187,8 @@ aeloss(m::AAE,x,batchsize::Int) =
 
 Discriminator loss given original sample x.
 """
-dloss(m::AAE,x) = dloss(m.discriminator, y->mean(m.encoder,y), rand(m.prior, size(x,ndims(x))), x)
-dloss(m::AAE{<:VAMP},x) = dloss(m.discriminator, y->mean(m.encoder,y), mean(m.encoder, rand(m.prior, size(x,ndims(x)))), x)
+dloss(m::AAE,x) = dloss(m.discriminator, y->rand(m.encoder,y), rand(m.prior, size(x,ndims(x))), x)
+dloss(m::AAE{<:VAMP},x) = dloss(m.discriminator, y->rand(m.encoder,y), rand(m.encoder, rand(m.prior, size(x,ndims(x)))), x)
 dloss(m::AAE,x,batchsize::Int) = 
 	mean(map(y->dloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 # note that X and Z is swapped here from the normal notation
@@ -190,7 +198,7 @@ dloss(m::AAE,x,batchsize::Int) =
 
 Encoder/generator loss.
 """
-gloss(m::AAE,x) = gloss(m.discriminator, y->mean(m.encoder,y), x)
+gloss(m::AAE,x) = gloss(m.discriminator, y->rand(m.encoder,y), x)
 gloss(m::AAE,x,batchsize::Int) = 
 	mean(map(y->gloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 

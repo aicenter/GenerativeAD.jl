@@ -26,12 +26,14 @@ end
 
 """
 	train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); seed=nothing,
-	    	contamination::Real=0.0)
+	    	method="leave-one-out", contamination::Real=0.0)
 
 Split data.
 """
-function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); seed=nothing, method="leave-one-out",
-	    	contamination::Real=0.0)
+
+function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); 
+	seed=nothing, method="leave-one-out", contamination::Real=0.0)
+
 	# split the normal data, add some anomalies to the train set and divide
 	# the rest between validation and test
 	(0 <= contamination <= 1) ? nothing : error("contamination must be in the interval [0,1]")
@@ -73,9 +75,9 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 
 	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
 end
-
 """
-	load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, contamination::Real=0.0)
+	load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
+	method="leave-one-out", contamination::Real=0.0)
 
 Returns 3 tuples of (data, labels) representing train/validation/test part. Arguments are the splitting
 ratios for normal data, seed and training data contamination.
@@ -83,7 +85,10 @@ ratios for normal data, seed and training data contamination.
 For a list of available datasets, check `GenerativeAD.Datasets.uci_datasets`, `GenerativeAD.Datasets.other_datasets`
 and `GenerativeAD.Datasets.mldatasets`.
 """
-function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, method="leave-one-out", contamination::Real=0.0, kwargs...)
+
+function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
+	method="leave-one-out", contamination::Real=0.0, kwargs...)
+
 	# extract data and labels
 	if dataset in uci_datasets # UCI Loda data, standardized
 		data_normal, data_anomalous = load_uci_data(dataset; kwargs...)
@@ -103,7 +108,6 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, method="
 		return train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
 	end
 end
-
 """
 	vectorize(data)
 
