@@ -12,7 +12,7 @@ function load_mldatasets_data(dataset::String; anomaly_class_ind::Int=1)
 
 	# do we need to download it?
 	isdir(joinpath(first(DataDeps.standard_loadpath), dataset)) ?
-		nothing : sublib.download(i_accept_the_terms_of_use=true)
+		nothing : sublib.download()
 
 	# now get the data
 	tr_x, tst_x = sublib.traintensor(Float32), sublib.testtensor(Float32)
