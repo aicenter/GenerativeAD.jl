@@ -203,7 +203,7 @@ end
 
 If not present, downloads tabular datasets.
 """
-init_tabular() = map(d->datadep"$d", filter(x->x != "kdd99_small", other_datasets))
+init_tabular() = map(d->(@datadep_str d), filter(x->x != "kdd99_small", other_datasets))
 
 """
 	load_other_dataset(dataset[; standardize=false])
