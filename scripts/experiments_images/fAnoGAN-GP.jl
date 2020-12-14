@@ -2,11 +2,9 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
-import StatsBase: fit!, predict
+using StatsBase: fit!, predict
 using StatsBase
 using BSON
-using Flux
-using GenerativeModels
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -22,16 +20,12 @@ s = ArgParseSettings()
 		arg_type = Int
 		default = 10
 		help = "number of anomaly classes"
-	"method"
-		arg_type = String
-		default = "leave-one-out"
-		help = "method for data creation -> \"leave-one-out\" or \"leave-one-in\" "
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, anomaly_classes, method = parsed_args
+@unpack dataset, max_seed, anomaly_classes = parsed_args
 
 
-modelname = "fAnoGAN"
+modelname = "fAnoGAN-GP"
 
 """
 	sample_params()
@@ -52,18 +46,14 @@ function sample_params()
 		2 .^ (5:7), 
 		["relu", "swish", "tanh"], 
 		1:Int(1e8),
-		[true, false],
-		[0.001,0.005,0.01,0.05,0.1]
 	)
 	argnames = (
 		:zdim, 
 		:lr_gan,
 		:lr_enc, 
-		:batchsize, 
+		:batch_size, 
 		:activation, 
 		:init_seed, 
-		:batchnorm,
-		:weight_clip,
 	)
 	parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 	return merge(parameters, (nlayers=nlayers, kernelsizes=kernelsizes,
@@ -81,36 +71,39 @@ Final parameters is a named tuple of names and parameter values that are used fo
 """
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
-	default_params = (idim = size(data[1][1])[1:3], kappa = 1f0, weight_clip=0.1, lr_gan = 0.00005, lr_enc = 0.001, batch_size=128, 
-		patience=10, check_every=30, iters=10000, mtt=82800, n_critic=5, usegpu=true)
+	default_params = (lr_gan = 0.00005, lr_enc = 0.001, batch_size=128, max_iters=10000, n_critic=5, usegpu=true)
 	
-
+	@info "idim -> $(size(data[1][1])[1:3]), flipped -> $(reverse(size(data[1][1])[1:3]))"
 	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.fanogan_constructor(;idim = size(data[1][1])[1:3], parameters...) |> gpu
+	model = GenerativeAD.Models.fAnoGAN_GP(;idim = reverse(size(data[1][1])[1:3]), usegpu=true, parameters...)
 
-	max_iter = 50 # this should be enough
-
+	#max_iter = 50 # this should be enough for testing purpouses
+	params = merge(default_params, parameters)
 	# fit train data
 	
-	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data, merge(default_params, parameters))
+	try 
+		global info, fit_t, _, _, _ = @timed StatsBase.fit!(model, data[1][1], 
+			max_iters=params.max_iters, lr_gan=params.lr_gan, lr_enc=params.lr_enc, 
+			batch_size=params.batch_size, n_critic=params.n_critic)
 	catch e
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
 	end
+
+	#println("printing return form fit! -> ", info)
 	model = info[1]
+	#println(model)
 	
 	# construct return information - put e.g. the model structure here for generative models
 	training_info = (
 		fit_t = fit_t,
 		history = info[2],
-		npars = info[3],
-		model = model |> cpu
+		model = model  # pytorchmodel
 		)
 
 	# now return the different scoring functions
-	training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(model, x), parameters)]
+	training_info, [(x -> predict(model, x), parameters)]
 end
 
 
@@ -123,10 +116,10 @@ while try_counter < max_tries
 
 	for seed in 1:max_seed
 		for i in 1:anomaly_classes
-			savepath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
+			savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 			mkpath(savepath)
 
-			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method)
+			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
 
 			@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
 			@info "Train/validation/test splits: $(size(data[1][1], 4)) | $(size(data[2][1], 4)) | $(size(data[3][1], 4))"
@@ -138,7 +131,8 @@ while try_counter < max_tries
 				training_info, results = fit(data, parameters)
 				# saving model separately
 				if training_info.model !== nothing
-					tagsave(joinpath(savepath, savename("model", parameters, "bson", digits=5)), Dict("model"=>training_info.model), safe = true)
+					# save model with build-in save funciton (torch.save) as .pt file (pt ~ pytorch)
+					training_info.model.model.save_model(joinpath(savepath, savename("model", parameters, digits=5)))
 					training_info = merge(training_info, (model = nothing,))
 				end
 				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))

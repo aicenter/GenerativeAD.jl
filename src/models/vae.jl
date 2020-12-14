@@ -78,12 +78,12 @@ function vae_constructor(;idim::Int=1, zdim::Int=1, activation="relu", hdim=128,
 	if prior == "normal"
 		prior_arg = zdim
 	elseif prior == "vamp"
-		(pseudoinput_mean == nothing) ? error("if `prior=vamp`, supply pseudoinput array") : nothing
+		(pseudoinput_mean === nothing) ? error("if `prior=vamp`, supply pseudoinput array") : nothing
 		prior_arg = init_vamp(pseudoinput_mean, k)
 	end
 
 	# reset seed
-	(init_seed != nothing) ? Random.seed!() : nothing
+	(init_seed !== nothing) ? Random.seed!() : nothing
 
 	# get the vanilla VAE
 	model = VAE(prior_arg, encoder, decoder)
@@ -155,8 +155,8 @@ end
 	StatsBase.fit!(model::VAE, data::Tuple, loss::Function; max_train_time=82800, lr=0.001, 
 		batchsize=64, patience=30, check_interval::Int=10, kwargs...)
 """
-function StatsBase.fit!(model::VAE, data::Tuple, loss::Function; max_train_time=82800, lr=0.001, 
-	batchsize=64, patience=30, check_interval::Int=10, kwargs...)
+function StatsBase.fit!(model::VAE, data::Tuple, loss::Function; max_iters=10000, max_train_time=82800, 
+	lr=0.001, batchsize=64, patience=30, check_interval::Int=10, kwargs...)
 	history = MVHistory()
 	opt = ADAM(lr)
 
@@ -187,37 +187,39 @@ function StatsBase.fit!(model::VAE, data::Tuple, loss::Function; max_train_time=
 		end, ps)
 	 	Flux.update!(opt, ps, gs)
 
-		# validation/early stopping
-		val_loss = (val_N > 5000) ? loss(tr_model, val_x, 256) : loss(tr_model, val_x)
-		
-		(i%check_interval == 0) ? (@info "$i - loss: $(batch_loss) (batch) | $(val_loss) (validation)") : nothing
-			
-		if isnan(val_loss) || isnan(batch_loss)
-			error("Encountered invalid values in loss function.")
-		end
-
 		push!(history, :training_loss, i, batch_loss)
-		push!(history, :validation_likelihood, i, val_loss)
+		if mod(i, check_interval) == 0
 			
-		if val_loss < best_val_loss
-			best_val_loss = val_loss
-			_patience = patience
-
-			# this should save the model at least once
-			# when the validation loss is decreasing 
-			if mod(i, 10) == 0
-				model = deepcopy(tr_model)
+			# validation/early stopping
+			val_loss = (val_N > 5000) ? loss(tr_model, val_x, 256) : loss(tr_model, val_x)
+			
+			@info "$i - loss: $(batch_loss) (batch) | $(val_loss) (validation)"
+				
+			if isnan(val_loss) || isnan(batch_loss)
+				error("Encountered invalid values in loss function.")
 			end
-		elseif time() - start_time > max_train_time # stop early if time is running out
+
+			push!(history, :validation_likelihood, i, val_loss)
+			
+			if val_loss < best_val_loss
+				best_val_loss = val_loss
+				_patience = patience
+
+				# this should save the model at least once
+				# when the validation loss is decreasing 
+				model = deepcopy(tr_model)
+			else # else stop if the model has not improved for `patience` iterations
+				_patience -= 1
+				if _patience == 0
+					@info "Stopped training after $(i) iterations."
+					break
+				end
+			end
+		end
+		if (time() - start_time > max_train_time) | (i > max_iters) # stop early if time is running out
 			model = deepcopy(tr_model)
 			@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
 			break
-		else # else stop if the model has not improved for `patience` iterations
-			_patience -= 1
-			if _patience == 0
-				@info "Stopped training after $(i) iterations."
-				break
-			end
 		end
 		i += 1
 	end

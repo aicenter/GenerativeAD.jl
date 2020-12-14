@@ -23,9 +23,13 @@ s = ArgParseSettings()
 		arg_type = Int
 		default = 10
 		help = "number of anomaly classes"
+	"method"
+		arg_type = String
+		default = "leave-one-out"
+		help = "method for data creation -> \"leave-one-out\" or \"leave-one-in\" "
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, anomaly_classes = parsed_args
+@unpack dataset, max_seed, anomaly_classes, method = parsed_args
 
 modelname = "Conv-SkipGANomaly"
 
@@ -96,9 +100,9 @@ while try_counter < max_tries
 
 	for seed in 1:max_seed
 		for i in 1:anomaly_classes
-			savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
+			savepath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 
-			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
+			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method)
 			# computing additional parameters
 			in_ch = size(data[1][1],3)
 			isize = maximum([size(data[1][1],1),size(data[1][1],2)])

@@ -8,8 +8,9 @@ DATASET=$2
 ANOMALY_CLASSES=$3
 MI_ONLY=$4
 TAB_NAME=$5
+METHOD=$6
 
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-julia ./two-stage_knn.jl ${MAX_SEED} $DATASET $TAB_NAME ${ANOMALY_CLASSES} ${MI_ONLY}
+julia ./two-stage_knn.jl ${MAX_SEED} $DATASET $TAB_NAME ${ANOMALY_CLASSES} ${MI_ONLY} $METHOD

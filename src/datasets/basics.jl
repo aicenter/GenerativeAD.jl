@@ -30,8 +30,10 @@ end
 
 Split data.
 """
+
 function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); 
 	seed=nothing, method="leave-one-out", contamination::Real=0.0)
+
 	# split the normal data, add some anomalies to the train set and divide
 	# the rest between validation and test
 	(0 <= contamination <= 1) ? nothing : error("contamination must be in the interval [0,1]")
@@ -83,8 +85,10 @@ ratios for normal data, seed and training data contamination.
 For a list of available datasets, check `GenerativeAD.Datasets.uci_datasets`, `GenerativeAD.Datasets.other_datasets`
 and `GenerativeAD.Datasets.mldatasets`.
 """
+
 function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
 	method="leave-one-out", contamination::Real=0.0, kwargs...)
+
 	# extract data and labels
 	if dataset in uci_datasets # UCI Loda data, standardized
 		data_normal, data_anomalous = load_uci_data(dataset; kwargs...)

@@ -98,7 +98,7 @@ end
 		kwargs...)
 """
 function StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss::Function, dloss::Function; 
-	max_iter=10000, max_train_time=82800, lr=0.001, batchsize=64, patience=30, check_interval::Int=10, 
+	max_iters=10000, max_train_time=82800, lr=0.001, batchsize=64, patience=30, check_interval::Int=10, 
 	weight_clip=nothing, discriminator_advantage::Int=1, stop_threshold=0.01, usegpu=false,
 	kwargs...)
 	history = MVHistory()
@@ -145,46 +145,46 @@ function StatsBase.fit!(model::GenerativeModels.GAN, data::Tuple, gloss::Functio
 		gs = gradient(() -> begin 
 			batch_gloss = gloss(tr_model,xbatch)
 		end, gps)
-	 	Flux.update!(gopt, gps, gs)
-
-		# only stop if discriminator loss on validation is getting close to 0
-		val_dloss = (val_N > 5000) ? dloss(tr_model, val_x, 256) : dloss(tr_model, val_x)
-		val_gloss = (val_N > 5000) ? gloss(tr_model, val_x, 256) : gloss(tr_model, val_x)
-		(i%check_interval == 0) ? (@info "$i - loss: $(batch_dloss) (dis) $(batch_gloss) (gen)  | validation: $(val_dloss) (dis) $(val_gloss) (gen)") : nothing
-		
-		# check nans
-		if isnan(val_dloss) || isnan(val_gloss) ||  isnan(batch_dloss) || isnan(batch_gloss)
-			error("Encountered invalid values in loss function.")
-		end
-
-		# save training progress
+		Flux.update!(gopt, gps, gs)
+		 
 		push!(history, :training_dloss, i, batch_dloss)
 		push!(history, :training_gloss, i, batch_gloss)
-		push!(history, :validation_dloss, i, val_dloss)
-		push!(history, :validation_gloss, i, val_gloss)
-			
-		# early stopping
-		# only stop if discriminator score gets too close to zero
-		if val_dloss > stop_threshold
-			best_val_dloss = val_dloss
-			_patience = patience
 
-			# this should save the model at least once
-			# when the validation loss is decreasing 
-			if mod(i, 10) == 0
+		if mod(i, check_interval) == 0
+			
+			# validation/early stopping
+			val_dloss = (val_N > 5000) ? dloss(tr_model, val_x, 256) : dloss(tr_model, val_x)
+			val_gloss = (val_N > 5000) ? gloss(tr_model, val_x, 256) : gloss(tr_model, val_x)
+			
+			@info "$i - dloss: $(batch_dloss) | $(val_dloss) (validation)"
+			@info "$i - gloss: $(batch_gloss) | $(val_gloss) (validation)"
+				
+			if isnan(val_gloss) || isnan(batch_dloss) || isnan(val_dloss) || isnan(batch_gloss)
+				error("Encountered invalid values in loss function.")
+			end
+
+			push!(history, :validation_dloss, i, val_dloss)
+			push!(history, :validation_gloss, i, val_gloss)
+			
+			if val_dloss > stop_threshold
+				best_val_dloss = val_dloss
+				_patience = patience
+
+				# this should save the model at least once
+				# when the validation loss is decreasing 
 				model = deepcopy(tr_model)
+			else # else stop if the model has not improved for `patience` iterations
+				_patience -= 1
+				if _patience == 0
+					@info "Stopped training after $(i) iterations."
+					break
+				end
 			end
 		end
-		if (time() - start_time > max_train_time) || (i>=max_iter) # stop early if time is running out
+		if (time() - start_time > max_train_time) | (i > max_iters) # stop early if time is running out
 			model = deepcopy(tr_model)
 			@info "Stopped training after $(i) iterations, $((time() - start_time)/3600) hours."
 			break
-		else # else stop if the model has not improved for `patience` iterations
-			_patience -= 1
-			if _patience == 0
-				@info "Stopped training after $(i) iterations."
-				break
-			end
 		end
 		i += 1
 	end

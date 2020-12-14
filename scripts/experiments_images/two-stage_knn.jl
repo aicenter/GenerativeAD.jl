@@ -39,9 +39,14 @@ s = ArgParseSettings()
 		default = -1
 		help = "index of model in range 1 to 10 or -1 for all models"
 
+	"method"
+		arg_type = String
+		default = "leave-one-out"
+		help = "method for data creation -> \"leave-one-out\" or \"leave-one-in\" "
+
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, tab_name, anomaly_classes, mi_only = parsed_args
+@unpack dataset, max_seed, tab_name, anomaly_classes, mi_only, method = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -51,6 +56,7 @@ enc = sp[1]
 criterion = lowercase(sp[2])
 
 modelname = "$(enc)_knn"
+
 
 function sample_params()
 	par_vec = (1:2:101,)
@@ -103,12 +109,12 @@ while try_counter < max_tries
 
 	for seed in 1:max_seed
 		for i in 1:anomaly_classes
-			savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
+			savepath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 			mi_indexes = (mi_only == -1) ? [1:10...] : [mi_only] 
 			for mi = mi_indexes
 				aux_info = (model_index=mi, criterion=criterion)
 
-				data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
+				data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method)
 				data, encoding_name, encoder_params = GenerativeAD.Models.load_encoding(tab_name, data, i, dataset=dataset, seed=seed, model_index=mi)
 
 				# here, check if a model with the same parameters was already tested
