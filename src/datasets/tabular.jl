@@ -48,7 +48,8 @@ function __init__()
 			"fbecd00c2ab44e0c95fb135e9c2f39d597fb8074dfaa8581ac2f889c927d40ad"
 		))
 	# this ensures eager loading (upon first usage of the package)
-	datadep"annthyroid"
+	# datadep"annthyroid"
+	# we dont do that no more
 
 	register(
 		DataDep(
@@ -73,7 +74,6 @@ function __init__()
 			"https://archive.ics.uci.edu/ml/machine-learning-databases/arrhythmia/arrhythmia.data",
 			"a7f0f4ca289a4c58b5ed85a9adb793189acd38425828ce3dfbb70adb45f30169"
 		))
-	datadep"arrhythmia"
 
 	register(
 		DataDep(
@@ -95,7 +95,6 @@ function __init__()
 			"ba442c076dd22a8952700f26e38499fc1806037dcf7bea0e125e6bfba393f379",
 			post_fetch_method = unpack
 		))
-	datadep"htru2"
 
 	register(
 		DataDep(
@@ -118,15 +117,24 @@ function __init__()
 			of data to be audited, which includes a wide variety of intrusions simulated in a military 
 			network environment.
 
-			WARNING for users of the RCI cluster - if the automatic unpacking fails, try to run it manually
-			in the `.julia/datadeps/kdd99` folder - e.g. `gzip -d kddcup.data.gz`.
+			!!!!!!!!!!!!!!!!!!!!
+
+			WARNING --- for some users, the automatic unpacking may fail. Run this instead:
+
+			mkdir ~/.julia/datadeps/kdd99
+			cd ~/.julia/datadeps/kdd99
+			wget http://kdd.ics.uci.edu/databases/kddcup99/kddcup.data.gz
+			wget http://kdd.ics.uci.edu/databases/kddcup99/kddcup.data_10_percent.gz
+			gzip -d kddcup.data.gz
+			gzip -d kddcup.data_10_percent.gz
+
+			!!!!!!!!!!!!!!!!!!!!
 			""",
 			["http://kdd.ics.uci.edu/databases/kddcup99/kddcup.data.gz", 
 			"http://kdd.ics.uci.edu/databases/kddcup99/kddcup.data_10_percent.gz"],
 			"bb29388a787b1cea818a6fd427d14ad45b556176b5fbf13257ca33c1d2dad7f3",
 			post_fetch_method = unpack
 		))
-	datadep"kdd99"	
 
 	register(
 		DataDep(
@@ -145,7 +153,6 @@ function __init__()
 			"https://archive.ics.uci.edu/ml/machine-learning-databases/spambase/spambase.data",
 			"b1ef93de71f97714d3d7d4f58fc9f718da7bbc8ac8a150eff2778616a8097b12"
 		))
-	datadep"spambase"
 
 	register(
 		DataDep(
@@ -160,7 +167,6 @@ function __init__()
 			"https://www.openml.org/data/get_csv/52214/phpn1jVwe",
 			"d39362668aa89b2b48aa0e6c2d12277850ace4c390e15b89862b7717f1525f0c"
 			))
-	datadep"mammography"
 
 	register(
 		DataDep(
@@ -176,7 +182,6 @@ function __init__()
 			"2045e435c955214b38145fb5fa00776c72814f01b203fec405152dac7d5bfeb0",
 			post_fetch_method = unpack
 			))
-	datadep"har"
 
 	register(
 		DataDep(
@@ -191,8 +196,14 @@ function __init__()
 			"https://archive.ics.uci.edu/ml/machine-learning-databases/00266/seismic-bumps.arff",
 			"aabe512fab65b36d1dfb462650b75cfd8d99d8cc2723e8ecb4e6f5e1caccd5a7",
 			))
-	datadep"seismic"
 end
+
+"""
+	init_tabular()
+
+If not present, downloads tabular datasets.
+"""
+init_tabular() = map(d->datadep"$d", filter(x->x != "kdd99_small", other_datasets))
 
 """
 	load_other_dataset(dataset[; standardize=false])
