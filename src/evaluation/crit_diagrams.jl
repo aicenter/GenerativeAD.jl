@@ -24,6 +24,16 @@ crit_srd(α::Real, k::Real, df::Real) =
     (isnan(k) | isnan(df)) ? NaN : quantile(StudentizedRange(df, k), 1-α)
 
 """
+    string2file(f, s)
+Save string s to file f.
+"""
+function string2file(f, s)
+    open(f, "w") do _f
+        write(_f, s)
+    end
+end
+
+"""
     eol(s)
 Replaces the "& " at the end of s with a tabular end of line.
 """
