@@ -1,24 +1,21 @@
 # GenerativeAD.jl
-Generative models for anomaly detection.
+Generative models for anomaly detection. This Julia package contains code for the paper "Comparison of Anomaly Detectors: Context Matters" [arXiv preprint](https://arxiv.org/abs/2012.06260).
 
 ## Installation
 
 Install prerequisites:
 ```julia
 (@julia) pkg> add https://github.com/vitskvara/UCI.jl.git
+(@julia) pkg> add https://github.com/pevnak/SumProductTransform.jl.git
+(@julia) pkg> add https://github.com/janfrancu/ContinuousFlows.jl.git
 ```
 
 Then install the package itself:
 ```julia
 (@julia) pkg> add https://github.com/aicenter/GenerativeAD.jl.git
 ```
+and instantiate from the package directory to install all the 
 
 ## Experimental setup:
 
-1) Each model has methods for model construction, fitting and prediction. For details, see e.g. the readme in `scripts/experiments_tabular`.
-2) On a single dataset, run each model on a limited budget, e.g. 100 random hyperparameter settings or limited time.
-3) Do train/validation/test split with a fixed seed.
-4) Crossvalidation only for the best model? Or not at all? 10 folds would be very expensive, especially on image data.
-5) Save almost everything - fit, train time, input parameters including the seed used for dataset splitting, scores on train/validation/test samples, labels. Model state as well? May be extremely space consuming but could be useful for computing additional scores.
-6) Evaluation metrics are computed post-hoc because they are cheap and their list will probably change a lot. Definitelly use AUC, AUPRC, F1, TPR@{1,2,5,10}, pAUC@{1,2,5,10}, maybe bootstrap TPR@?
-7) Try to run models all the time, while different models are being developed.
+To implement a new model, you need to define methods for model construction, fitting and prediction. For details, see e.g. the readme in `scripts/experiments_tabular`, where the experimental setup for running experiment repetitions is explained.

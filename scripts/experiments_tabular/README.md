@@ -7,15 +7,15 @@ Furthermore, create a model specific run script, such as `knn_run.sh`. Finally, 
 ```
 where `max_seed` is an integer that specifies the number of random crossvalidation retrainings.
 
-To run a model in a parallel way across datasets, run
+To run a model on the RCI cluster via `slurm` in a parallel way across datasets, run
 ```
 ./run_parallel.sh model_name num_repetition max_seed max_conc_tasks dataset_file
 ```
-which parallelizes the run on slurm cluster. Example:
+Example:
 ```
 ./run_parallel.sh knn 5 3 1 datasets_tabular.txt
 ```
-runs `knn_run.sh` script 5x over 3 folds and allowing only one job to run, 
-in order not to repeat training of models with some hyper_parameters. 
+runs `knn_run.sh` script 5x over 3 folds and allowing only one job to run at a time, 
+in order not to repeat training of models with same hyperparameters. 
 Even with maximum of one concurrent task, paralellization is still applied 
 accross different datasets.
