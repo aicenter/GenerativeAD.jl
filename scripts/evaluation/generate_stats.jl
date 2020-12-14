@@ -41,7 +41,7 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 	
 	source = datadir(source_prefix)
 	@info "Collecting files from $source folder."
-	files = GenerativeAD.Evaluation.collect_files(source)
+	files = GenerativeAD.Evaluation.collect_files_th(source)
 	# filter out model files
 	filter!(x -> !startswith(basename(x), "model"), files)
 	@info "Collected $(length(files)) files from $source folder."
@@ -50,15 +50,19 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 	files = files[randperm(length(files))]
 
 	@threads for f in files
+		target_dir = dirname(replace(f, source_prefix => target_prefix))
+		target = joinpath(target_dir, "eval_$(basename(f))")
 		try
-			target_dir = dirname(replace(f, source_prefix => target_prefix))
-			target = joinpath(target_dir, "eval_$(basename(f))")
 			if (isfile(target) && force) || ~isfile(target)
 				df = GenerativeAD.Evaluation.compute_stats(f)
 				wsave(target, Dict(:df => df))
 				@info "Saving evaluation results at $(target)"
 			end
 		catch e
+			# remove old files in order to ensure consistency
+			if (isfile(target) && force)
+				rm(target)
+			end
 			@warn "Processing of $f failed due to \n$e"
 		end
 	end

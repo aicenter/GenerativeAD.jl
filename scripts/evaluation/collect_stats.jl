@@ -8,6 +8,8 @@ using DataFrames
 using Base.Threads: @threads
 using GenerativeAD
 
+const CHUNK_SIZE = 1000
+
 s = ArgParseSettings()
 @add_arg_table! s begin
     "source_prefix"
@@ -31,15 +33,19 @@ Collects evaluation DataFrames from a given data folder prefix `source_prefix`.
 function collect_stats(source_prefix::String)
 	source = datadir(source_prefix)
 	@info "Collecting files from $source folder."
-	files = GenerativeAD.Evaluation.collect_files(source)
+	files = GenerativeAD.Evaluation.collect_files_th(source)
 	@info "Collected $(length(files)) files from $source folder."
 
-	frames = Vector{DataFrame}(undef, length(files))
-	@threads for i in 1:length(files)
-		df = load(files[i])[:df]
+	parts = collect(Iterators.partition(files, CHUNK_SIZE))
+	frames = Vector{DataFrame}(undef, length(parts))
+	@info "Loading into $(length(parts)) partitions."
+	@threads for i in 1:length(parts)
+		df = reduce(vcat, [load(f)[:df] for f in parts[i]])
 		frames[i] = df
+		print("-")
 	end
-	vcat(frames...)
+	@info "Loaded $(length(parts)) partitions."
+	df = reduce(vcat, frames)
 end
 
 
