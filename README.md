@@ -20,7 +20,7 @@ and instantiate from the package directory to install all the
 
 To implement a new model, you need to define methods for model construction, fitting and prediction. For details, see e.g. the readme in `scripts/experiments_tabular`, where the experimental setup for running experiment repetitions is explained.
 
-### Data:
+## Data:
 
 Only UCI datasets are available upon installation via the `UCI` package. Remaining tabular and image datasets are downloaded upon first request (e.g. via the `GenerativeAD.Datasets.load_data(dataset)` function). First download requires user input to accept download terms for individual datasets. If you want to avoid this, do
 ```bash
