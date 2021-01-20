@@ -16,16 +16,20 @@ s = ArgParseSettings()
         required = true
         arg_type = String
         help = "dataset"
+        "contamination"
+	arg_type = Float64
+    	help = "contamination rate of training data"
+    	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed = parsed_args
+@unpack dataset, max_seed, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "ocsvm"
 function sample_params()
-	par_vec = (round.([10^x for x in -4:0.1:2],digits=5),["poly", "rbf", "sigmoid"])
-	argnames = (:gamma,:kernel)
+	par_vec = (round.([10^x for x in -4:0.1:2],digits=5),["poly", "rbf", "sigmoid"],[0.01, 0.5, 0.99])
+	argnames = (:gamma,:kernel,:nu)
 	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
 function fit(data, parameters)
@@ -58,15 +62,16 @@ end
 # set a maximum for parameter sampling retries
 try_counter = 0
 max_tries = 10*max_seed
+cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
     parameters = sample_params()
 
     for seed in 1:max_seed
-		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
+		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
 		mkpath(savepath)
 
 		# get data
-		data = GenerativeAD.load_data(dataset, seed=seed)
+		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
 		
 		# edit parameters
 		edited_parameters = GenerativeAD.edit_params(data, parameters)
@@ -77,7 +82,7 @@ while try_counter < max_tries
 			# fit
 			training_info, results = fit(data, edited_parameters)
 			# here define what additional info should be saved together with parameters, scores, labels and predict times
-			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
 			# now loop over all anomaly score funs
 			for result in results
