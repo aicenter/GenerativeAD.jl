@@ -30,7 +30,6 @@ end
 
 Split data.
 """
-
 function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); 
 	seed=nothing, method="leave-one-out", contamination::Real=0.0)
 
@@ -46,8 +45,10 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 
 	# select anomalous indices
 	indices_anomalous = 1:size(data_anomalous, nd)
-	vtr = (1 - contamination)/2 # validation/test ratio
-	split_inds_anomalous = train_val_test_inds(indices_anomalous, (contamination, vtr, vtr); seed=seed)
+	na_tr = floor(Int, length(split_inds[1])*contamination/(1-contamination))
+	tr = na_tr/length(indices_anomalous) # training ratio
+	vtr = (1 - tr)/2 # validation/test ratio
+	split_inds_anomalous = train_val_test_inds(indices_anomalous, (tr, vtr, vtr); seed=seed)
 
 	# this can be done universally - how?
 	if nd == 2
@@ -75,6 +76,7 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 
 	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
 end
+
 """
 	load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
 	method="leave-one-out", contamination::Real=0.0)
@@ -85,7 +87,6 @@ ratios for normal data, seed and training data contamination.
 For a list of available datasets, check `GenerativeAD.Datasets.uci_datasets`, `GenerativeAD.Datasets.other_datasets`
 and `GenerativeAD.Datasets.mldatasets`.
 """
-
 function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
 	method="leave-one-out", contamination::Real=0.0, kwargs...)
 
@@ -108,6 +109,7 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
 		return train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
 	end
 end
+
 """
 	vectorize(data)
 

@@ -12,6 +12,10 @@
 	@test size(val_x,2) == floor(Int,size(data.normal,2)*0.2) + floor(Int,na*0.5) == length(val_y) > sum(val_y) > 0
 	@test size(tst_x,2) == floor(Int,size(data.normal,2)*0.2) + floor(Int,na*0.5) == length(tst_y) > sum(tst_y) > 0
 
+	# test contamination
+	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y) = GenerativeAD.load_data("waveform-1", contamination=0.1)
+	@test abs(sum(tr_y)/length(tr_y) - 0.1) < 0.001
+	@test sum(val_y) == sum(tst_y)
 
 	# img datasets
 	function test_img_data(dataset::String, dims)
