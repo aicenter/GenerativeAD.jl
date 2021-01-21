@@ -16,4 +16,6 @@ parsed_args = parse_args(ARGS, s)
 
 include("data.jl")
 include("experiments.jl")
-include("models/runtests.jl")
+if complete
+	include("models/runtests.jl")
+end
