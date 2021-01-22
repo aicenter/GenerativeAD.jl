@@ -51,11 +51,24 @@ function sample_params()
 	channels = reverse((16,32,64,128)[1:nlayers])
 	scalings = reverse((1,2,2,2)[1:nlayers])
 	
-	par_vec = (2 .^(3:8), 10f0 .^(-4:-3), 2 .^ (5:7), ["relu", "swish", "tanh"], 1:Int(1e8))
+	par_vec = (2 .^(3:8), 10f0 .^(-4:-3), 2 .^ (5:7), ["relu", "swish"], 1:Int(1e8))
 	argnames = (:zdim, :lr, :batchsize, :activation, :init_seed)
 	parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 	return merge(parameters, (nlayers=nlayers, kernelsizes=kernelsizes,
 		channels=channels, scalings=scalings))
+end
+function GenerativeAD.edit_params(data, parameters)
+	idim = size(data[1][1])
+	# on MNIST and FashionMNIST 4 layers are too much
+	if parameters.nlayers >= 4 && idim[1]*idim[2] >= 28*28
+		nlayers = rand(2:3)
+		kernelsizes = reverse((3,5,7,9)[1:nlayers])
+		channels = reverse((16,32,64,128)[1:nlayers])
+		scalings = reverse((1,2,2,2)[1:nlayers])
+		parameters = merge(parameters, (nlayers=nlayers,kernelsizes=kernelsizes,channels=channels,scalings=scalings))
+
+	end
+	parameters
 end
 """
 	loss(model::GenerativeModels.VAE, x[, batchsize])
