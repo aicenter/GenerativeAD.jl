@@ -4,7 +4,7 @@
 Split indices.
 """
 function train_val_test_inds(indices, ratios=(0.6,0.2,0.2); seed=nothing)
-    (sum(ratios) == 1 && length(ratios) == 3) ? nothing :
+    (sum(ratios) ≈ 1 && length(ratios) == 3) ? nothing :
     	error("ratios must be a vector of length 3 that sums up to 1")
 
     # set seed
