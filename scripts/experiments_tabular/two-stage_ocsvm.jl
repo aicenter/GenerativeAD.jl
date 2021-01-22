@@ -120,7 +120,8 @@ while try_counter < max_tries
 													 encoder_params=encoder_params, 
 													 encode_t = encode_t,
 													 model_index=mi,
-													 criterion=criterion))
+													 criterion=criterion,
+													 contamination = contamination))
 
 				# now loop over all anomaly score funs
 				for result in results

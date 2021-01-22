@@ -6,10 +6,11 @@
 
 MAX_SEED=$1
 DATASET=$2
+CONTAMINATION=$3
 
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
 julia --project -e 'using Pkg; Pkg.instantiate();'
 
-julia --project ./real_nvp.jl $MAX_SEED $DATASET
+julia --project ./real_nvp.jl $MAX_SEED $DATASET $CONTAMINATION

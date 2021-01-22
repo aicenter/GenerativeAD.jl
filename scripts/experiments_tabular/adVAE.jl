@@ -19,9 +19,13 @@ s = ArgParseSettings()
 		required = true
 		arg_type = String
 		help = "dataset"
+    "contamination"
+    	arg_type = Float64
+    	help = "contamination rate of training data"
+    	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed = parsed_args
+@unpack dataset, max_seed, contamination = parsed_args
 
 modelname ="adVAE"
 
@@ -93,14 +97,17 @@ end
 
 try_counter = 0
 max_tries = 10*max_seed
-
+cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
-	parameters = sample_params()
+    parameters = sample_params()
 
-	for seed in 1:max_seed
-		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
+    for seed in 1:max_seed
+		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
+		mkpath(savepath)
 
-		data = GenerativeAD.load_data(dataset, seed=seed)
+		# get data
+		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
+
 		# update parameter
 		parameters = merge(parameters, (idim=size(data[1][1],1), ))
 		# here, check if a model with the same parameters was already tested
@@ -112,7 +119,7 @@ while try_counter < max_tries
 				tagsave(joinpath(savepath, savename("model", parameters, "bson", digits=5)), Dict("model"=>training_info.model), safe = true)
 				training_info = merge(training_info, (model = nothing,))
 			end
-			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 			# now loop over all anomaly score funs
 			for result in results
 				GenerativeAD.experiment(result..., data, savepath; save_entries...)

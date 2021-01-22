@@ -13,21 +13,20 @@ using Distributions
 s = ArgParseSettings()
 @add_arg_table! s begin
    "max_seed"
-        required = true
         arg_type = Int
         help = "seed"
+        default = 1
     "dataset"
-        required = true
+        default = "iris"
         arg_type = String
         help = "dataset"
-end
-# for testing purposes
-if length(ARGS) == 0
-	push!(ARGS, "1")
-	push!(ARGS, "iris")
+    "contamination"
+    	arg_type = Float64
+    	help = "contamination rate of training data"
+    	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed = parsed_args
+@unpack dataset, max_seed, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -122,15 +121,16 @@ if abspath(PROGRAM_FILE) == @__FILE__
 	# set a maximum for parameter sampling retries
 	try_counter = 0
 	max_tries = 10*max_seed
+	cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 	while try_counter < max_tries
 	    parameters = sample_params()
 
 	    for seed in 1:max_seed
-			savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
+			savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
 			mkpath(savepath)
 
 			# get data
-			data = GenerativeAD.load_data(dataset, seed=seed)
+			data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
 			
 			# edit parameters
 			edited_parameters = GenerativeAD.edit_params(data, parameters)
@@ -156,7 +156,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 				end
 
 				# here define what additional info should be saved together with parameters, scores, labels and predict times
-				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
 				# now loop over all anomaly score funs
 				for result in results
