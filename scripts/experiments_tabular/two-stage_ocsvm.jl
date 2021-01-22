@@ -35,9 +35,13 @@ s = ArgParseSettings()
 		arg_type = Int
 		default = -1
 		help = "index of model in range 1 to 10 or -1 for all models"
+	"contamination"
+    	arg_type = Float64
+    	help = "contamination rate of training data"
+    	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, tab_name, mi_only = parsed_args
+@unpack dataset, max_seed, tab_name, mi_only, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -85,16 +89,17 @@ end
 # set a maximum for parameter sampling retries
 try_counter = 0
 max_tries = 10*max_seed
+cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
 	parameters = sample_params()
 
 	for seed in 1:max_seed
-		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
+		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
 		mi_indexes = (mi_only == -1) ? [1:10...] : [mi_only]
 		for mi = mi_indexes # iteration through encodings
 			aux_info = (model_index=mi, criterion=criterion)
 			# get data
-			data = GenerativeAD.load_data(dataset, seed=seed)
+			data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
 			output, encode_t, _, _, _ = @timed GenerativeAD.Models.load_encoding(tab_name, data, dataset=dataset, seed=seed, model_index=mi)
 			data, encoding_name, encoder_params, encoder_fit_t = output
 				

@@ -20,9 +20,13 @@ s = ArgParseSettings()
         arg_type = String
         help = "dataset"
         default = "iris"
+    "contamination"
+    	arg_type = Float64
+    	help = "contamination rate of training data"
+    	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed = parsed_args
+@unpack dataset, max_seed, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################

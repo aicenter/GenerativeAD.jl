@@ -11,11 +11,11 @@ using GenerativeModels
 s = ArgParseSettings()
 @add_arg_table! s begin
    "max_seed"
-        required = true
         arg_type = Int
         help = "seed"
+        default = 1
     "dataset"
-        required = true
+        default = "iris"
         arg_type = String
         help = "dataset"
 end

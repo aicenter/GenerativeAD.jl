@@ -16,8 +16,8 @@ s = ArgParseSettings()
         required = true
         arg_type = String
         help = "dataset"
-        "contamination"
-	arg_type = Float64
+    "contamination"
+		arg_type = Float64
     	help = "contamination rate of training data"
     	default = 0.0
 end
