@@ -5,7 +5,8 @@
 
 MAX_SEED=$1
 DATASET=$2
+CONTAMINATION=$3
 
 module load Julia/1.5.1-linux-x86_64
 
-julia ./GANomaly.jl ${MAX_SEED} $DATASET 
+julia ./GANomaly.jl ${MAX_SEED} $DATASET $CONTAMINATION 

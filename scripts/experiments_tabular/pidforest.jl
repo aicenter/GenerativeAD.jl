@@ -15,9 +15,13 @@ s = ArgParseSettings()
         required = true
         arg_type = String
         help = "dataset"
+    "contamination"
+    	arg_type = Float64
+    	help = "contamination rate of training data"
+    	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed = parsed_args
+@unpack dataset, max_seed, contamination = parsed_args
 
 modelname = "pidforest"
 function sample_params()
@@ -68,14 +72,16 @@ end
 
 try_counter = 0
 max_tries = 10*max_seed
+cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
     parameters = sample_params()
 
     for seed in 1:max_seed
-		savepath = datadir("experiments/tabular/$(modelname)/$(dataset)/seed=$(seed)")
+		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
 		mkpath(savepath)
 
-		data = GenerativeAD.load_data(dataset, seed=seed)
+		# get data
+		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
 		data = remove_constant_features(data)
 		edited_parameters = GenerativeAD.edit_params(data, parameters)
 
@@ -83,7 +89,7 @@ while try_counter < max_tries
 			@info "Started training PIDForest$(edited_parameters) on $(dataset):$(seed)"
 			
 			training_info, results = fit(data, edited_parameters)
-			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset))
+			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
 			for result in results
 				GenerativeAD.experiment(result..., data, savepath; save_entries...)

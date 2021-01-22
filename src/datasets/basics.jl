@@ -4,7 +4,7 @@
 Split indices.
 """
 function train_val_test_inds(indices, ratios=(0.6,0.2,0.2); seed=nothing)
-    (sum(ratios) == 1 && length(ratios) == 3) ? nothing :
+    (sum(ratios) ≈ 1 && length(ratios) == 3) ? nothing :
     	error("ratios must be a vector of length 3 that sums up to 1")
 
     # set seed
@@ -26,18 +26,16 @@ end
 
 """
 	train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); seed=nothing,
-	    	method="leave-one-out", contamination::Real=0.0)
+	    contamination::Real=0.0)
 
 Split data.
 """
-
 function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2); 
-	seed=nothing, method="leave-one-out", contamination::Real=0.0)
+	seed=nothing, contamination::Real=0.0)
 
 	# split the normal data, add some anomalies to the train set and divide
 	# the rest between validation and test
 	(0 <= contamination <= 1) ? nothing : error("contamination must be in the interval [0,1]")
-	any(method .== ["leave-one-out","leave-one-in"]) ? nothing : error("unknown method")
 	nd = ndims(data_normal) # differentiate between 2D tabular and 4D image data
 
 	# split normal indices
@@ -45,9 +43,13 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	split_inds = train_val_test_inds(indices, ratios; seed=seed)
 
 	# select anomalous indices
-	indices_anomalous = 1:size(data_anomalous, nd)
-	vtr = (1 - contamination)/2 # validation/test ratio
-	split_inds_anomalous = train_val_test_inds(indices_anomalous, (contamination, vtr, vtr); seed=seed)
+	na = size(data_anomalous, nd)
+	indices_anomalous = 1:na
+	na_tr = floor(Int, length(split_inds[1])*contamination/(1-contamination))
+	(na_tr > na) ? error("selected contamination rate $contamination is too high, not enough anomalies available") : nothing
+	tr = na_tr/length(indices_anomalous) # training ratio
+	vtr = (1 - tr)/2 # validation/test ratio
+	split_inds_anomalous = train_val_test_inds(indices_anomalous, (tr, vtr, vtr); seed=seed)
 
 	# this can be done universally - how?
 	if nd == 2
@@ -59,22 +61,18 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	end
 
 	# cat it together
-	if method == "leave-one-in"
-		tr_x = tr_n
-		tr_y = zeros(Float32, size(tr_x, nd))
-	else	
-		tr_x = cat(tr_n, tr_a, dims = nd)
-		tr_y = vcat(zeros(Float32, size(tr_n, nd)), ones(Float32, size(tr_a,nd)))
-	end
+	tr_x = cat(tr_n, tr_a, dims = nd)
 	val_x = cat(val_n, val_a, dims = nd)
 	tst_x = cat(tst_n, tst_a, dims = nd)
 
 	# now create labels
+	tr_y = vcat(zeros(Float32, size(tr_n, nd)), ones(Float32, size(tr_a,nd)))
 	val_y = vcat(zeros(Float32, size(val_n, nd)), ones(Float32, size(val_a,nd)))
 	tst_y = vcat(zeros(Float32, size(tst_n, nd)), ones(Float32, size(tst_a,nd)))
 
 	(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y)
 end
+
 """
 	load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
 	method="leave-one-out", contamination::Real=0.0)
@@ -85,9 +83,10 @@ ratios for normal data, seed and training data contamination.
 For a list of available datasets, check `GenerativeAD.Datasets.uci_datasets`, `GenerativeAD.Datasets.other_datasets`
 and `GenerativeAD.Datasets.mldatasets`.
 """
-
 function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
 	method="leave-one-out", contamination::Real=0.0, kwargs...)
+	any(method .== ["leave-one-out","leave-one-in"]) ? nothing : error("unknown method, choose one of `leave-one-in`, `leave-one-out`")
+	(method ==  "leave-one-in" && !(dataset in mldatasets)) ? error("`leave-one-in` only implemented for image datasets") : nothing
 
 	# extract data and labels
 	if dataset in uci_datasets # UCI Loda data, standardized
@@ -102,12 +101,13 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
 	end
 
 	# now do the train/validation/test split
-	if method=="leave-one-in"
-		return train_val_test_split(data_anomalous, data_normal, ratios; seed=seed, method=method, contamination=ratios[1])
+	if method=="leave-one-in" # in this case, we swap the anomalous nad normal data
+		return train_val_test_split(data_anomalous, data_normal, ratios; seed=seed, contamination=contamination)
 	else
 		return train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
 	end
 end
+
 """
 	vectorize(data)
 

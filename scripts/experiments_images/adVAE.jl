@@ -23,9 +23,17 @@ s = ArgParseSettings()
 		arg_type = Int
 		default = 10
 		help = "number of anomaly classes"
+	"method"
+		arg_type = String
+		default = "leave-one-out"
+		help = "method for data creation -> \"leave-one-out\" or \"leave-one-in\" "
+    "contamination"
+    	arg_type = Float64
+    	help = "contamination rate of training data"
+    	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, anomaly_classes = parsed_args
+@unpack dataset, max_seed, anomaly_classes, method, contamination = parsed_args
 
 modelname ="adVAE"
 
@@ -97,15 +105,15 @@ end
 
 try_counter = 0
 max_tries = 10*max_seed
-
+cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
 	parameters = sample_params()
 
 	for seed in 1:max_seed
 		for i in 1:anomaly_classes
-			savepath = datadir("experiments/images/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
+			savepath = datadir("experiments/images_$(method)$cont_string/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 
-			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i)
+			data = GenerativeAD.load_data(dataset, seed=seed, method=method, anomaly_class_ind=i)
 			# computing additional parameters
 			in_ch = size(data[1][1],3)
 			isize = maximum([size(data[1][1],1),size(data[1][1],2)])
@@ -124,7 +132,8 @@ while try_counter < max_tries
 					tagsave(joinpath(savepath, savename("model", parameters, "bson", digits=5)), Dict("model"=>training_info.model), safe = true)
 					training_info = merge(training_info, (model = nothing,))
 				end
-				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
+				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i,
+					contamination=contamination))
 				# now loop over all anomaly score funs
 				for result in results
 					GenerativeAD.experiment(result..., data, savepath; save_entries...)

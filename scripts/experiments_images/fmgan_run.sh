@@ -9,8 +9,9 @@ MAX_SEED=$1
 DATASET=$2
 ANOMALY_CLASSES=$3
 METHOD=$4
+CONTAMINATION=$5
 
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-julia ./fmgan.jl ${MAX_SEED} $DATASET ${ANOMALY_CLASSES} $METHOD
+julia ./fmgan.jl ${MAX_SEED} $DATASET ${ANOMALY_CLASSES} $METHOD $CONTAMINATION

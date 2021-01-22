@@ -26,9 +26,13 @@ s = ArgParseSettings()
 		arg_type = String
 		default = "leave-one-out"
 		help = "method for data creation -> \"leave-one-out\" or \"leave-one-in\" "
+    "contamination"
+    	arg_type = Float64
+    	help = "contamination rate of training data"
+    	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, anomaly_classes, method = parsed_args
+@unpack dataset, max_seed, anomaly_classes, method, contamination = parsed_args
 
 
 #######################################################################################
@@ -47,11 +51,24 @@ function sample_params()
 	channels = reverse((16,32,64,128)[1:nlayers])
 	scalings = reverse((1,2,2,2)[1:nlayers])
 	
-	par_vec = (2 .^(3:8), 10f0 .^(-4:-3), 2 .^ (5:7), ["relu", "swish", "tanh"], 1:Int(1e8))
+	par_vec = (2 .^(3:8), 10f0 .^(-4:-3), 2 .^ (5:7), ["relu", "swish"], 1:Int(1e8))
 	argnames = (:zdim, :lr, :batchsize, :activation, :init_seed)
 	parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 	return merge(parameters, (nlayers=nlayers, kernelsizes=kernelsizes,
 		channels=channels, scalings=scalings))
+end
+function GenerativeAD.edit_params(data, parameters)
+	idim = size(data[1][1])
+	# on MNIST and FashionMNIST 4 layers are too much
+	if parameters.nlayers >= 4 && idim[1]*idim[2] >= 28*28
+		nlayers = rand(2:3)
+		kernelsizes = reverse((3,5,7,9)[1:nlayers])
+		channels = reverse((16,32,64,128)[1:nlayers])
+		scalings = reverse((1,2,2,2)[1:nlayers])
+		parameters = merge(parameters, (nlayers=nlayers,kernelsizes=kernelsizes,channels=channels,scalings=scalings))
+
+	end
+	parameters
 end
 """
 	loss(model::GenerativeModels.VAE, x[, batchsize])
@@ -125,16 +142,17 @@ if abspath(PROGRAM_FILE) == @__FILE__
 	# set a maximum for parameter sampling retries
 	try_counter = 0
 	max_tries = 10*max_seed
+	cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 	while try_counter < max_tries
 		parameters = sample_params()
 
 		for seed in 1:max_seed
 			for i in 1:anomaly_classes
-				savepath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
+				savepath = datadir("experiments/images_$(method)$cont_string/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 				mkpath(savepath)
 
 				# get data
-				data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method)
+				data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method, contamination=contamination)
 				
 				# edit parameters
 				edited_parameters = GenerativeAD.edit_params(data, parameters)
@@ -165,7 +183,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
 					end
 
 					# here define what additional info should be saved together with parameters, scores, labels and predict times
-					save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i))
+					save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i,
+					contamination=contamination))
 
 					# now loop over all anomaly score funs
 					for result in results
