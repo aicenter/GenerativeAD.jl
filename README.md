@@ -11,14 +11,37 @@ Install prerequisites:
 ```
 
 Then install the package itself:
-```julia
-(@julia) pkg> add https://github.com/aicenter/GenerativeAD.jl.git
+
+1. Clone this repo somewhere.
+2. Run Julia in the cloned dir.
+```bash
+cd path/to/repo/GenerativeAD.jl
+julia --project
 ```
-and instantiate from the package directory to install all the 
+3. Install all the packages and compile the package.
+```julia
+(@julia) pkg> add DrWatson
+(@julia) pkg> instantiate
+(@julia) using GenerativeAD
+```
 
 ## Experimental setup:
 
 To implement a new model, you need to define methods for model construction, fitting and prediction. For details, see e.g. the readme in `scripts/experiments_tabular`, where the experimental setup for running experiment repetitions is explained.
+
+## Running experiments on the RCI cluster
+
+0. First, load Julia and Python modules.
+```bash
+ml Julia
+ml Python
+```
+1. Install the package somewhere on the RCI cluster.
+2. Then the experiments can be run via `slurm`. This will run 20 experiments with the basic VAE model, each with 5 crossvalidation repetitions on all datasets in the text file with 10 parallel processes for each dataset. All data will be saved in `GenerativeAD.jl/data/experiments/tabular`
+```bash
+cd GenerativeAD.jl/scripts/experiments_tabular
+./run_parallel.sh vae 20 5 10 datasets_tabular.txt
+```
 
 ## Data:
 
