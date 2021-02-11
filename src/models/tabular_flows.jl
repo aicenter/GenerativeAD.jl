@@ -128,8 +128,8 @@ function StatsBase.fit!(model::F, data::Tuple; max_train_time=82800,
 		push!(history, :training_loss, i, l)
 		push!(history, :validation_likelihood, i, val_loss)
 		
-		# 23 hours time limit
-		if time() - start_time > 82600
+		# time limit for training
+		if time() - start_time > max_train_time
 			@info "Stopped training after $(i) iterations due to time limit."
 			model = deepcopy(trn_model)
 			break
