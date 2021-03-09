@@ -37,7 +37,7 @@ List of the available MNIST-C categories.
 mnist_c_categories() = readdir(joinpath(datadep"MNIST-C", "mnist_c"))
 
 """
-	load_mnist_c(;category::String="brightness")
+	load_mnist_c_data(;category::String="brightness")
 
 Loads the corrupted MNIST dataset for given category. Returns normal (non-corrupted) and anomalous data. For 
 a list of available corruption categories, run `GenerativeAD.Datasets.mnist_c_categories()`.
@@ -51,4 +51,56 @@ function load_mnist_c_data(;category::String="brightness")
 	tr_x_n, tst_x_n = map(x->Float32.(permutedims(npzread(joinpath(dp, "identity", x))/255, (2,3,4,1))), 
 		["train_images.npy", "test_images.npy"])
 	return cat(tr_x_n, tst_x_n, dims=4), cat(tr_x_a, tst_x_a, dims=4)
+end
+
+"""
+	mvtec_ad_categories()
+
+List of the available MVTec-AD categories.
+"""
+mvtec_ad_categories() = readdir(datadep"MVTec-AD")
+
+"""
+	load_mvtec_ad_data(;category::String="bottle")
+
+Loads the corrupted MNIST dataset for given category. Returns normal (non-corrupted) and anomalous data. For 
+a list of available corruption categories, run `GenerativeAD.Datasets.mnist_c_categories()`.
+"""
+function load_mvtec_ad_data(;category::String="bottle")
+	dp = datadep"MVTec-AD"
+	available_categories = mvtec_ad_categories()
+	!(category in available_categories) ? error("Requested category $category not found, $(available_categories) available.") : nothing
+	cdp = joinpath(dp, category)
+	# training and testing normal images
+	tr_imgs_n = load_images_rgb(joinpath(cdp, "train/good"))
+	tst_imgs_n = load_images_rgb(joinpath(cdp, "test/good"))
+	# anomalous images
+	tst_imgs_a = map(x->load_images_rgb(joinpath(cdp, "test", x)), filter(x->x!="good", readdir(joinpath(cdp, "test"))))
+
+	return cat(tr_imgs_n, tst_imgs_n, dims=4), cat(tst_imgs_a..., dims=4)
+end
+
+"""
+	img_to_array_rgb(img)
+
+Convert RGB img to a 3D tensor.
+"""
+img_to_array_rgb(img) = permutedims(Float32.(channelview(RGB.(img))), (2,3,1))
+
+"""
+	load_images_rgb(path)
+
+Load all images in a path.
+"""
+function load_images_rgb(path)
+	imgs = []
+	for f in readdir(path, join=true)
+		try # some files are corrupted
+			img = img_to_array_rgb(load(f))
+			push!(imgs, img)
+		catch
+			nothing
+		end
+	end
+	cat(imgs..., dims=4)
 end

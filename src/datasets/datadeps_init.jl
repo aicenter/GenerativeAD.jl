@@ -188,6 +188,19 @@ function __init__()
 			"af9ee8c6a815870c7fdde5af84c7bf8db0bcfa1f41056db83871037fba70e493",
 			post_fetch_method = unpack
 			))
-
+	
+	register(
+		DataDep(
+			"MVTec-AD",
+			"""
+			Dataset: MVTec-AD
+			Authors: Paul Bergmann, Michael Fauser, David Sattlegger, Carsten Steger
+			Website: https://www.mvtec.com/company/research/datasets/mvtec-ad
+			
+			MVTec AD is a dataset for benchmarking anomaly detection methods with a focus on industrial inspection. It contains over 5000 high-resolution images divided into fifteen different object and texture categories. Each category comprises a set of defect-free training images and a test set of images with various kinds of defects as well as images without defects.
+			""",
+			"ftp://guest:GU%2E205dldo@ftp.softronics.ch/mvtec_anomaly_detection/mvtec_anomaly_detection.tar.xz",
+			"cf4313b13603bec67abb49ca959488f7eedce2a9f7795ec54446c649ac98cd3d",
+			post_fetch_method = unpack
+			))
 end
-

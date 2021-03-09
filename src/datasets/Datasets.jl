@@ -10,6 +10,7 @@ using CSV
 using DataFrames
 using Flux # for one-hot encoding
 using NPZ
+using Images
 
 export load_data
 
