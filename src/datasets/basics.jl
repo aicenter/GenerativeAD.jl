@@ -93,8 +93,10 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
 		data_normal, data_anomalous = load_uci_data(dataset; kwargs...)
 	elseif dataset in mldatasets # MNIST,FMNIST, SVHN2, CIFAR10
 		data_normal, data_anomalous = load_mldatasets_data(dataset; kwargs...)
-	elseif dataset in other_datasets
+	elseif dataset in other_datasets # other tabular datasets
 		data_normal, data_anomalous = load_other_data(dataset; standardize=true, kwargs...)
+	elseif dataset == "MNIST-C" 
+		data_normal, data_anomalous = load_mnist_c_data(; kwargs...)
 	else
 		error("Dataset $(dataset) not known, either not implemented or misspeled.")
 		# TODO add the rest

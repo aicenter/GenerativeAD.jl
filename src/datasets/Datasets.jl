@@ -9,9 +9,11 @@ using Random
 using CSV
 using DataFrames
 using Flux # for one-hot encoding
+using NPZ
 
 export load_data
 
+include("datadeps_init.jl")
 include("tabular.jl")
 include("img.jl")
 include("basics.jl")

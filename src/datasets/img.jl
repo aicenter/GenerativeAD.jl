@@ -28,3 +28,27 @@ function load_mldatasets_data(dataset::String; anomaly_class_ind::Int=1)
 	aclass_inds = labels .== label_list[anomaly_class_ind] # indices of anomalous data
 	data[:,:,:,.!aclass_inds], data[:,:,:,aclass_inds]
 end
+
+"""
+	mnist_c_categories()
+
+List of the available MNIST-C categories.
+"""
+mnist_c_categories() = readdir(joinpath(datadep"MNIST-C", "mnist_c"))
+
+"""
+	load_mnist_c(;category::String="brightness")
+
+Loads the corrupted MNIST dataset for given category. Returns normal (non-corrupted) and anomalous data. For 
+a list of available corruption categories, run `GenerativeAD.Datasets.mnist_c_categories()`.
+"""
+function load_mnist_c_data(;category::String="brightness")
+	dp = joinpath(datadep"MNIST-C", "mnist_c")
+	available_categories = mnist_c_categories()
+	!(category in available_categories) ? error("Requested category $category not found, $(available_categories) available.") : nothing
+	tr_x_a, tst_x_a = map(x->Float32.(permutedims(npzread(joinpath(dp, category, x))/255, (2,3,4,1))), 
+		["train_images.npy", "test_images.npy"])
+	tr_x_n, tst_x_n = map(x->Float32.(permutedims(npzread(joinpath(dp, "identity", x))/255, (2,3,4,1))), 
+		["train_images.npy", "test_images.npy"])
+	return cat(tr_x_n, tst_x_n, dims=4), cat(tr_x_a, tst_x_a, dims=4)
+end
