@@ -95,10 +95,18 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
 		data_normal, data_anomalous = load_mldatasets_data(dataset; kwargs...)
 	elseif dataset in other_datasets # other tabular datasets
 		data_normal, data_anomalous = load_other_data(dataset; standardize=true, kwargs...)
-	elseif dataset == "MNIST-C" 
+	elseif dataset =="MNIST-C"
 		data_normal, data_anomalous = load_mnist_c_data(; kwargs...)
-	elseif dataset == "MVTec-AD" 
+	elseif dataset == "MVTec-AD"
 		data_normal, data_anomalous = load_mvtec_ad_data(; kwargs...)
+	elseif occursin("MNIST-C", dataset)
+		sd = split(dataset, "_")
+		category = (length(sd) >= 2) ? dataset[9:end] : "brightness"
+		data_normal, data_anomalous = load_mnist_c_data(; category=category, kwargs...)
+	elseif occursin("MVTec-AD", dataset) 
+		sd = split(dataset, "_")
+		category = (length(sd) >= 2) ? dataset[10:end] : "bottle"
+		data_normal, data_anomalous = load_mvtec_ad_data(; category=category, kwargs...)
 	else
 		error("Dataset $(dataset) not known, either not implemented or misspeled.")
 		# TODO add the rest
