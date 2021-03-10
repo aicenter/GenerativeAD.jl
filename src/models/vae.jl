@@ -127,7 +127,7 @@ function conv_vae_constructor(;idim=(2,2,1), zdim::Int=1, activation="relu", hdi
 	encoder = ConditionalMvNormal(encoder_map)
 	
 	# decoder - we will optimize only a shared scalar variance for all dimensions
-	# also, the decoder output will be vectorized so the usual logpdfs vcan be used
+	# also, the decoder output will be vectorized so the usual logpdfs can be used
 	vecdim = reduce(*,idim[1:3]) # size of vectorized data
 	decoder_map = Chain(
 		conv_decoder(idim, zdim, reverse(kernelsizes), reverse(channels), reverse(scalings),

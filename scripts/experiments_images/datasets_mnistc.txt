@@ -1,0 +1,15 @@
+MNIST-C_brightness
+MNIST-C_canny_edges
+MNIST-C_dotted_line
+MNIST-C_fog
+MNIST-C_glass_blur
+MNIST-C_impulse_noise
+MNIST-C_motion_blur
+MNIST-C_rotate
+MNIST-C_scale
+MNIST-C_shear
+MNIST-C_shot_noise
+MNIST-C_spatter
+MNIST-C_stripe
+MNIST-C_translate
+MNIST-C_zigzag
