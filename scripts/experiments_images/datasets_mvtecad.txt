@@ -1,0 +1,15 @@
+MVTec-AD_bottle
+MVTec-AD_capsule
+MVTec-AD_grid
+MVTec-AD_leather
+MVTec-AD_metal_nut
+MVTec-AD_tile
+MVTec-AD_transistor
+MVTec-AD_zipper
+MVTec-AD_cable
+MVTec-AD_carpet
+MVTec-AD_hazelnut
+MVTec-AD_pill
+MVTec-AD_screw
+MVTec-AD_toothbrush
+MVTec-AD_wood
