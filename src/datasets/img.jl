@@ -42,7 +42,7 @@ mnist_c_categories() = readdir(joinpath(datadep"MNIST-C", "mnist_c"))
 Loads the corrupted MNIST dataset for given category. Returns normal (non-corrupted) and anomalous data. For 
 a list of available corruption categories, run `GenerativeAD.Datasets.mnist_c_categories()`.
 """
-function load_mnist_c_data(;category::String="brightness")
+function load_mnist_c_data(;category::String="brightness", kwargs...)
 	dp = joinpath(datadep"MNIST-C", "mnist_c")
 	available_categories = mnist_c_categories()
 	!(category in available_categories) ? error("Requested category $category not found, $(available_categories) available.") : nothing
@@ -66,7 +66,7 @@ mvtec_ad_categories() = readdir(datadep"MVTec-AD")
 Loads the corrupted MNIST dataset for given category. Returns normal (non-corrupted) and anomalous data. For 
 a list of available corruption categories, run `GenerativeAD.Datasets.mnist_c_categories()`.
 """
-function load_mvtec_ad_data(;category::String="bottle")
+function load_mvtec_ad_data(;category::String="bottle", kwargs...)
 	dp = datadep"MVTec-AD"
 	available_categories = mvtec_ad_categories()
 	!(category in available_categories) ? error("Requested category $category not found, $(available_categories) available.") : nothing
