@@ -1,7 +1,8 @@
 #!/bin/bash
-# This runs parallel experiments over all datasets.
+# This runs parallel experiments over all datasets
+# a version for image datasets without multiple anomaly classes (MVTec-AD, MNIST-C)
 # USAGE EXAMPLE
-# 	./run_parallel.sh pidforest 3 1 2 datasets_tabular.txt 0.01
+# 	./run_parallel_no_class.sh vae 3 1 2 datasets_mnistc.txt 0.1
 # Run from this folder only.
 MODEL=$1 		# which model to run
 NUM_SAMPLES=$2	# how many repetitions

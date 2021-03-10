@@ -75,13 +75,14 @@ end
 
 """
 	load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
-	method="leave-one-out", contamination::Real=0.0)
+	method="leave-one-out", contamination::Real=0.0, category)
 
 Returns 3 tuples of (data, labels) representing train/validation/test part. Arguments are the splitting
 ratios for normal data, seed and training data contamination.
 
-For a list of available datasets, check `GenerativeAD.Datasets.uci_datasets`, `GenerativeAD.Datasets.other_datasets`
-and `GenerativeAD.Datasets.mldatasets`.
+For a list of available datasets, check `GenerativeAD.Datasets.uci_datasets`, `GenerativeAD.Datasets.other_datasets`,
+`GenerativeAD.Datasets.mldatasets`. For MNIST-C and MVTec-AD datasets, the categories can be obtained by
+ `GenerativeAD.Datasets.mnist_c_categories()` and `GenerativeAD.Datasets.mvtec_ad_categories()`.
 """
 function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
 	method="leave-one-out", contamination::Real=0.0, kwargs...)
@@ -99,13 +100,11 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
 		data_normal, data_anomalous = load_mnist_c_data(; kwargs...)
 	elseif dataset == "MVTec-AD"
 		data_normal, data_anomalous = load_mvtec_ad_data(; kwargs...)
-	elseif occursin("MNIST-C", dataset)
-		sd = split(dataset, "_")
-		category = (length(sd) >= 2) ? dataset[9:end] : "brightness"
+	elseif occursin("MNIST-C", dataset) # this is so one can pass both the dataset and category in one string
+		category = dataset[9:end]
 		data_normal, data_anomalous = load_mnist_c_data(; category=category, kwargs...)
 	elseif occursin("MVTec-AD", dataset) 
-		sd = split(dataset, "_")
-		category = (length(sd) >= 2) ? dataset[10:end] : "bottle"
+		category = dataset[10:end]
 		data_normal, data_anomalous = load_mvtec_ad_data(; category=category, kwargs...)
 	else
 		error("Dataset $(dataset) not known, either not implemented or misspeled.")
