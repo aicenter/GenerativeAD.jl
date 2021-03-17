@@ -42,6 +42,17 @@ function edit_params(data, parameters)
 end
 
 """
+	sample_params(parameters_range; add_model_seed=false)
+Samples a named tuple from a given parameters_range tuple. If a model has the option
+of a fixed initial seed, set `add_model_seed` to true to add random integer entry `init_seed`.
+"""
+function sample_params(parameters_range; add_model_seed=false)
+	p = (;zip(keys(parameters_range), map(x->sample(x, 1)[1], parameters_range))...)
+	add_model_seed ? merge((;init_seed=rand(1:Int(1e8))), p) : p
+end
+
+
+"""
 	check_params(savepath, parameters)
 
 Returns `true` if the model with given parameters wasn't already trained and saved. 
