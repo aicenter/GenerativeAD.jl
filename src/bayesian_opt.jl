@@ -17,10 +17,9 @@ struct BayesianHyperOpt
 		from sklearn.utils import check_random_state
 
 		def construct_optimizer(dimensions):
-			rng = check_random_state(None)
+			rng = check_random_state(7) 			# fix seed to fit always the same model
 			space = normalize_dimensions(dimensions)
 
-			# fix seed to be consistent on each instantiation
 			base_estimator = cook_estimator(
 		    				"GP", space=space, 
 		    				random_state=rng.randint(0, np.iinfo(np.int32).max),
