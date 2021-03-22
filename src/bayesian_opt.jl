@@ -81,9 +81,9 @@ skopt_parse(dimension, entry::Bool) = (;[Symbol(dimension.name) => entry]...)
 skopt_parse(dimension, entry::T) where {T <: AbstractFloat} = (;[Symbol(dimension.name) => entry]...)
 
 function skopt_parse(dimension, entry::T) where {T <: Integer}
-	if startswith(dimension.name. "log2_")
+	if startswith(dimension.name, "log2_")
 		return (;[Symbol(dimension.name[6:end]) => 2^entry]...)
-	elseif startswith(dimension.name. "log10_")
+	elseif startswith(dimension.name, "log10_")
 		return (;[Symbol(dimension.name[7:end]) => 10^entry]...)
 	else
 		return (;[Symbol(dimension.name) => entry]...)
@@ -91,9 +91,9 @@ function skopt_parse(dimension, entry::T) where {T <: Integer}
 end
 
 function skopt_parse(dimension, entry::T) where {T <: AbstractString}
-	if startswith(dimension.name. "sym_") 
+	if startswith(dimension.name, "sym_") 
 		return (;[Symbol(dimension.name[5:end]) => Symbol(entry)]...)
-	elseif startswith(dimension.name. "fun_")
+	elseif startswith(dimension.name, "fun_")
 		return (;[Symbol(dimension.name[5:end]) => eval(:($(Symbol(entry))))]...)
 	else
 		return (;[Symbol(dimension.name) => entry]...)
@@ -104,6 +104,8 @@ end
 	from_skopt(space, p)
 Converts an array of hyperparameters `p` from skotp to a named tuple 
 based on provided metadata in skotp's Space class instance `space`.
+The order of entries in `p` coincides with the order of dimensions in `space`, 
+if that is not the case something broke down.
 """
 function from_skopt(space, p)
 	merge([skopt_parse(dim, entry) for (dim, entry) in zip(space, p)]...)
@@ -111,20 +113,30 @@ end
 
 
 tuple_parse(dimension, entry::Bool) = entry
-tuple_parse(dimension, entry::T) where {T <: Integer} = startswith(dimension.name. "log2") ? Int(log2(entry)) : entry
 tuple_parse(dimension, entry::T) where {T <: AbstractString} = entry
 tuple_parse(dimension, entry::T) where {T <: AbstractFloat} = entry
 tuple_parse(dimension, entry::Symbol) = string(entry)
 tuple_parse(dimension, entry::Function) = string(entry) 	# SPTN has identity function in hyperparameters
 
+function tuple_parse(dimension, entry::T) where {T <: Integer} 
+	if startswith(dimension.name, "log2")
+		return Int(log2(entry))
+	elseif startswith(dimension.name, "log10")
+		return Int(log10(entry))
+	else
+		return entry
+	end
+end
 
 """
 	to_skopt(space, p)
 Converts named tuple of hyperparameters `p` from Julia to a list of hyperparameters in skopt 
-based on provided metadata in skotp's Space class instance `space`.
+based on provided metadata in skotp's Space class instance `space`. 
+The order of entries in `p` does not have to coincide with the order of dimensions in `space`, 
+but it will be imposed by keys of the `space` tuple.
 """
 function to_skopt(space, p)
-	[tuple_parse(dim, entry) for (dim, entry) in zip(space, p)]
+	[tuple_parse(dim, p[name]) for (name, dim) in pairs(space)]
 end
 
 
