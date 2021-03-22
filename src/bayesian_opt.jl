@@ -1,3 +1,4 @@
+using PyCall
 using StatsBase
 
 """
@@ -76,26 +77,26 @@ Dimension's name have to following this convention:
 ```
 Other cases of `T` such as Bool, Real, Int are handled without any specific treatment.
 """
-skopt_parse(dimension, entry::Bool) = (;dimension.name = entry)
-skopt_parse(dimension, entry::T) where {T <: AbstractFloat} = (;dimension.name = entry)
+skopt_parse(dimension, entry::Bool) = (;[Symbol(dimension.name) => entry]...)
+skopt_parse(dimension, entry::T) where {T <: AbstractFloat} = (;[Symbol(dimension.name) => entry]...)
 
 function skopt_parse(dimension, entry::T) where {T <: Integer}
 	if startswith(dimension.name. "log2_")
-		return (;dimension.name[6:end] = 2^entry)
+		return (;[Symbol(dimension.name[6:end]) => 2^entry]...)
 	elseif startswith(dimension.name. "log10_")
-		return (;dimension.name[7:end] = 10^entry)
+		return (;[Symbol(dimension.name[7:end]) => 10^entry]...)
 	else
-		return (;dimension.name = entry)
+		return (;[Symbol(dimension.name) => entry]...)
 	end
 end
 
 function skopt_parse(dimension, entry::T) where {T <: AbstractString}
 	if startswith(dimension.name. "sym_") 
-		return (;dimension.name[5:end] = Symbol(entry)) 
+		return (;[Symbol(dimension.name[5:end]) => Symbol(entry)]...)
 	elseif startswith(dimension.name. "fun_")
-		return (;dimension.name[5:end] = eval(:($(Symbol(entry))))
+		return (;[Symbol(dimension.name[5:end]) => eval(:($(Symbol(entry))))]...)
 	else
-		return (;dimension.name = entry) 
+		return (;[Symbol(dimension.name) => entry]...)
 	end
 end
 
@@ -105,7 +106,7 @@ Converts an array of hyperparameters `p` from skotp to a named tuple
 based on provided metadata in skotp's Space class instance `space`.
 """
 function from_skopt(space, p)
-	merge([skopt_parse(dim, entry) for (dim, entry) zip(space, p)]...)
+	merge([skopt_parse(dim, entry) for (dim, entry) in zip(space, p)]...)
 end
 
 
@@ -123,25 +124,35 @@ Converts named tuple of hyperparameters `p` from Julia to a list of hyperparamet
 based on provided metadata in skotp's Space class instance `space`.
 """
 function to_skopt(space, p)
-	[tuple_parse(dim, entry) for (dim, entry) zip(space, p)]
+	[tuple_parse(dim, entry) for (dim, entry) in zip(space, p)]
 end
 
 
+# heavily in progress
 
-function bayes_params(space, modelname, dataset, prefix, fallback)
-	# load results
-	results = load_cache
-	if isfile("")
+# """
+# 	function bayes_params(space, folder, fallback)
+# Tries to load a cache of results to seed the optimizer with. The file should be in 
 
-	else
-		return fallback()
-	end
-end
+# """
+# function bayes_params(space, folder, fallback)
+# 	# load results
+# 	results = load_bayes_cache
+# 	if isfile("")
 
-function load_bayes_cache(modelname, dataset, prefix)
+# 	else
+# 		return fallback()
+# 	end
+# end
 
-end
+# function load_bayes_cache(modelname, dataset, prefix)
 
-function register_run()
+# 	x0, y0
+# end
 
-end
+# """
+
+# """
+# function register_run()
+
+# end
