@@ -45,27 +45,29 @@ parameter_rng = (
 )
 
 """
-	convert_range_space(parameters_range)
-Converts parameters_range tuple to python `skotp.space` classes.
+	create_space()
+Creates a named tuple of python `skotp.space` classes which corresponds 
+to the hyperparameter ranges in each script.
+Some naming conventions apply, see `?GenerativeAD.skopt_parse`.
 """
-function convert_range_space(parameters_range)
+function create_space()
 	pyReal = pyimport("skopt.space")["Real"]
 	pyInt = pyimport("skopt.space")["Integer"]
 	pyCat = pyimport("skopt.space")["Categorical"]
 	
-	[
-		pyInt(1, 3, 							name="log2_nflows"),
-		pyInt(4, 10, 							name="log2_hdim"),
-		pyInt(2, 3, 							name="nlayers"),
-		pyReal(1e-6, 1e-1, prior="log-uniform", name="lr"),
-		pyInt(5, 7, 							name="log2_batchsize"),
-		pyCat(categories=["relu", "tanh"], 		name="act_loc"),
-		pyCat(categories=["relu", "tanh"], 		name="act_scl"),
-		pyCat(categories=["true", "false"], 	name="bn"),
-		pyReal(1e-7, 1e-3, prior="log-uniform", name="lr"), # cannot turn it off
-		pyCat(categories=[true, false], 		name="init_I"),
-		pyCat(categories=[true, false], 		name="tanhscaling")
-	]
+	(;
+		nflows 		= pyInt(1, 3, 								name="log2_nflows"),
+		hdim 		= pyInt(4, 10, 								name="log2_hdim"),
+		nlayers 	= pyInt(2, 3, 								name="nlayers"),
+		lr 			= pyReal(1e-6, 1e-1, prior="log-uniform", 	name="lr"),
+		batchsize 	= pyInt(5, 7, 								name="log2_batchsize"),
+		act_loc		= pyCat(categories=["relu", "tanh"], 		name="act_loc"),
+		act_scl		= pyCat(categories=["relu", "tanh"], 		name="act_scl"),
+		bn 			= pyCat(categories=[true, false], 			name="bn"),
+		wreg 		= pyReal(1e-7, 1e-3, prior="log-uniform", 	name="lr"), # cannot turn it off
+		init_I 		= pyCat(categories=[true, false], 			name="init_I"),
+		tanhscaling = pyCat(categories=[true, false], 			name="tanhscaling")
+	)
 end
 
 function fit(data, parameters)
