@@ -1,6 +1,4 @@
 using DrWatson
-using BSON
-using FileIO
 using Random
 using DataFrames
 using Statistics
@@ -83,14 +81,15 @@ function _auc_at(n, labels, scores, auc)
 end
 
 """
-	compute_stats(f::String)
+	compute_stats(r::Dict{Symbol,Any}; top_metrics=true)
 
 Computes evaluation metrics from the results of experiment in serialized bson at path `f`.
 Returns a DataFrame row with metrics and additional metadata for groupby's.
-Hash of the model parameters is precomputed in order to make the groupby easier.
+Hash of the model's parameters is precomputed in order to make the groupby easier.
+As there are additional modes of failure in computation of top metrics (`PAT_METRICS`,...),
+now there is option not to compute them by setting `top_metrics=false`.
 """
-function compute_stats(f::String)
-	r = load(f)
+function compute_stats(r::Dict{Symbol,Any}; top_metrics=true)
 	row = (
 		modelname = r[:modelname],
 		dataset = r[:dataset],
@@ -135,7 +134,8 @@ function compute_stats(f::String)
 				invrat = ninvalid/length(scores)
 				invlab = labels[invalid]
 				cml = countmap(invlab)
-				@warn "Invalid stats for $(f) \t $(ninvalid) | $(invrat) | $(length(scores)) | $(get(cml, 1.0, 0)) | $(get(cml, 0.0, 0))"
+				# we have lost the filename here due to the interface change
+				@warn "Invalid stats for $(r[:modelname])/$(r[:dataset])/.../$(row[:parameters]) \t $(ninvalid) | $(invrat) | $(length(scores)) | $(get(cml, 1.0, 0)) | $(get(cml, 0.0, 0))"
 
 				scores = scores[.~invalid]
 				labels = labels[.~invalid]
@@ -157,14 +157,16 @@ function compute_stats(f::String)
 					[auc, auprc, tpr5, f5])...))
 
 			# compute precision on most anomalous samples
-			pat = [_precision_at(p/100.0, labels, scores) for p in [0.01, 0.1, 1.0, 5.0, 10.0, 20.0]]
-			row = merge(row, (;zip(_prefix_symbol.(splt, PAT_METRICS), pat)...))
+			if top_metrics
+				pat = [_precision_at(p/100.0, labels, scores) for p in [0.01, 0.1, 1.0, 5.0, 10.0, 20.0]]
+				row = merge(row, (;zip(_prefix_symbol.(splt, PAT_METRICS), pat)...))
 
-			patn = [_nprecision_at(n, labels, scores) for n in [5, 10, 50, 100, 500, 1000]]
-			row = merge(row, (;zip(_prefix_symbol.(splt, PATN_METRICS), patn)...))	
+				patn = [_nprecision_at(n, labels, scores) for n in [5, 10, 50, 100, 500, 1000]]
+				row = merge(row, (;zip(_prefix_symbol.(splt, PATN_METRICS), patn)...))	
 
-			pac = [_auc_at(n, labels, scores, auc) for n in [5, 10, 50, 100, 500, 1000]]
-			row = merge(row, (;zip(_prefix_symbol.(splt, PAC_METRICS), pac)...))	
+				pac = [_auc_at(n, labels, scores, auc) for n in [5, 10, 50, 100, 500, 1000]]
+				row = merge(row, (;zip(_prefix_symbol.(splt, PAC_METRICS), pac)...))
+			end
 		else
 			error("$(splt)_scores contain only one value")
 		end
