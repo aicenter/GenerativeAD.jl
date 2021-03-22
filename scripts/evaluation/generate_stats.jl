@@ -54,7 +54,8 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 		target = joinpath(target_dir, "eval_$(basename(f))")
 		try
 			if (isfile(target) && force) || ~isfile(target)
-				df = GenerativeAD.Evaluation.compute_stats(f)
+				r = load(f)
+				df = GenerativeAD.Evaluation.compute_stats(r)
 				wsave(target, Dict(:df => df))
 				@info "Saving evaluation results at $(target)"
 			end
