@@ -88,7 +88,7 @@ end
 
 ######################################################################################
 
-function conv_ae_constructor(
+function conv_svdd_constructor(
 	;idim=(2,2,1), 
 	zdim::Int=1, 
 	activation="relu", 
@@ -124,7 +124,7 @@ function conv_ae_constructor(
 end
 
 
-function ae_constructor(
+function svdd_constructor(
 	;idim::Int=1, 
 	zdim::Int=1, 
 	hdim::Int=64, 
