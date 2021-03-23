@@ -81,7 +81,7 @@ function fit(data, parameters)
 		)
 
 
-    return training_info, [(x -> GenerativeAD.Models.anomaly_score(ae, x), parameters)] 
+    return training_info, [(x -> GenerativeAD.Models.anomaly_score(ae, x; dims=1), parameters)] 
     # if there is no gpu on pc anomaly_score will automaticly run on cpu
 end
 

@@ -65,7 +65,7 @@ end
 
 function anomaly_score(ae::AE, real_input; dims=(1,2,3), to_testmode::Bool=true)
     (to_testmode == true) ? Flux.testmode!(ae) : nothing
-    score = vec(Flux.sum((ae(x) .- x).^2, dims=dims))
+    score = vec(Flux.sum((ae(real_input) .- real_input).^2, dims=dims))
     (to_testmode == true) ? Flux.testmode!(ae, false) : nothing
 	return scores
 end
@@ -126,11 +126,11 @@ function StatsBase.fit!(ae::AE, data, params)
         push!(history, :loss_ae, iter, loss_ae)
 
 		next!(progress; showvalues=[
-			(:iters, "$(iter)/$(total_iters)"),
+			(:iters, "$(iter)/$(params.iters)"),
 			(:ae_loss, loss_ae)
 			])
 
-		if mod(iter, params.ae_check_every) == 0
+		if mod(iter, params.check_every) == 0
 			total_val_loss = 0
 			Flux.testmode!(ae)
 			for X_val in val_loader
