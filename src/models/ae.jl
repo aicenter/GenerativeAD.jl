@@ -1,14 +1,14 @@
 struct AE
-    encoder
-    decoder
+	encoder
+	decoder
 end
 
 Flux.@functor AE
 
 function (ae::AE)(x)
-    z = ae.encoder(x)
-    x̂ = ae.decoder(z)
-    return x̂
+	z = ae.encoder(x)
+	x̂ = ae.decoder(z)
+	return x̂
 end
 
 # ae_loss already in svdd
@@ -71,7 +71,7 @@ function anomaly_score(ae::AE, real_input; dims=(1,2,3), to_testmode::Bool=true)
 end
 
 function anomaly_score_gpu(ae::AE, real_input; batch_size=64, dims=(1,2,3), to_testmode::Bool=true)
-    real_input = Flux.Data.DataLoader(real_input, batchsize=batch_size)
+	real_input = Flux.Data.DataLoader(real_input, batchsize=batch_size)
 	(to_testmode == true) ? Flux.testmode!(ae) : nothing
 	ae = ae |> gpu
 	scores = Array{Float32}([])
@@ -95,7 +95,7 @@ function StatsBase.fit!(ae::AE, data, params)
 	patience = params.patience
 	val_batches = length(val_loader)
 
-    if ndims(first(train_loader)) == 2
+	if ndims(first(train_loader)) == 2
 		dims = 1
 	elseif ndims(first(train_loader)) == 4
 		dims = (1,2,3)
@@ -112,7 +112,7 @@ function StatsBase.fit!(ae::AE, data, params)
 
 	# train "AE"
 	progress = Progress(params.iters)
-    ps_ae = Flux.params(AE)
+	ps_ae = Flux.params(AE)
 
 	for (iter, X) in enumerate(train_loader)
 		X = getobs(X)|>gpu
@@ -123,7 +123,7 @@ function StatsBase.fit!(ae::AE, data, params)
 		Flux.Optimise.update!(opt_ae, ps_ae, grad_ae)
 
 
-        push!(history, :loss_ae, iter, loss_ae)
+		push!(history, :loss_ae, iter, loss_ae)
 
 		next!(progress; showvalues=[
 			(:iters, "$(iter)/$(params.iters)"),
@@ -147,12 +147,12 @@ function StatsBase.fit!(ae::AE, data, params)
 				patience -= 1
 				if patience == 0
 					@info "Stopped training of Autoencoder after $(iter) iterations"
-                    global iters = iter - params.check_every*params.patience
+					global iters = iter - params.check_every*params.patience
 					break
 				end
 			end
 		end  
-        if iter == params.iters
+		if iter == params.iters
 			global iters = params.iters
 		end      
 	end

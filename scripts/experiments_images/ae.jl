@@ -27,10 +27,10 @@ s = ArgParseSettings()
 		arg_type = String
 		default = "leave-one-out"
 		help = "method for data creation -> \"leave-one-out\" or \"leave-one-in\" "
-    "contamination"
-    	arg_type = Float64
-    	help = "contamination rate of training data"
-    	default = 0.0
+	"contamination"
+		arg_type = Float64
+		help = "contamination rate of training data"
+		default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes, method, contamination = parsed_args

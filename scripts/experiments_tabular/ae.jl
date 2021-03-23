@@ -19,10 +19,10 @@ s = ArgParseSettings()
 		required = true
 		arg_type = String
 		help = "dataset"
-    "contamination"
-    	arg_type = Float64
-    	help = "contamination rate of training data"
-    	default = 0.0
+	"contamination"
+		arg_type = Float64
+		help = "contamination rate of training data"
+		default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, contamination = parsed_args
@@ -34,8 +34,8 @@ function sample_params()
 		:hdim, 
 		:zdim, 
 		:nlayers, 
-        :activation, 
-        :lr,
+		:activation, 
+		:lr,
 		:batch_size, 
 		:init_seed,
 	)
@@ -43,8 +43,8 @@ function sample_params()
 		2 .^(4:9),
 		2 .^(3:8),
 		3:4,
-        ["relu", "swish", "tanh"],
-        10f0 .^ (-4:-3),
+		["relu", "swish", "tanh"],
+		10f0 .^ (-4:-3),
 		2 .^ (5:7),
 		1:Int(1e8),
 	)
@@ -61,8 +61,8 @@ function fit(data, parameters)
 			patience=10, 
 		)
 	)
-    
-    ae = GenerativeAD.Models.ae_constructor(;all_parameters...)
+	
+	ae = GenerativeAD.Models.ae_constructor(;all_parameters...)
 
 	# define optimiser
 	try
@@ -72,7 +72,7 @@ function fit(data, parameters)
 		return (fit_t = NaN, model = nothing, history = nothing, n_parameters = NaN), []
 	end
 
-    training_info = (
+	training_info = (
 		fit_t = fit_t,
 		model = info[2]|>cpu,
 		history = info[1], # losses through time
@@ -81,8 +81,8 @@ function fit(data, parameters)
 		)
 
 
-    return training_info, [(x -> GenerativeAD.Models.anomaly_score(ae, x; dims=1), parameters)] 
-    # if there is no gpu on pc anomaly_score will automaticly run on cpu
+	return training_info, [(x -> GenerativeAD.Models.anomaly_score(ae, x; dims=1), parameters)] 
+	# if there is no gpu on pc anomaly_score will automaticly run on cpu
 end
 
 #_________________________________________________________________________________________________
@@ -91,16 +91,16 @@ try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
-    parameters = sample_params()
+	parameters = sample_params()
 
-    for seed in 1:max_seed
+	for seed in 1:max_seed
 		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
 		mkpath(savepath)
 
 		# get data
 		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
-		        
-        @info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
+				
+		@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
 		@info "Train/validation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[3][1], 2))"
 		@info "Number of features: $(size(data[1][1])[1])"
 
