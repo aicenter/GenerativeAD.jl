@@ -47,7 +47,7 @@ function sample_params()
 	par_vec = (
 		2 .^(3:8), 
 		10f0 .^(-4:-3), 
-		[true, false], 
+		[false], 
 		2 .^ (6:7), 
 		["relu", "swish", "tanh"], 
 		1:Int(1e8)
