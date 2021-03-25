@@ -22,28 +22,28 @@ struct BayesianHyperOpt
 			space = normalize_dimensions(dimensions)
 
 			base_estimator = cook_estimator(
-		    				"GP", space=space, 
-		    				random_state=rng.randint(0, np.iinfo(np.int32).max),
-			    			noise="gaussian")
+							"GP", space=space, 
+							random_state=rng.randint(0, np.iinfo(np.int32).max),
+							noise="gaussian")
 
 			# default from gp_minimize
 			acq_optimizer_kwargs = {"n_points": 10000, "n_restarts_optimizer": 5, "n_jobs": 1}
 			acq_func_kwargs = {"xi": 0.01, "kappa": 1.96}
 
 			optimizer = Optimizer(
-		        space,
-		        base_estimator,
-		        n_initial_points=0, 				# should be zero in order to skip the random generation
-		        initial_point_generator="random", 	# it fallbacks into random even if it is None, so here you go
-		        n_jobs=-1,
-		        acq_func="gp_hedge", 				# default from gp_minimize
-		        acq_optimizer="auto", 				# default from gp_minimize
-		        random_state=rng,
-		        model_queue_size=None,				# default from gp_minimize
-		        acq_optimizer_kwargs=acq_optimizer_kwargs,
-		        acq_func_kwargs=acq_func_kwargs)
+				space,
+				base_estimator,
+				n_initial_points=0, 				# should be zero in order to skip the random generation
+				initial_point_generator="random", 	# it fallbacks into random even if it is None, so here you go
+				n_jobs=-1,
+				acq_func="gp_hedge", 				# default from gp_minimize
+				acq_optimizer="auto", 				# default from gp_minimize
+				random_state=rng,
+				model_queue_size=None,				# default from gp_minimize
+				acq_optimizer_kwargs=acq_optimizer_kwargs,
+				acq_func_kwargs=acq_func_kwargs)
 
-		    return optimizer
+			return optimizer
 		"""
 		new(py"construct_optimizer"(dimensions))
 	end
