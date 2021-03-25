@@ -1,6 +1,10 @@
 using PyCall
 using StatsBase
+using Statistics
 
+using .Evaluation: compute_stats, _get_anomaly_class
+
+const BAYES_CACHE = "bayes_cache.bson"
 """
 	BayesianHyperOpt
 
@@ -143,31 +147,128 @@ function to_skopt(space, p)
 end
 
 
-# heavily in progress
+"""
+	objective_value(r)
 
-# """
-# 	function bayes_params(space, folder, fallback)
-# Tries to load a cache of results to seed the optimizer with. The file should be in 
+Validates entry from bayesian cache and returns aggregated score, which is optimized by `BayesianHyperOpt`.
+For empty entries (no model trained) we return `fail_value`.
+"""
+function objective_value(runs; agg=mean, fail_value=0.0f0)
+	if length(runs) > 0 # should we be more strict?
+		return agg(runs)
+	else
+		return fail_value
+	end
+end
 
-# """
-# function bayes_params(space, folder, fallback)
-# 	# load results
-# 	results = load_bayes_cache
-# 	if isfile("")
+"""
+	function bayes_params(space, folder, parameter_range; add_model_seed=true)
+Tries to load a cache of results to seed the optimizer with. The file should be named by `BAYES_CACHE`
+global constant and located in `folder`. This method fallbacks to using `sample_params` on
+provided `parameter_range`, if the cache has not been created. 
+"""
+function bayes_params(space, folder, parameter_range; add_model_seed=true)
+	cache = load_bayes_cache(folder)
+	if cache !== nothing		
+		x0 = [v[:parameters] for v in values(cache)]
+		y0 = [objective_value(v[:runs]) for v in values(cache)] 
+		@info("Loaded cached results from $(folder).")
+		x0 = [to_skopt(space, x) for x in x0]
+		opt = BayesianHyperOpt(collect(space))
+		tell(opt, x0, y0)
+		@info("Fitted GP with $(length(x0)) samples.")
+		p = from_skopt(space, ask(opt))
+		
+		# registers only parameters with empty arrays and store cache
+		register_run!(cache, (;parameters=p); fit_results=false)
+		save_bayes_cache(folder, cache)
 
-# 	else
-# 		return fallback()
-# 	end
-# end
+		@info("Fetched new hyperparameters: $(p).")
+		return add_model_seed ? merge((;init_seed=rand(1:Int(1e8))), p) : p
+	else
+		@warn("Could not find bayesian cache file at $(folder), sampling.")
+		return sample_params(parameter_range, add_model_seed=add_model_seed)
+	end
+end
 
-# function load_bayes_cache(modelname, dataset, prefix)
+"""
+	load_bayes_cache(folder)
 
-# 	x0, y0
-# end
+Tries to load serialized results of Bayesian optimization from `folder`.
+"""
+function load_bayes_cache(folder)
+    file = joinpath(folder, BAYES_CACHE)
+	isfile(file) ? BSON.load(file) : Dict{UInt64, Any}()
+end
 
-# """
+"""
+	save_bayes_cache(folder)
 
-# """
-# function register_run()
+Saves serialized results of Bayesian optimization to `folder`.
+"""
+function save_bayes_cache(folder, cache)
+    file = joinpath(folder, BAYES_CACHE)
+	wsave(file, cache)
+end
 
-# end
+"""
+	update_bayes_cache(folder, results,  )
+
+Loads bayesian cache from folder and updates it with results
+TODO Updating with multiple results is not working yet - could be done
+by giving `register_run!` dataframe with aggregated columns using aggregation in `agg`.
+"""
+function update_bayes_cache(folder, results, agg=:max; kwargs...)
+	_cache = load_bayes_cache(folder) 
+	cache = _cache !== nothing ? _cache : Dict{UInt64, Any}()
+	for r in results
+		register_run!(cache, r; kwargs...)
+	end
+	save_bayes_cache(folder, cache)
+end
+
+"""
+	register_run!(cache, r::Dict{Symbol,Any}; metric=:val_auc, ignore=Set([:init_seed]))
+
+Updates `cache` with new result from `r`. All basic metrics from `.Evaluation` module are
+supported and their column name can be passed in the `metric` argument.
+Set of hyperparameters that are not optimized is given by the `ignore` argument, 
+which by default filters `:init_seed`. 
+"""
+function register_run!(cache, r::Dict{Symbol,Any}; fit_results=true, metric=:val_auc, flip_sign=true, ignore=Set([:init_seed]))
+	metric_value = try
+		fit_results ? compute_stats(r, top_metrics=false)[metric] : []
+	catch e
+		@warn("Cache has not been updated. Stats computation failed due to $e")
+		return
+	end
+	
+	# filter only those parameters that are being optimized
+	parameters = (;filter(p -> !(p[1] in ignore), pairs(r[:parameters]))...) 
+	ophash = hash(parameters)   # corresponds only to optimizable parameters
+								# there may be colisions (e.g. parameter being run with two seeds)
+
+	if ophash in keys(cache) && fit_results				# add to existing entry
+		entry = cache[ophash]
+		seed = vcat(entry[:seed], r[:seed])
+		anomaly_class = vcat(entry[:anomaly_class], _get_anomaly_class(r))
+		runs = vcat(entry[:runs], flip_sign ? -metric_value : metric_value)
+
+		cache[ophash] = merge(entry, (;seed=seed, anomaly_class=anomaly_class, runs=runs))
+	elseif !(ophash in keys(cache)) && fit_results		# or create new entry if there are results (mainly used during manual cache creation)
+		entry = (;
+			parameters = parameters,
+			seed = [r[:seed]],
+			anomaly_class = [_get_anomaly_class(r)],
+			runs = flip_sign ? -metric_value : metric_value)
+		cache[ophash] = entry
+	else							# otherwise add an empty entry (this is to indicate that such parameters are about to be trained)
+		entry = (;
+			parameters = parameters,
+			seed = Int[],
+			anomaly_class = Int[],
+			runs = Float32[])
+		
+		cache[ophash] = entry
+	end
+end
