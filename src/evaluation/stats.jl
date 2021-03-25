@@ -81,6 +81,21 @@ function _auc_at(n, labels, scores, auc)
 end
 
 """
+	_get_anomaly_class(r)
+Due to some code legacy we have two different names for anomaly_class entries. This returns 
+the correct entry or -1 if there is no anomaly_class entry.
+"""
+function _get_anomaly_class(r)
+	if Symbol("anomaly_class") in keys(r)
+		return r[:anomaly_class]
+	elseif Symbol("ac") in keys(r)
+		return r[:ac]
+	else
+		return -1
+	end
+end
+
+"""
 	compute_stats(r::Dict{Symbol,Any}; top_metrics=true)
 
 Computes evaluation metrics from the results of experiment in serialized bson at path `f`.
@@ -103,10 +118,9 @@ function compute_stats(r::Dict{Symbol,Any}; top_metrics=true)
 		npars = (Symbol("npars") in keys(r)) ? r[:npars] : 0
 	)
 	
-	if Symbol("anomaly_class") in keys(r)
-		row = merge(row, (anomaly_class = r[:anomaly_class],))
-	elseif Symbol("ac") in keys(r)
-		row = merge(row, (anomaly_class = r[:ac],))
+	anomaly_class = _get_anomaly_class(r)
+	if anomaly_class != -1
+		row = merge(row, (anomaly_class = anomaly_class,))
 	end
 
 	# add fs = first stage fit/eval time
