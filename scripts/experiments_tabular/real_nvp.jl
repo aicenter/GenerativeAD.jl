@@ -96,13 +96,16 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
+prefix = "experiments/tabular$(cont_string)"
 while try_counter < max_tries
-	parameters = bayes ? GenerativeAD.bayes_params(
-								convert_range_space(parameters_rng), 
-								modelname, dataset,
-								() -> GenerativeAD.sample_params(parameter_rng, add_model_seed=true)
-								) : 
-						GenerativeAD.sample_params(parameter_rng, add_model_seed=true)
+	if bayes
+		parameters = GenerativeAD.bayes_params(
+								create_space(), 
+								datadir("$(prefix)/$(modelname)/$(dataset)"),
+								parameter_rng, add_model_seed=true)
+	else
+		parameters = GenerativeAD.sample_params(parameter_rng, add_model_seed=true)
+	end
 
     for seed in 1:max_seed
 		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
@@ -119,7 +122,7 @@ while try_counter < max_tries
 			
 			training_info, results = fit(data, edited_parameters)
 
-			if training_info.model != nothing
+			if training_info.model !== nothing
 				tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
 						Dict("model"=>training_info.model,
 							"fit_t"=>training_info.fit_t,
@@ -130,8 +133,11 @@ while try_counter < max_tries
 			end
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
-			for result in results
-				GenerativeAD.experiment(result..., data, savepath; save_entries...)
+			all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
+			if bayes && length(all_scores) > 0
+				@info("Updating cache with $(length(all_scores)) results.")
+				GenerativeAD.update_bayes_cache(datadir("$(prefix)/$(modelname)/$(dataset)"), 
+						[all_scores[1]]; ignore=Set(:init_seed)) # so far use only one score
 			end
 			global try_counter = max_tries + 1
 		else

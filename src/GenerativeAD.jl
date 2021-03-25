@@ -10,10 +10,10 @@ using MLDataPattern
 include("datasets/Datasets.jl")
 using .Datasets: load_data
 
-include("bayesian_opt.jl")
-include("experiments.jl")
-include("models/Models.jl")
-
 include("evaluation/Evaluation.jl")
+
+include("experiments.jl")
+include("bayesian_opt.jl")
+include("models/Models.jl")
 
 end #module
