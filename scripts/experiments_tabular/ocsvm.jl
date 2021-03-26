@@ -5,6 +5,7 @@ using GenerativeAD
 import StatsBase: fit!, predict
 using StatsBase
 using BSON
+using PyCall
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -16,22 +17,40 @@ s = ArgParseSettings()
         required = true
         arg_type = String
         help = "dataset"
+	"bayes"
+		default = false
+		arg_type = Bool
+		help = "Run bayesian optimization of hyperparameters"
     "contamination"
-		arg_type = Float64
+    	arg_type = Float64
     	help = "contamination rate of training data"
     	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, contamination = parsed_args
+@unpack dataset, max_seed, bayes, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "ocsvm"
-function sample_params()
-	par_vec = (round.([10^x for x in -4:0.1:2],digits=5),["poly", "rbf", "sigmoid"],[0.01, 0.5, 0.99])
-	argnames = (:gamma,:kernel,:nu)
-	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
+
+parameter_rng = (
+	gamma 		= round.([10^x for x in -4:0.1:2],digits=5),
+	kernel 		= ["poly", "rbf", "sigmoid"],
+	nu 			= [0.01, 0.5, 0.99]
+)
+
+function create_space()
+	pyReal = pyimport("skopt.space")["Real"]
+	pyInt = pyimport("skopt.space")["Integer"]
+	pyCat = pyimport("skopt.space")["Categorical"]
+	
+	(;
+		gamma 		= pyReal(1e-4, 1e2, prior="log-uniform",		name="gamma"),
+		kernel 		= pyCat(categories=["poly", "rbf", "sigmoid"],	name="kernel"),
+		nu 			= pyReal(0.01, 0.99, 							name="nu")
+	)
 end
+
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
 	model = GenerativeAD.Models.OCSVM(;parameters...)
@@ -63,8 +82,16 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
+prefix = "experiments/tabular$(cont_string)"
 while try_counter < max_tries
-    parameters = sample_params()
+	if bayes
+		parameters = GenerativeAD.bayes_params(
+								create_space(), 
+								datadir("$(prefix)/$(modelname)/$(dataset)"),
+								parameter_rng)
+	else
+		parameters = GenerativeAD.sample_params(parameter_rng)
+	end
 
     for seed in 1:max_seed
 		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
@@ -85,8 +112,11 @@ while try_counter < max_tries
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
 			# now loop over all anomaly score funs
-			for result in results
-				GenerativeAD.experiment(result..., data, savepath; save_entries...)
+			all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
+			if bayes && length(all_scores) > 0
+				@info("Updating cache with $(length(all_scores)) results.")
+				GenerativeAD.update_bayes_cache(datadir("$(prefix)/$(modelname)/$(dataset)"), 
+						[all_scores[1]]; ignore=Set([:init_seed])) # so far use only one score
 			end
 			global try_counter = max_tries + 1
 		else
