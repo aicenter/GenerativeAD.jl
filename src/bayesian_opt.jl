@@ -86,7 +86,7 @@ Dimension's name have to following this convention:
 Other cases of `T` such as Bool, Real, Int are handled without any specific treatment.
 """
 skopt_parse(dimension, entry::Bool) = (;[Symbol(dimension.name) => entry]...)
-skopt_parse(dimension, entry::T) where {T <: AbstractFloat} = (;[Symbol(dimension.name) => Float32(entry)]...)
+skopt_parse(dimension, entry::T) where {T <: AbstractFloat} = (;[Symbol(dimension.name) => entry]...)
 
 function skopt_parse(dimension, entry::T) where {T <: Integer}
 	if startswith(dimension.name, "log2_")
@@ -149,12 +149,12 @@ end
 
 
 """
-	objective_value(r)
+	objective_value(runs; agg=mean, fail_value=0.0)
 
 Validates entry from bayesian cache and returns aggregated score, which is optimized by `BayesianHyperOpt`.
 For empty entries (no model trained) we return `fail_value`.
 """
-function objective_value(runs; agg=mean, fail_value=0.0f0)
+function objective_value(runs; agg=mean, fail_value=0.0)
 	if length(runs) > 0 # should we be more strict?
 		return agg(runs)
 	else
@@ -163,12 +163,12 @@ function objective_value(runs; agg=mean, fail_value=0.0f0)
 end
 
 """
-	function bayes_params(space, folder, parameter_range; add_model_seed=true)
+	function bayes_params(space, folder, parameter_range; add_model_seed=false)
 Tries to load a cache of results to seed the optimizer with. The file should be named by `BAYES_CACHE`
 global constant and located in `folder`. This method fallbacks to using `sample_params` on
 provided `parameter_range`, if the cache has not been created. 
 """
-function bayes_params(space, folder, parameter_range; add_model_seed=true)
+function bayes_params(space, folder, parameter_range; add_model_seed=false)
 	cache = load_bayes_cache(folder)
 	if cache !== nothing		
 		x0 = [v[:parameters] for v in values(cache)]
