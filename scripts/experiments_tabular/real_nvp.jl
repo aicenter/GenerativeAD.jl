@@ -59,12 +59,12 @@ function create_space()
 		nflows 		= pyInt(1, 3, 								name="log2_nflows"),
 		hdim 		= pyInt(4, 10, 								name="log2_hdim"),
 		nlayers 	= pyInt(2, 3, 								name="nlayers"),
-		lr 			= pyReal(1e-6, 1e-1, prior="log-uniform", 	name="lr"),
+		lr 			= pyReal(1f-5, 1f-3, prior="log-uniform", 	name="lr"),
 		batchsize 	= pyInt(5, 7, 								name="log2_batchsize"),
 		act_loc		= pyCat(categories=["relu", "tanh"], 		name="act_loc"),
 		act_scl		= pyCat(categories=["relu", "tanh"], 		name="act_scl"),
 		bn 			= pyCat(categories=[true, false], 			name="bn"),
-		wreg 		= pyReal(1e-7, 1e-3, prior="log-uniform", 	name="lr"), # cannot turn it off
+		wreg 		= pyReal(1f-7, 1f-3, prior="log-uniform", 	name="wreg"), # cannot turn it off
 		init_I 		= pyCat(categories=[true, false], 			name="init_I"),
 		tanhscaling = pyCat(categories=[true, false], 			name="tanhscaling")
 	)
@@ -137,7 +137,7 @@ while try_counter < max_tries
 			if bayes && length(all_scores) > 0
 				@info("Updating cache with $(length(all_scores)) results.")
 				GenerativeAD.update_bayes_cache(datadir("$(prefix)/$(modelname)/$(dataset)"), 
-						[all_scores[1]]; ignore=Set(:init_seed)) # so far use only one score
+						[all_scores[1]]; ignore=Set([:init_seed])) # so far use only one score
 			end
 			global try_counter = max_tries + 1
 		else
