@@ -1,3 +1,4 @@
+using BSON
 using PyCall
 using StatsBase
 using Statistics
@@ -85,7 +86,7 @@ Dimension's name have to following this convention:
 Other cases of `T` such as Bool, Real, Int are handled without any specific treatment.
 """
 skopt_parse(dimension, entry::Bool) = (;[Symbol(dimension.name) => entry]...)
-skopt_parse(dimension, entry::T) where {T <: AbstractFloat} = (;[Symbol(dimension.name) => entry]...)
+skopt_parse(dimension, entry::T) where {T <: AbstractFloat} = (;[Symbol(dimension.name) => Float32(entry)]...)
 
 function skopt_parse(dimension, entry::T) where {T <: Integer}
 	if startswith(dimension.name, "log2_")
@@ -212,7 +213,7 @@ function save_bayes_cache(folder, cache)
 end
 
 """
-	update_bayes_cache(folder, results,  )
+	update_bayes_cache(folder, results, agg=:max; kwargs...)
 
 Loads bayesian cache from folder and updates it with results
 TODO Updating with multiple results is not working yet - could be done
@@ -228,14 +229,15 @@ function update_bayes_cache(folder, results, agg=:max; kwargs...)
 end
 
 """
-	register_run!(cache, r::Dict{Symbol,Any}; metric=:val_auc, ignore=Set([:init_seed]))
+	register_run!(cache, r; metric=:val_auc, ignore=Set([:init_seed]))
 
-Updates `cache` with new result from `r`. All basic metrics from `.Evaluation` module are
-supported and their column name can be passed in the `metric` argument.
+Updates `cache` with new result from `r`(named tuple or symbol indexed dictionary). 
+All basic metrics from `.Evaluation` module are supported and their column name 
+can be passed in the `metric` argument.
 Set of hyperparameters that are not optimized is given by the `ignore` argument, 
 which by default filters `:init_seed`. 
 """
-function register_run!(cache, r::Dict{Symbol,Any}; fit_results=true, metric=:val_auc, flip_sign=true, ignore=Set([:init_seed]))
+function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=true, ignore=Set([:init_seed]))
 	metric_value = try
 		fit_results ? compute_stats(r, top_metrics=false)[metric] : []
 	catch e
