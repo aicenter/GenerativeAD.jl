@@ -8,7 +8,8 @@ NUM_SAMPLES=$2	# how many repetitions
 MAX_SEED=$3		# how many folds over dataset
 NUM_CONC=$4		# number of concurrent tasks in the array job
 DATASET_FILE=$5	# file with dataset list
-CONTAMINATION=$6 # training data contamination
+BAYES=$6        # fetch parameters using bayesian optimization
+CONTAMINATION=$7 # training data contamination
 
 LOG_DIR="${HOME}/logs/${MODEL}"
 
