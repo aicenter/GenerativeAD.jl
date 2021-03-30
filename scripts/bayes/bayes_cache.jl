@@ -1,17 +1,20 @@
 """
-Example script how to manually create Bayesian cache with already computed results. 
+Example script how to manually create Bayesian cache from already computed results. 
 Intended to run interactively as user input is needed to rewrite parts of it.
 Workflow:
     1. pick a model and dataset
     2. Define parameter ranges by `create_space` function.
     3. read corresponding folder from fisrt seed/anomaly_class
-    4. filter incompatible runs that should not go into the cache (mainly if they parameters differ from what is currently defined in the run script)
-         (optionally you can manualy convert old files into the new format) 
-    5. randomly select some number of files
+    4. filter incompatible runs that should not go into the cache
+        (mainly if they parameters differ from what is currently defined in the run script) - define `reference_file_filter` 
+        (optionally you can manualy convert old files into the new format) - define `result_postprocess!`
+    5. randomly select some number of files - set `init_n`
     6. run the main forloop to create the cache
-    7. check if the conversions to_skopt and from_skopt work
-    8. check if the bayesian optimizer can fit the values provided
-    9. after this initial test, run it for all datasets
+        uses built-in `register_run!` with `ignored_hyperparams` as input to indicate which parameters are not optimizable
+    7. postprocess cache by filter based on extracted values - define `cache_postprocess!` 
+    8. check if the conversions to_skopt and from_skopt work
+    9. check if the bayesian optimizer can fit the values provided
+    10. after this initial test, run it for all datasets
 
 Bayesian cache structure
 - dictionary indexed by `ophash` (hash of the named tuple containing only optimizable parameters)
@@ -95,6 +98,17 @@ end
 reference_file_filter(files) = filter(x -> !startswith(x, "model"), files)
 
 """
+    all_file_filter(files)
+
+This filter is applied to an array of all files from a given dataset.
+In this example we throw out all result files, that were trained on data seed>2.
+"""
+function all_file_filter(files)
+    filter(x -> occursin("seed=1", x), files)
+end
+all_file_filter(files) = files
+
+"""
     result_postprocess!(r)
 
 This function is applied to every deserialized result file.
@@ -154,9 +168,9 @@ end
 #######################################################################################
 ################            		MAIN LOOP 				           ################
 #######################################################################################
-# dataset = datasets[1] 			# dry dry run
-# for dataset in [datasets[1]] 		# dry run
-for dataset in datasets			# hot run
+# dataset = datasets[1]             # dry dry run
+# for dataset in [datasets[1]]      # dry run
+for dataset in datasets           # hot run
 
     # sample based on the first seed/anomaly_class using downtherabithole
     dataset_folder = joinpath(folder, dataset)
@@ -173,10 +187,13 @@ for dataset in datasets			# hot run
     
     # get all files and match only those that are in reference_files
     all_files = GenerativeAD.Evaluation.collect_files_th(dataset_folder);
+
+    # additional file filter (for example when we don't want results from seed>2 for some image datasets)
+    all_files_filtered = all_file_filter(all_files)
     
     # load files from each seed and call register_run! as will be done during actual training
     cache = Dict{UInt64, Any}()
-    for f in all_files 
+    for f in all_files_filtered 
         if basename(f) in files_to_load
             r = BSON.load(f)
 
@@ -184,7 +201,7 @@ for dataset in datasets			# hot run
             r = result_postprocess!(r)
             try
                 GenerativeAD.register_run!(
-                    cache, r; 
+                    cache, r;
                     metric=:val_auc,
                     flip_sign=true,
                     ignore=ignored_hyperparams) # ignore hyperparameters
