@@ -122,7 +122,7 @@ function result_postprocess!(r)
     end	
     r
 end
-result_postprocess!(r) = r 			# default - identity
+result_postprocess!(r) = r  # default - identity
 
 ### Before storing the parameter entry these fields are filtered.
 ### By default we don't want to optimize `init_seed` or `score_func`,
@@ -144,7 +144,7 @@ function cache_postprocess!(cache)
     # filter out runs wih no regularization (throws domain errors from python)
     filter!(c -> c[2][:parameters][:wreg] > 0.0, cache)
 end
-cache_postprocess!(cache) = cache 	# default - identity
+cache_postprocess!(cache) = cache # default - identity
 
 
 ################                                                       ################
@@ -171,26 +171,33 @@ end
 # dataset = datasets[1]             # dry dry run
 # for dataset in [datasets[1]]      # dry run
 for dataset in datasets           # hot run
-
+  
+    @info "Processing result of $modelname on $dataset."
     # sample based on the first seed/anomaly_class using downtherabithole
     dataset_folder = joinpath(folder, dataset)
     reference_files = downtherabithole(dataset_folder)
+    @info "Found $(length(reference_files)) reference files."
 
     # filter files that are compatible
     reference_files_filtered = reference_file_filter(basename.(reference_files))
+    @info "Filtered incompatible reference files: currently left $(length(reference_files_filtered)) files"
 
     # sample `init_n` files based on fixed seed
     n = length(reference_files_filtered)
     Random.seed!(7)
-    files_to_load = Set(reference_files_filtered[randperm(n)][1:init_n])
+    files_to_load = Set(reference_files_filtered[randperm(n)][1:min(init_n, n)])
     Random.seed!()
+    @info "Sampled $(length(files_to_load)) out of $(length(reference_files_filtered)) reference files."
     
     # get all files and match only those that are in reference_files
     all_files = GenerativeAD.Evaluation.collect_files_th(dataset_folder);
+    @info "Collected all $(length(all_files)) results from $(dataset_folder) folder."
 
     # additional file filter (for example when we don't want results from seed>2 for some image datasets)
     all_files_filtered = all_file_filter(all_files)
+    @info "Applied filter: currently left $(length(all_files_filtered)) files."
     
+    @info "Running cache builder."
     # load files from each seed and call register_run! as will be done during actual training
     cache = Dict{UInt64, Any}()
     for f in all_files_filtered 
@@ -238,6 +245,7 @@ for dataset in datasets           # hot run
     # if all is well save the cache
     # by default this saves it back to the root directory
     DrWatson.projectdir() = pwd() 
-    folder = datadir("$(prefix)/$(modelname)/$(dataset)")
-    GenerativeAD.save_bayes_cache(folder, cache)
+    target_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
+    @info "Saving cache to $(target_folder)"
+    GenerativeAD.save_bayes_cache(target_folder, cache)
 end
