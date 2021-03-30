@@ -5,7 +5,7 @@
 
 MAX_SEED=$1
 DATASET=$2
-BAYES=$3
+HP_SAMPLING=$3
 CONTAMINATION=$4
 
 module load Julia/1.5.3-linux-x86_64
@@ -18,4 +18,4 @@ export PYTHON="${HOME}/sklearn-env/bin/python"
 # PyCall needs to be rebuilt if environment changed
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-julia ./ocsvm.jl ${MAX_SEED} $DATASET $BAYES $CONTAMINATION
+julia ./ocsvm.jl ${MAX_SEED} $DATASET $HP_SAMPLING $CONTAMINATION
