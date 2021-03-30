@@ -92,8 +92,8 @@ function loss(model::F, X) where {F <: TabularFlow}
 end
 
 function StatsBase.fit!(model::F, data::Tuple; max_train_time=82800,
-						batchsize=64, patience=200, check_interval::Int=10, 
-						wreg::Float32=1f-6, lr::Float32=1f-4, kwargs...) where F <: TabularFlow
+						batchsize=64, patience=200, check_interval=10, 
+						wreg=1e-6, lr=1e-4, kwargs...) where F <: TabularFlow
 	# add regularization through weight decay in optimizer
 	opt = (wreg > 0) ? ADAMW(lr, (0.9, 0.999), wreg) : Flux.ADAM(lr)
 	
