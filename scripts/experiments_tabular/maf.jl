@@ -2,6 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
+using PyCall
 using StatsBase: fit!, predict, sample
 using BSON
 
@@ -15,33 +16,52 @@ s = ArgParseSettings()
 		default = "iris"
 		arg_type = String
 		help = "dataset"
+	"sampling"
+		default = "random"
+		arg_type = String
+		help = "sampling of hyperparameters"
     "contamination"
     	arg_type = Float64
     	help = "contamination rate of training data"
     	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, contamination = parsed_args
+@unpack dataset, max_seed, sampling, contamination = parsed_args
 
 modelname = "MAF"
 
-function sample_params()
-	parameter_rng = (
-		nflows 		= 2 .^ (1:3),
-		hdim 		= 2 .^(4:10),
-		nlayers 	= 2:3,
-		ordering 	= ["natural", "random"],
-		lr 			= [1f-4],
-		batchsize 	= 2 .^ (5:7),
-		act_loc		= ["relu", "tanh"],
-		act_scl		= ["relu", "tanh"],
-		bn 			= [true, false],
-		wreg 		= [0.0f0, 1f-5, 1f-6],
-		init_seed 	= 1:Int(1e8),
-		init_I 		= [true, false]
-	)
+parameter_rng = (
+	nflows 		= 2 .^ (1:3),
+	hdim 		= 2 .^(4:10),
+	nlayers 	= 2:3,
+	ordering 	= ["natural", "random"],
+	lr 			= [1f-4],
+	batchsize 	= 2 .^ (5:7),
+	act_loc		= ["relu", "tanh"],
+	act_scl		= ["relu", "tanh"],
+	bn 			= [true, false],
+	wreg 		= [0.0f0, 1f-5, 1f-6],
+	init_I 		= [true, false]
+)
 
-	(;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
+function create_space()
+	pyReal = pyimport("skopt.space")["Real"]
+	pyInt = pyimport("skopt.space")["Integer"]
+	pyCat = pyimport("skopt.space")["Categorical"]
+	
+	(;
+		nflows 		= pyInt(1, 3, 								name="log2_nflows"),
+		hdim 		= pyInt(4, 10, 								name="log2_hdim"),
+		nlayers 	= pyInt(2, 3, 								name="nlayers"),
+		ordering	= pyCat(categories=["natural", "random"], 	name="ordering"),
+		lr 			= pyReal(1f-5, 1f-3, prior="log-uniform", 	name="lr"),
+		batchsize 	= pyInt(5, 7, 								name="log2_batchsize"),
+		act_loc		= pyCat(categories=["relu", "tanh"], 		name="act_loc"),
+		act_scl		= pyCat(categories=["relu", "tanh"], 		name="act_scl"),
+		bn 			= pyCat(categories=[true, false], 			name="bn"),
+		wreg 		= pyReal(1f-7, 1f-3, prior="log-uniform", 	name="wreg"), # cannot turn it off
+		init_I 		= pyCat(categories=[true, false], 			name="init_I")
+	)
 end
 
 function fit(data, parameters)
@@ -70,8 +90,16 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
+prefix = "experiments/tabular$(cont_string)"
 while try_counter < max_tries
-    parameters = sample_params()
+	if sampling == "bayes"
+		parameters = GenerativeAD.bayes_params(
+								create_space(), 
+								datadir("$(prefix)/$(modelname)/$(dataset)"),
+								parameter_rng, add_model_seed=true)
+	else
+		parameters = GenerativeAD.sample_params(parameter_rng, add_model_seed=true)
+	end
 
     for seed in 1:max_seed
 		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
@@ -88,7 +116,7 @@ while try_counter < max_tries
 			
 			training_info, results = fit(data, edited_parameters)
 
-			if training_info.model != nothing
+			if training_info.model !== nothing
 				tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
 						Dict("model"=>training_info.model,
 							"fit_t"=>training_info.fit_t,
@@ -99,8 +127,11 @@ while try_counter < max_tries
 			end
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
-			for result in results
-				GenerativeAD.experiment(result..., data, savepath; save_entries...)
+			all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
+			if sampling == "bayes" && length(all_scores) > 0
+				@info("Updating cache with $(length(all_scores)) results.")
+				GenerativeAD.update_bayes_cache(datadir("$(prefix)/$(modelname)/$(dataset)"), 
+						[all_scores[1]]; ignore=Set([:init_seed])) # so far use only one score
 			end
 			global try_counter = max_tries + 1
 		else
