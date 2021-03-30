@@ -17,8 +17,8 @@ if [ ! -d "$LOG_DIR" ]; then
 	mkdir $LOG_DIR
 fi
 
-if [ "$HP_SAMPLING" == "bayes" ] && [ $NUM_CONC > 1] then
-    echo "Bayesian hyperparameter optimization allows only 1 concurent job, ${NUM_CONC} provided."
+if [[ "$HP_SAMPLING" == "bayes" && $NUM_CONC > 1 ]]; then
+    echo "Bayesian hyperparameter optimization allows only 1 concurent job, but NUM_CONC = ${NUM_CONC}."
 else
     while read d; do
         # submit to slurm
