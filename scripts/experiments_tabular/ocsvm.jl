@@ -9,25 +9,25 @@ using PyCall
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-   "max_seed"
-        required = true
-        arg_type = Int
-        help = "seed"
-    "dataset"
-        required = true
-        arg_type = String
-        help = "dataset"
-	"bayes"
-		default = false
-		arg_type = Bool
-		help = "Run bayesian optimization of hyperparameters"
+	"max_seed"
+		default = 1
+		arg_type = Int
+		help = "maximum number of seeds to run through"
+	"dataset"
+		default = "iris"
+		arg_type = String
+		help = "dataset"
+	"sampling"
+		default = "random"
+		arg_type = String
+		help = "sampling of hyperparameters"
     "contamination"
     	arg_type = Float64
     	help = "contamination rate of training data"
     	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, bayes, contamination = parsed_args
+@unpack dataset, max_seed, sampling, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -84,7 +84,7 @@ max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 prefix = "experiments/tabular$(cont_string)"
 while try_counter < max_tries
-	if bayes
+	if sampling == "bayes"
 		parameters = GenerativeAD.bayes_params(
 								create_space(), 
 								datadir("$(prefix)/$(modelname)/$(dataset)"),
@@ -113,7 +113,7 @@ while try_counter < max_tries
 
 			# now loop over all anomaly score funs
 			all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
-			if bayes && length(all_scores) > 0
+			if sampling == "bayes" && length(all_scores) > 0
 				@info("Updating cache with $(length(all_scores)) results.")
 				GenerativeAD.update_bayes_cache(datadir("$(prefix)/$(modelname)/$(dataset)"), 
 						[all_scores[1]]; ignore=Set([:init_seed])) # so far use only one score
