@@ -46,7 +46,8 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 	filter!(x -> !startswith(basename(x), "model"), files)
 	@info "Collected $(length(files)) files from $source folder."
 	# it might happen that when appending results some of the cores
-	# just go over already computed files
+	# just go over already computed files, unless force flag is present
+	# then we have to recompute all the things
 	files = files[randperm(length(files))]
 
 	@threads for f in files
