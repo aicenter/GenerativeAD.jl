@@ -4,35 +4,34 @@ Intended to run interactively as user input is needed to rewrite parts of it.
 Workflow:
     1. pick a model and dataset
     2. Define parameter ranges by `create_space` function.
-    3. read corresponding folder from fisrt seed/anomaly_class
-    4. filter incompatible runs that should not go into the cache
-        (mainly if they parameters differ from what is currently defined in the run script) - define `reference_file_filter` 
-        (optionally you can manualy convert old files into the new format) - define `result_postprocess!`
-    5. randomly select some number of files - set `init_n`
-    6. run the main forloop to create the cache
+    3. read recursively all results from corresponding dataset folder
+    4. run the main forloop to create the cache
         uses built-in `register_run!` with `ignored_hyperparams` as input to indicate which parameters are not optimizable
-    7. postprocess cache by filter based on extracted values - define `cache_postprocess!` 
-    8. check if the conversions to_skopt and from_skopt work
-    9. check if the bayesian optimizer can fit the values provided
-    10. after this initial test, run it for all datasets
+        patching of individual results is possible using `result_postprocess!`
+    5. postprocess cache by filter based on extracted values - define `cache_postprocess!` 
+    6. sample `init_n` entries from cache with fixed seed
+    7. check if the conversions to_skopt and from_skopt work
+    8. check if the bayesian optimizer can fit the values provided
+    9. after this initial test, run it for all datasets
 
 Bayesian cache structure
 - dictionary indexed by `ophash` (hash of the named tuple containing only optimizable parameters)
-- values - named tuples with following fields: parameters, seed, anomaly_class, runs
+- values - named tuples with following fields: parameters, runs
 
-0x3212:
+ophash:
     parameters: 		named tuple containing optimizable parameters
-    seed:				array of seeds on which models have been fitted
-    anomaly_class:		array of anomaly_classes on which models have been fitted (store even for tabular datasets for better code readability)
-    runs: 				array of floating point numbers containing computed metric for each run
+    runs: 				dictionary indexed by (seed, anomaly_class) containing computed metric for each run and scores
 
 example with `ocsvm`
 0x1234: 
     (
         parameters = (gamma = 1.94199, nu = 0.34065, kernel = "rbf"), 
-        seed = [1, 2, 3, 4, 5], 
-        anomaly_class = [-1, -1, -1, -1, -1], 
-        runs = [-0.92567, -0.92832, -0.94627, -0.93186, -0.95032]
+        runs = Dict(
+            (1,-1) => [-0.92567], 
+            (2,-1) => [-0.92832], 
+            (3,-1) => [-0.94627], 
+            (4,-1) => [-0.93186], 
+            (5,-1) => [-0.95032])
     )
 """
 
@@ -49,9 +48,11 @@ DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
 
 ### choose model, metric and dataset type
 metric = :val_auc
-modelname = "ocsvm"
+modelname = "fill in modelname"
 prefix = "experiments/tabular"
 
+### how many samples of fit results to take into account (50 by default)
+init_n = 50
 
 folder = datadir("$(prefix)/$(modelname)")
 datasets = readdir(folder)
@@ -78,35 +79,15 @@ function create_space()
     )
 end
     
-### how many samples of fit results to take into account (50 by default)
-### some models require more, as the procedure of cache creation may invalidate some
-### for example RealNVP hyperparameters in Bayesian form do not allow for regularization 0.0
-init_n = 50
 
 """
-    reference_file_filter(files)
-
-This filter is applied to result's folders.
-In this example we throw out all model files (`!startswith(x, "model")`) and 
-samples with old implementation `startswith("act")`.
-Others are also possible such as filter only reconstruction sampled score with vae models
-"""
-function reference_file_filter(files)
-    filter(startswith("act"), filter(x -> !startswith(x, "model"), files))
-end
-# default filters only models
-reference_file_filter(files) = filter(x -> !startswith(x, "model"), files)
-
-"""
-    all_file_filter(files)
+    file_filter!(files)
 
 This filter is applied to an array of all files from a given dataset.
 In this example we throw out all result files, that were trained on data seed>2.
 """
-function all_file_filter(files)
-    filter(x -> occursin("seed=1", x), files)
-end
-all_file_filter(files) = files
+file_filter(files) = filter(x -> occursin("seed=1", x), files)
+file_filter(files) = files
 
 """
     result_postprocess!(r)
@@ -125,8 +106,7 @@ end
 result_postprocess!(r) = r  # default - identity
 
 ### Before storing the parameter entry these fields are filtered.
-### By default we don't want to optimize `init_seed` or `score_func`,
-### though in the latter case this is only due to some code baggage.
+### By default we don't want to optimize `init_seed` or parameters related to anomaly score.
 ignored_hyperparams = Set([:init_seed])
 
 
@@ -141,29 +121,17 @@ function cache_postprocess!(cache)
     # filter out those that have only one seed
     filter!(c -> length(c[2][:runs]) > 1, cache)
 
-    # filter out runs wih no regularization (throws domain errors from python)
+    # filter out runs with no regularization (throws domain errors from python)
     filter!(c -> c[2][:parameters][:wreg] > 0.0, cache)
+
+    # filter out runs on the old implementation
+    filter!(c -> :act_loc in keys(c[2][:parameters]), cache)
 end
 cache_postprocess!(cache) = cache # default - identity
 
 
 ################                                                       ################
 #######################################################################################
-
-"""
-downtherabithole(target)
-Fetch file names from the first leaf node folder 
-in the list of depthfirst recursively walked tree.
-"""
-function downtherabithole(target)
-    entries = readdir(target, join=true)
-    if all(isfile.(entries))
-        return entries
-    else
-        return downtherabithole(entries[1])
-    end
-end
-
 
 #######################################################################################
 ################            		MAIN LOOP 				           ################
@@ -175,52 +143,44 @@ for dataset in datasets           # hot run
     @info "Processing result of $modelname on $dataset."
     # sample based on the first seed/anomaly_class using downtherabithole
     dataset_folder = joinpath(folder, dataset)
-    reference_files = downtherabithole(dataset_folder)
-    @info "Found $(length(reference_files)) reference files."
-
-    # filter files that are compatible
-    reference_files_filtered = reference_file_filter(basename.(reference_files))
-    @info "Filtered incompatible reference files: currently left $(length(reference_files_filtered)) files"
-
-    # sample `init_n` files based on fixed seed
-    n = length(reference_files_filtered)
-    Random.seed!(7)
-    files_to_load = Set(reference_files_filtered[randperm(n)][1:min(init_n, n)])
-    Random.seed!()
-    @info "Sampled $(length(files_to_load)) out of $(length(reference_files_filtered)) reference files."
     
     # get all files and match only those that are in reference_files
-    all_files = GenerativeAD.Evaluation.collect_files_th(dataset_folder);
-    @info "Collected all $(length(all_files)) results from $(dataset_folder) folder."
+    files = GenerativeAD.Evaluation.collect_files_th(dataset_folder);
+    @info "Collected all $(length(files)) results from $(dataset_folder) folder."
 
     # additional file filter (for example when we don't want results from seed>2 for some image datasets)
-    all_files_filtered = all_file_filter(all_files)
-    @info "Applied filter: currently left $(length(all_files_filtered)) files."
+    files_filtered = file_filter(files)
+    @info "Applied filter: currently left $(length(files_filtered)) files."
     
     @info "Running cache builder."
     # load files from each seed and call register_run! as will be done during actual training
     cache = Dict{UInt64, Any}()
-    for f in all_files_filtered 
-        if basename(f) in files_to_load
-            r = BSON.load(f)
+    for f in files 
+        r = BSON.load(f)
 
-            # some manual repair may be needed
-            r = result_postprocess!(r)
-            try
-                GenerativeAD.register_run!(
-                    cache, r;
-                    metric=:val_auc,
-                    flip_sign=true,
-                    ignore=ignored_hyperparams) # ignore hyperparameters
-            catch e
-                @warn("Register run on $(f) has failed due to $(e)")
-            end
+        # some manual repair may be needed
+        r = result_postprocess!(r)
+        try
+            GenerativeAD.register_run!(
+                cache, r;
+                metric=:val_auc,
+                flip_sign=true,
+                ignore=ignored_hyperparams) # ignore hyperparameters
+        catch e
+            @warn("Register run on $(f) has failed due to $(e)")
         end
     end
     @info "Cache creation completed: $(length(cache)) entries"
     
     cache_postprocess!(cache)
     @info "Cache postprocess completed: $(length(cache)) entries"
+
+    n = length(cache)
+    Random.seed!(7)
+    mask = Set(randperm(n)[1:min(init_n, n)])
+    cache = Dict(k => v for (i, (k,v)) in enumerate(cache) if i in mask)
+    Random.seed!()
+    @info "Sampling completed: $(length(cache)) entries"
 
     ### The following code should not fail and create a valid set of hyperparameters.
     space = create_space()
