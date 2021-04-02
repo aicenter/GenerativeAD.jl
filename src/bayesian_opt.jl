@@ -149,14 +149,14 @@ end
 
 
 """
-	objective_value(runs; agg=mean, fail_value=0.0)
+	objective_value(runs;; run_agg=mean, score_agg=max, fail_value=0.0)
 
 Validates entry from bayesian cache and returns aggregated score, which is optimized by `BayesianHyperOpt`.
-For empty entries (no model trained) we return `fail_value`.
+For empty entries (no model trained) we return `fail_value`. 
 """
-function objective_value(runs; agg=mean, fail_value=0.0)
+function objective_value(runs; run_agg=mean, score_agg=max, fail_value=0.0)
 	if length(runs) > 0 # should we be more strict?
-		return agg(runs)
+		return run_agg([score_agg(v) for v in values(runs)])
 	else
 		return fail_value
 	end
@@ -213,13 +213,11 @@ function save_bayes_cache(folder, cache)
 end
 
 """
-	update_bayes_cache(folder, results, agg=:max; kwargs...)
+	update_bayes_cache(folder, results; kwargs...)
 
-Loads bayesian cache from folder and updates it with results
-TODO Updating with multiple results is not working yet - could be done
-by giving `register_run!` dataframe with aggregated columns using aggregation in `agg`.
+Loads bayesian cache from folder and updates it with results.
 """
-function update_bayes_cache(folder, results, agg=:max; kwargs...)
+function update_bayes_cache(folder, results; kwargs...)
 	_cache = load_bayes_cache(folder) 
 	cache = _cache !== nothing ? _cache : Dict{UInt64, Any}()
 	for r in results
@@ -229,13 +227,16 @@ function update_bayes_cache(folder, results, agg=:max; kwargs...)
 end
 
 """
-	register_run!(cache, r; metric=:val_auc, ignore=Set([:init_seed]))
+	register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=true, ignore=Set([:init_seed]))
 
 Updates `cache` with new result from `r`(named tuple or symbol indexed dictionary). 
 All basic metrics from `.Evaluation` module are supported and their column name 
 can be passed in the `metric` argument.
 Set of hyperparameters that are not optimized is given by the `ignore` argument, 
 which by default filters `:init_seed`. 
+If `fit_results` is false register_run! will write an empty entry under a given parameters. This is used 
+to indicate that a traing has begun for such parameters and if there are not filled, we assume that it failed.
+Flag `flip_sign` is used for aligning sign of the metric with minimization objective.
 """
 function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=true, ignore=Set([:init_seed]))
 	metric_value = try
@@ -252,25 +253,32 @@ function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=tr
 
 	if ophash in keys(cache) && fit_results				# add to existing entry
 		entry = cache[ophash]
-		seed = vcat(entry[:seed], r[:seed])
-		anomaly_class = vcat(entry[:anomaly_class], _get_anomaly_class(r))
-		runs = vcat(entry[:runs], flip_sign ? -metric_value : metric_value)
+		seed = r[:seed]
+		anomaly_class = _get_anomaly_class(r)
 
-		cache[ophash] = merge(entry, (;seed=seed, anomaly_class=anomaly_class, runs=runs))
+		runs = entry[:runs]
+
+		key = (seed, anomaly_class)
+		if key in keys(runs)	# this is true if for some `ophash` we have multiple outputs (scores)
+			runs[key] = vcat(runs[key], flip_sign ? -metric_value : metric_value)
+		else
+			runs[key] = flip_sign ? -metric_value : metric_value
+		end
+
+		cache[ophash] = merge(entry, (;runs=runs))
 	elseif !(ophash in keys(cache)) && fit_results		# or create new entry if there are results (mainly used during manual cache creation)
-		entry = (;
+		seed = r[:seed]
+		anomaly_class = _get_anomaly_class(r)
+		runs = Dict((seed, anomaly_class) => flip_sign ? -metric_value : metric_value)
+
+		cache[ophash] = (;
 			parameters = parameters,
-			seed = [r[:seed]],
-			anomaly_class = [_get_anomaly_class(r)],
-			runs = flip_sign ? -metric_value : metric_value)
-		cache[ophash] = entry
+			runs = runs)
 	else							# otherwise add an empty entry (this is to indicate that such parameters are about to be trained)
 		entry = (;
 			parameters = parameters,
-			seed = Int[],
-			anomaly_class = Int[],
-			runs = Float32[])
-		
+			runs = Dict{Typle{Int,Int}, Any}())
+
 		cache[ophash] = entry
 	end
 end
