@@ -152,9 +152,10 @@ end
 	objective_value(runs;; run_agg=mean, score_agg=max, fail_value=0.0)
 
 Validates entry from bayesian cache and returns aggregated score, which is optimized by `BayesianHyperOpt`.
-For empty entries (no model trained) we return `fail_value`. 
+For empty entries (no model trained) we return `fail_value`. In case of images `run_agg` allows to set
+the aggregation over anomaly_classes to be also maximum.
 """
-function objective_value(runs; run_agg=mean, score_agg=max, fail_value=0.0)
+function objective_value(runs; run_agg=mean, score_agg=maximum, fail_value=0.0)
 	if length(runs) > 0 # should we be more strict?
 		return run_agg([score_agg(v) for v in values(runs)])
 	else
@@ -163,16 +164,16 @@ function objective_value(runs; run_agg=mean, score_agg=max, fail_value=0.0)
 end
 
 """
-	function bayes_params(space, folder, parameter_range; add_model_seed=false)
+	function bayes_params(space, folder, fallback; add_model_seed=false, kwargs...)
 Tries to load a cache of results to seed the optimizer with. The file should be named by `BAYES_CACHE`
-global constant and located in `folder`. This method fallbacks to using `sample_params` on
-provided `parameter_range`, if the cache has not been created. 
+global constant and located in `folder`. If the cache has not been created, the method calls `fallback`.
+Additional keyword arguments are passed into `objective_value` function allowing to modify it's behavior.
 """
-function bayes_params(space, folder, parameter_range; add_model_seed=false)
+function bayes_params(space, folder, fallback; add_model_seed=false, kwargs...)
 	cache = load_bayes_cache(folder)
 	if cache !== nothing		
 		x0 = [v[:parameters] for v in values(cache)]
-		y0 = [objective_value(v[:runs]) for v in values(cache)] 
+		y0 = [objective_value(v[:runs], kwargs...) for v in values(cache)] 
 		@info("Loaded cached results from $(folder).")
 		x0 = [to_skopt(space, x) for x in x0]
 		opt = BayesianHyperOpt(collect(space))
@@ -187,8 +188,8 @@ function bayes_params(space, folder, parameter_range; add_model_seed=false)
 		@info("Fetched new hyperparameters: $(p).")
 		return add_model_seed ? merge((;init_seed=rand(1:Int(1e8))), p) : p
 	else
-		@warn("Could not find bayesian cache file at $(folder), sampling.")
-		return sample_params(parameter_range, add_model_seed=add_model_seed)
+		@warn("Could not find bayesian cache file at $(folder), calling fallback.")
+		return fallback()
 	end
 end
 
