@@ -16,11 +16,12 @@ Workflow:
 
 Bayesian cache structure
 - dictionary indexed by `ophash` (hash of the named tuple containing only optimizable parameters)
-- values - named tuples with following fields: parameters, runs
+- values - named tuples with following fields: parameters, runs, phashes
 
 ophash:
     parameters: 		named tuple containing optimizable parameters
     runs: 				dictionary indexed by (seed, anomaly_class) containing computed metric for each run and scores
+    phashes:            array of hashes of full parameters (this is used to find the original files during evaluation)
 
 example with `ocsvm`
 0x1234: 
@@ -31,7 +32,8 @@ example with `ocsvm`
             (2,-1) => [-0.92832], 
             (3,-1) => [-0.94627], 
             (4,-1) => [-0.93186], 
-            (5,-1) => [-0.95032])
+            (5,-1) => [-0.95032]),
+        phashes = [0x123456, 0x123465, 0x123478, 0x123487, 0x123489]
     )
 """
 
