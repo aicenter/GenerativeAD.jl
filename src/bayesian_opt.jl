@@ -63,7 +63,7 @@ to Python are tricky. By default `x0` is passed as list of lists, however
 vector of values `y0` is converted to `numpy.ndarray`, which cannot 
 be processed by `skopt` (!! What a nice ecosystem !!).
 """
-function tell(bho::BayesianHyperOpt, x0::Vector{Vector{Any}}, y0)
+function tell(bho::BayesianHyperOpt, x0, y0)
 	bho.opt.tell(x0, Tuple(y0))
 end
 

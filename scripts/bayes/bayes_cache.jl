@@ -50,6 +50,7 @@ DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
 metric = :val_auc
 modelname = "fill in modelname"
 prefix = "experiments/tabular"
+target_prefix = "experiments_bayes/tabular"
 
 ### how many samples of fit results to take into account (50 by default)
 init_n = 50
@@ -107,7 +108,7 @@ result_postprocess!(r) = r  # default - identity
 
 ### Before storing the parameter entry these fields are filtered.
 ### By default we don't want to optimize `init_seed` or parameters related to anomaly score.
-ignored_hyperparams = Set([:init_seed])
+ignored_hyperparams = Set([:init_seed, :percentile])
 
 
 """
@@ -141,19 +142,18 @@ cache_postprocess!(cache) = cache # default - identity
 for dataset in datasets           # hot run
   
     @info "Processing result of $modelname on $dataset."
-    # sample based on the first seed/anomaly_class using downtherabithole
     dataset_folder = joinpath(folder, dataset)
     
-    # get all files and match only those that are in reference_files
+    # list recursively all files
     files = GenerativeAD.Evaluation.collect_files_th(dataset_folder);
     @info "Collected all $(length(files)) results from $(dataset_folder) folder."
 
-    # additional file filter (for example when we don't want results from seed>2 for some image datasets)
+    # file filter (for example when we don't want results from seed>2 for image datasets)
     files_filtered = file_filter(files)
     @info "Applied filter: currently left $(length(files_filtered)) files."
     
     @info "Running cache builder."
-    # load files from each seed and call register_run! as will be done during actual training
+    # load files from each seed and call register_run! in the same way as after training
     cache = Dict{UInt64, Any}()
     for f in files 
         r = BSON.load(f)
@@ -176,10 +176,10 @@ for dataset in datasets           # hot run
     @info "Cache postprocess completed: $(length(cache)) entries"
 
     n = length(cache)
-    Random.seed!(7)
+    Random.seed!(7);
     mask = Set(randperm(n)[1:min(init_n, n)])
     cache = Dict(k => v for (i, (k,v)) in enumerate(cache) if i in mask)
-    Random.seed!()
+    Random.seed!();
     @info "Sampling completed: $(length(cache)) entries"
 
     ### The following code should not fail and create a valid set of hyperparameters.
@@ -205,7 +205,7 @@ for dataset in datasets           # hot run
     # if all is well save the cache
     # by default this saves it back to the root directory
     DrWatson.projectdir() = pwd() 
-    target_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
+    target_folder = datadir("$(target_prefix)/$(modelname)/$(dataset)")
     @info "Saving cache to $(target_folder)"
     GenerativeAD.save_bayes_cache(target_folder, cache)
 end
