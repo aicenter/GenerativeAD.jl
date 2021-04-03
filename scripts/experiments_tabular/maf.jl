@@ -20,29 +20,34 @@ s = ArgParseSettings()
 		default = "random"
 		arg_type = String
 		help = "sampling of hyperparameters"
-    "contamination"
-    	arg_type = Float64
-    	help = "contamination rate of training data"
-    	default = 0.0
+	"contamination"
+		arg_type = Float64
+		help = "contamination rate of training data"
+		default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, sampling, contamination = parsed_args
 
 modelname = "MAF"
 
-parameter_rng = (
-	nflows 		= 2 .^ (1:3),
-	hdim 		= 2 .^(4:10),
-	nlayers 	= 2:3,
-	ordering 	= ["natural", "random"],
-	lr 			= [1f-4],
-	batchsize 	= 2 .^ (5:7),
-	act_loc		= ["relu", "tanh"],
-	act_scl		= ["relu", "tanh"],
-	bn 			= [true, false],
-	wreg 		= [0.0f0, 1f-5, 1f-6],
-	init_I 		= [true, false]
-)
+function sample_params()
+	parameter_rng = (
+		nflows 		= 2 .^ (1:3),
+		hdim 		= 2 .^(4:10),
+		nlayers 	= 2:3,
+		ordering 	= ["natural", "random"],
+		lr 			= [1f-4],
+		batchsize 	= 2 .^ (5:7),
+		act_loc		= ["relu", "tanh"],
+		act_scl		= ["relu", "tanh"],
+		bn 			= [true, false],
+		wreg 		= [0.0f0, 1f-5, 1f-6],
+		init_I 		= [true, false],
+		init_seed 	= 1:Int(1e8)
+	)
+	
+	return (;zip(keys(parameters_rng), map(x->sample(x, 1)[1], parameters_rng))...)
+end
 
 function create_space()
 	pyReal = pyimport("skopt.space")["Real"]
@@ -90,26 +95,28 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
-prefix = "experiments/tabular$(cont_string)"
+sampling_string = sampling == "_bayes" ? "bayes" : ""
+prefix = "experiments$(sampling_string)/tabular$(cont_string)"
+dataset_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
 while try_counter < max_tries
 	if sampling == "bayes"
 		parameters = GenerativeAD.bayes_params(
 								create_space(), 
-								datadir("$(prefix)/$(modelname)/$(dataset)"),
-								parameter_rng, add_model_seed=true)
+								dataset_folder,
+								sample_params; add_model_seed=true)
 	else
-		parameters = GenerativeAD.sample_params(parameter_rng, add_model_seed=true)
+		parameters = sample_params()
 	end
 
-    for seed in 1:max_seed
-		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
+	for seed in 1:max_seed
+		savepath = joinpath(dataset_folder, "seed=$(seed)")
 		mkpath(savepath)
 
 		# get data
 		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
-		edited_parameters = GenerativeAD.edit_params(data, parameters)
+		edited_parameters = sampling == "bayes" ? parameters : GenerativeAD.edit_params(data, parameters)
 
-		if GenerativeAD.check_params(savepath, edited_parameters)
+		if sampling == "random" && GenerativeAD.check_params(savepath, edited_parameters)
 			@info "Started training $(modelname)$(edited_parameters) on $(dataset):$(seed)"
 			@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[2][1], 2))"
 			@info "Number of features: $(size(data[1][1], 1))"
@@ -130,8 +137,8 @@ while try_counter < max_tries
 			all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
 			if sampling == "bayes" && length(all_scores) > 0
 				@info("Updating cache with $(length(all_scores)) results.")
-				GenerativeAD.update_bayes_cache(datadir("$(prefix)/$(modelname)/$(dataset)"), 
-						[all_scores[1]]; ignore=Set([:init_seed])) # so far use only one score
+				GenerativeAD.update_bayes_cache(dataset_folder, 
+						all_scores; ignore=Set([:init_seed]))
 			end
 			global try_counter = max_tries + 1
 		else

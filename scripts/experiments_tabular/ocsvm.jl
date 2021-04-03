@@ -1,11 +1,10 @@
 using DrWatson
 @quickactivate
 using ArgParse
-using GenerativeAD
-import StatsBase: fit!, predict
-using StatsBase
-using BSON
 using PyCall
+using GenerativeAD
+using StatsBase: fit!, predict, sample
+using BSON
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -21,10 +20,10 @@ s = ArgParseSettings()
 		default = "random"
 		arg_type = String
 		help = "sampling of hyperparameters"
-    "contamination"
-    	arg_type = Float64
-    	help = "contamination rate of training data"
-    	default = 0.0
+	"contamination"
+		arg_type = Float64
+		help = "contamination rate of training data"
+		default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, sampling, contamination = parsed_args
@@ -33,11 +32,14 @@ parsed_args = parse_args(ARGS, s)
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "ocsvm"
 
-parameter_rng = (
-	gamma 		= round.([10^x for x in -4:0.1:2],digits=5),
-	kernel 		= ["poly", "rbf", "sigmoid"],
-	nu 			= [0.01, 0.5, 0.99]
-)
+function sample_params()
+	parameter_rng = (
+		gamma 		= round.([10^x for x in -4:0.1:2],digits=5),
+		kernel 		= ["poly", "rbf", "sigmoid"],
+		nu 			= [0.01, 0.5, 0.99]
+	)
+	return (;zip(keys(parameters_rng), map(x->sample(x, 1)[1], parameters_rng))...)
+end
 
 function create_space()
 	pyReal = pyimport("skopt.space")["Real"]
@@ -82,30 +84,32 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
-prefix = "experiments/tabular$(cont_string)"
+sampling_string = sampling == "_bayes" ? "bayes" : ""
+prefix = "experiments$(sampling_string)/tabular$(cont_string)"
+dataset_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
 while try_counter < max_tries
 	if sampling == "bayes"
 		parameters = GenerativeAD.bayes_params(
 								create_space(), 
-								datadir("$(prefix)/$(modelname)/$(dataset)"),
-								parameter_rng)
+								dataset_folder,
+								sample_params; add_model_seed=true)
 	else
-		parameters = GenerativeAD.sample_params(parameter_rng)
+		parameters = sample_params()
 	end
 
-    for seed in 1:max_seed
-		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
+	for seed in 1:max_seed
+		savepath = joinpath(dataset_folder, "seed=$(seed)")
 		mkpath(savepath)
 
 		# get data
 		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
 		
 		# edit parameters
-		edited_parameters = GenerativeAD.edit_params(data, parameters)
+		edited_parameters = sampling == "bayes" ? parameters : GenerativeAD.edit_params(data, parameters)
 		
 		@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
 		# check if a combination of parameters and seed alread exists
-		if GenerativeAD.check_params(savepath, edited_parameters)
+		if sampling == "random" && GenerativeAD.check_params(savepath, edited_parameters)
 			# fit
 			training_info, results = fit(data, edited_parameters)
 			# here define what additional info should be saved together with parameters, scores, labels and predict times
@@ -115,8 +119,7 @@ while try_counter < max_tries
 			all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
 			if sampling == "bayes" && length(all_scores) > 0
 				@info("Updating cache with $(length(all_scores)) results.")
-				GenerativeAD.update_bayes_cache(datadir("$(prefix)/$(modelname)/$(dataset)"), 
-						[all_scores[1]]; ignore=Set([:init_seed])) # so far use only one score
+				GenerativeAD.update_bayes_cache(dataset_folder, all_scores)
 			end
 			global try_counter = max_tries + 1
 		else
