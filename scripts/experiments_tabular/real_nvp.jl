@@ -98,7 +98,7 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
-sampling_string = sampling == "_bayes" ? "bayes" : ""
+sampling_string = sampling == "bayes" ? "_bayes" : ""
 prefix = "experiments$(sampling_string)/tabular$(cont_string)"
 dataset_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
 while try_counter < max_tries
@@ -119,7 +119,7 @@ while try_counter < max_tries
 		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
 		edited_parameters = sampling == "bayes" ? parameters : GenerativeAD.edit_params(data, parameters)
 
-		if sampling == "random" && GenerativeAD.check_params(savepath, edited_parameters)
+		if GenerativeAD.check_params(savepath, edited_parameters)
 			@info "Started training $(modelname)$(edited_parameters) on $(dataset):$(seed)"
 			@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[2][1], 2))"
 			@info "Number of features: $(size(data[1][1], 1))"

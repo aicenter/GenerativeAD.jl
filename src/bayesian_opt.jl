@@ -217,6 +217,7 @@ end
 	update_bayes_cache(folder, results; kwargs...)
 
 Loads bayesian cache from folder and updates it with results.
+Additional keyword arguments are passed into `register_run!`.
 """
 function update_bayes_cache(folder, results; kwargs...)
 	_cache = load_bayes_cache(folder) 
@@ -230,7 +231,7 @@ end
 """
 	register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=true, ignore=Set([:init_seed]))
 
-Updates `cache` with new result from `r`(named tuple or symbol indexed dictionary). 
+Updates `cache` with new result from `r`(named tuple or symbol indexed dictionary).
 All basic metrics from `.Evaluation` module are supported and their column name 
 can be passed in the `metric` argument.
 Set of hyperparameters that are not optimized is given by the `ignore` argument, 
@@ -247,6 +248,8 @@ function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=tr
 		return
 	end
 	
+	# compute hash from all parameters (used for filtering during evaluation)
+	phash = hash(r[:parameters])
 	# filter only those parameters that are being optimized
 	parameters = (;filter(p -> !(p[1] in ignore), pairs(r[:parameters]))...) 
 	ophash = hash(parameters)   # corresponds only to optimizable parameters
@@ -258,6 +261,7 @@ function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=tr
 		anomaly_class = _get_anomaly_class(r)
 
 		runs = entry[:runs]
+		phashes = vcat(entry[:phashes], phash)
 
 		key = (seed, anomaly_class)
 		if key in keys(runs)	# this is true if for some `ophash` we have multiple outputs (scores)
@@ -266,19 +270,22 @@ function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=tr
 			runs[key] = flip_sign ? -metric_value : metric_value
 		end
 
-		cache[ophash] = merge(entry, (;runs=runs))
+		cache[ophash] = merge(entry, (;runs=runs, phashes=phashes))
 	elseif !(ophash in keys(cache)) && fit_results		# or create new entry if there are results (mainly used during manual cache creation)
 		seed = r[:seed]
 		anomaly_class = _get_anomaly_class(r)
 		runs = Dict((seed, anomaly_class) => flip_sign ? -metric_value : metric_value)
+		phashes = [phash]
 
 		cache[ophash] = (;
 			parameters = parameters,
-			runs = runs)
+			runs = runs,
+			phashes=phashes)
 	else							# otherwise add an empty entry (this is to indicate that such parameters are about to be trained)
 		entry = (;
 			parameters = parameters,
-			runs = Dict{Typle{Int,Int}, Any}())
+			runs = Dict{Tuple{Int,Int}, Any}(),
+			phashes = UInt64[])
 
 		cache[ophash] = entry
 	end

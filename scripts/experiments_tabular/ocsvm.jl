@@ -84,7 +84,7 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
-sampling_string = sampling == "_bayes" ? "bayes" : ""
+sampling_string = sampling == "bayes" ? "_bayes" : ""
 prefix = "experiments$(sampling_string)/tabular$(cont_string)"
 dataset_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
 while try_counter < max_tries
@@ -92,7 +92,7 @@ while try_counter < max_tries
 		parameters = GenerativeAD.bayes_params(
 								create_space(), 
 								dataset_folder,
-								sample_params; add_model_seed=true)
+								sample_params)
 	else
 		parameters = sample_params()
 	end
@@ -109,7 +109,7 @@ while try_counter < max_tries
 		
 		@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
 		# check if a combination of parameters and seed alread exists
-		if sampling == "random" && GenerativeAD.check_params(savepath, edited_parameters)
+		if GenerativeAD.check_params(savepath, edited_parameters)
 			# fit
 			training_info, results = fit(data, edited_parameters)
 			# here define what additional info should be saved together with parameters, scores, labels and predict times

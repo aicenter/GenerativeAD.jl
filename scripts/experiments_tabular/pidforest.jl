@@ -97,7 +97,7 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
-sampling_string = sampling == "_bayes" ? "bayes" : ""
+sampling_string = sampling == "bayes" ? "_bayes" : ""
 prefix = "experiments$(sampling_string)/tabular$(cont_string)"
 dataset_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
 while try_counter < max_tries
@@ -105,7 +105,7 @@ while try_counter < max_tries
 		parameters = GenerativeAD.bayes_params(
 								create_space(), 
 								dataset_folder,
-								sample_params; add_model_seed=true)
+								sample_params)
 	else
 		parameters = sample_params()
 	end
@@ -119,7 +119,7 @@ while try_counter < max_tries
 		data = remove_constant_features(data)
 		edited_parameters = sampling == "bayes" ? parameters : GenerativeAD.edit_params(data, parameters)
 
-		if sampling == "random" && GenerativeAD.check_params(savepath, edited_parameters)
+		if GenerativeAD.check_params(savepath, edited_parameters)
 			@info "Started training PIDForest$(edited_parameters) on $(dataset):$(seed)"
 			
 			training_info, results = fit(data, edited_parameters)
