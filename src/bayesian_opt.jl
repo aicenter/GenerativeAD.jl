@@ -251,7 +251,7 @@ function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=tr
 	# compute hash from all parameters (used for filtering during evaluation)
 	phash = hash(r[:parameters])
 	# filter only those parameters that are being optimized
-	parameters = (;filter(p -> !(p[1] in ignore), pairs(r[:parameters]))...) 
+	parameters = (;[p for p in pairs(r[:parameters]) if !(p[1] in ignore)]...)
 	ophash = hash(parameters)   # corresponds only to optimizable parameters
 								# there may be colisions (e.g. parameter being run with two seeds)
 
