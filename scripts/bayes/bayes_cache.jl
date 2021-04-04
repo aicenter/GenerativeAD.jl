@@ -15,7 +15,7 @@ Workflow:
     9. after this initial test, run it for all datasets
 
 Bayesian cache structure
-- dictionary indexed by `ophash` (hash of the named tuple containing only optimizable parameters)
+- !ordered! dictionary indexed by `ophash` (hash of the named tuple containing only optimizable parameters)
 - values - named tuples with following fields: parameters, runs, phashes
 
 ophash:
@@ -44,6 +44,7 @@ using BSON
 using GenerativeAD
 using ValueHistories
 using LinearAlgebra
+using OrderedCollections
 
 # If run outside our main repository - RECOMMENDED
 DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
@@ -92,22 +93,6 @@ In this example we throw out all result files, that were trained on data seed>2.
 file_filter(files) = filter(x -> occursin("seed=1", x), files)
 file_filter(files) = files
 
-"""
-    result_postprocess!(r)
-
-This function is applied to every deserialized result file.
-In this example we add `nu` parameter for runs that used the default `0.5`
-but others such as filter only reconstruction sampled score with vae is used here.
-"""
-function result_postprocess!(r)
-    if !(:nu in keys(r[:parameters]))
-        p = merge(r[:parameters], (;nu=0.5))
-        r[:parameters] = p
-    end	
-    r
-end
-result_postprocess!(r) = r  # default - identity
-
 ### Before storing the parameter entry these fields are filtered.
 ### By default we don't want to optimize `init_seed` or parameters related to anomaly score.
 ignored_hyperparams = Set([:init_seed, :percentile])
@@ -130,7 +115,7 @@ function cache_postprocess!(cache)
     # filter out runs on the old implementation
     filter!(c -> :act_loc in keys(c[2][:parameters]), cache)
 end
-cache_postprocess!(cache) = cache # default - identity
+cache_postprocess!(cache) = filter!(c -> length(c[2][:runs]) > 1, cache) # default filter
 
 
 ################                                                       ################
@@ -156,12 +141,10 @@ for dataset in datasets           # hot run
     
     @info "Running cache builder."
     # load files from each seed and call register_run! in the same way as after training
-    cache = Dict{UInt64, Any}()
+    cache = OrderedDict{UInt64, Any}()
     for f in files 
         r = BSON.load(f)
 
-        # some manual repair may be needed
-        r = result_postprocess!(r)
         try
             GenerativeAD.register_run!(
                 cache, r;
@@ -180,7 +163,7 @@ for dataset in datasets           # hot run
     n = length(cache)
     Random.seed!(7);
     mask = Set(randperm(n)[1:min(init_n, n)])
-    cache = Dict(k => v for (i, (k,v)) in enumerate(cache) if i in mask)
+    cache = OrderedDict(k => v for (i, (k,v)) in enumerate(cache) if i in mask)
     Random.seed!();
     @info "Sampling completed: $(length(cache)) entries"
 
