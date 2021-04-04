@@ -2,6 +2,7 @@ using BSON
 using PyCall
 using StatsBase
 using Statistics
+using OrderedCollections
 
 using .Evaluation: compute_stats, _get_anomaly_class
 
@@ -200,7 +201,7 @@ Tries to load serialized results of Bayesian optimization from `folder`.
 """
 function load_bayes_cache(folder)
     file = joinpath(folder, BAYES_CACHE)
-	isfile(file) ? BSON.load(file) : Dict{UInt64, Any}()
+	isfile(file) ? BSON.load(file) : OrderedDict{UInt64, Any}()
 end
 
 """
@@ -220,8 +221,7 @@ Loads bayesian cache from folder and updates it with results.
 Additional keyword arguments are passed into `register_run!`.
 """
 function update_bayes_cache(folder, results; kwargs...)
-	_cache = load_bayes_cache(folder) 
-	cache = _cache !== nothing ? _cache : Dict{UInt64, Any}()
+	cache = load_bayes_cache(folder)
 	for r in results
 		register_run!(cache, r; kwargs...)
 	end

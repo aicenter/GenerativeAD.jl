@@ -4,6 +4,7 @@ using ArgParse
 using GenerativeAD
 using PyCall
 using StatsBase: fit!, predict, sample
+using OrderedCollections
 using BSON
 
 s = ArgParseSettings()
