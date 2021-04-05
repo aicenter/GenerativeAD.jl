@@ -47,6 +47,9 @@ function sample_params()
 		init_seed 	= 1:Int(1e8)
 	)
 
+	return (;zip(keys(parameters_rng), map(x->sample(x, 1)[1], parameters_rng))...)
+end
+
 """
 	create_space()
 Creates a named tuple of python `skotp.space` classes which corresponds 
