@@ -89,9 +89,10 @@ end
 
 This filter is applied to an array of all files from a given dataset.
 In this example we throw out all result files, that were trained on data seed>2.
+By default we want to filter out model files.
 """
-file_filter(files) = filter(x -> occursin("seed=1", x), files)
-file_filter(files) = files
+file_filter(files) = filter(x -> occursin("seed=1", x) && !occursin("model", x), files)
+file_filter(files) = filter(x -> !occursin("model", x), files)
 
 ### Before storing the parameter entry these fields are filtered.
 ### By default we don't want to optimize `init_seed` or parameters related to anomaly score.
@@ -133,7 +134,7 @@ for dataset in datasets           # hot run
     
     # list recursively all files
     files = GenerativeAD.Evaluation.collect_files_th(dataset_folder);
-    @info "Collected all $(length(files)) results from $(dataset_folder) folder."
+    @info "Collected all $(length(files)) files from $(dataset_folder) folder."
 
     # file filter (for example when we don't want results from seed>2 for image datasets)
     files_filtered = file_filter(files)
@@ -142,7 +143,7 @@ for dataset in datasets           # hot run
     @info "Running cache builder."
     # load files from each seed and call register_run! in the same way as after training
     cache = OrderedDict{UInt64, Any}()
-    for f in files 
+    for f in files_filtered 
         r = BSON.load(f)
 
         try
@@ -176,6 +177,10 @@ for dataset in datasets           # hot run
     x0s = [GenerativeAD.to_skopt(space, x) for x in x0]
     @info "Testing conversion back from skopt to named tuples."
     x0t = [GenerativeAD.from_skopt(space, x) for x in x0s]
+
+    ## helpful for debugging problems with definition of space
+    ## all hyperparameter dimensions must be contained in their bounds
+    # [(x, [py"$(x[i]) in $(p)" for (i, p) in enumerate(space)]) for x in x0s]     
 
     @info "Testing BayesianHyperOpt fit using the tell method."
     opt = GenerativeAD.BayesianHyperOpt(collect(space))
