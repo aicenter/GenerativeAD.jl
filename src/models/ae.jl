@@ -65,7 +65,7 @@ end
 
 function anomaly_score(ae::AE, real_input; dims=(1,2,3), to_testmode::Bool=true)
 	(to_testmode == true) ? Flux.testmode!(ae) : nothing
-	score = vec(Flux.sum((ae(real_input) .- real_input).^2, dims=dims))
+score = mse_score(ae(real_input), real_input, dims=dims) 
 	(to_testmode == true) ? Flux.testmode!(ae, false) : nothing
 	return score
 end
@@ -77,7 +77,7 @@ function anomaly_score_gpu(ae::AE, real_input; batch_size=64, dims=(1,2,3), to_t
 	scores = Array{Float32}([])
 	for x in real_input
 		x = x |> gpu
-		score = vec(Flux.sum((ae(x) .- x).^2, dims=dims))
+		score = mse_score(ae(x), x, dims=dims) #vec(Flux.sum((ae(x) .- x).^2, dims=dims))
 		scores = cat(scores, score |> cpu, dims=1)
 	end
 	(to_testmode == true) ? Flux.testmode!(ae, false) : nothing
