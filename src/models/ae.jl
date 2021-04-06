@@ -65,7 +65,7 @@ end
 
 function anomaly_score(ae::AE, real_input; dims=(1,2,3), to_testmode::Bool=true)
 	(to_testmode == true) ? Flux.testmode!(ae) : nothing
-score = mse_score(ae(real_input), real_input, dims=dims) 
+	score = mse_score(ae(real_input), real_input, dims=dims) 
 	(to_testmode == true) ? Flux.testmode!(ae, false) : nothing
 	return score
 end
