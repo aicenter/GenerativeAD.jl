@@ -25,7 +25,7 @@ else
         sbatch \
         --array=1-${NUM_SAMPLES}%${NUM_CONC} \
         --output="${LOG_DIR}/${d}-%A_%a.out" \
-        ./${MODEL}_run.sh $MAX_SEED $d $HP_SAMPLING $CONTAMINATION
+        ./${MODEL}_run.sh ${MAX_SEED} $d ${HP_SAMPLING} $CONTAMINATION
 
         # for local testing    
         # ./${MODEL}_run.sh $MAX_SEED $d
