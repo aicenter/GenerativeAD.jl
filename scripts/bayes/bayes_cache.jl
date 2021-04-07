@@ -2,6 +2,8 @@
 Example script how to manually create Bayesian cache from already computed results. 
 Intended to run interactively as user input is needed to rewrite parts of it.
 Workflow:
+    0. Install `scikit-optimize` 
+        (from now on the environment that this is installed into has to be the one to activate before each run script)
     1. pick a model and dataset
     2. Define parameter ranges by `create_space` function.
     3. read recursively all results from corresponding dataset folder
@@ -89,14 +91,16 @@ end
     file_filter!(files)
 
 This filter is applied to an array of all files from a given dataset.
-In this example we throw out all result files, that were trained on data seed>2.
-By default we want to filter out model files.
+In this first example we throw out all result files, that were trained on data seed>2 and
+we also usually want to filter out model files. 
+(image datasets still have some samples computed on seed>2)
 """
 file_filter(files) = filter(x -> occursin("seed=1", x) && !occursin("model", x), files)
-file_filter(files) = filter(x -> !occursin("model", x), files)
+file_filter(files) = filter(x -> !occursin("model", x), files) # default - behavior
 
 ### Before storing the parameter entry these fields are filtered.
 ### By default we don't want to optimize `init_seed` or parameters related to anomaly score.
+### this has to be copied into `register_run!` in the corresponding run script.
 ignored_hyperparams = Set([:init_seed, :percentile])
 
 
