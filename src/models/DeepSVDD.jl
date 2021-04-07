@@ -27,9 +27,12 @@ function AE(svdd::DeepSVDD, x)
 	return x̂
 end
 
+mse_score(x̂,x;dims) = vec(Flux.sum((x̂ .- x).^2, dims=dims))
+
 function anomaly_score(svdd::DeepSVDD, x)
 	z = svdd(x)
-	dist = vec(Flux.sum((z .- svdd.c).^2, dims=1))
+	dist = mse_score(z, svdd.c, dims=1)
+	#vec(Flux.sum((z .- svdd.c).^2, dims=1))
 	score = (svdd.objective == "soft-boundary") ? dist .- svdd.R.^2 : dist
 	return score
 end
@@ -88,7 +91,7 @@ end
 
 ######################################################################################
 
-function conv_ae_constructor(
+function conv_svdd_constructor(
 	;idim=(2,2,1), 
 	zdim::Int=1, 
 	activation="relu", 
@@ -124,7 +127,7 @@ function conv_ae_constructor(
 end
 
 
-function ae_constructor(
+function svdd_constructor(
 	;idim::Int=1, 
 	zdim::Int=1, 
 	hdim::Int=64, 
