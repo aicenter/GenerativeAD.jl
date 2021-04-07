@@ -14,4 +14,4 @@ module load Python/3.8.2-GCCcore-9.3.0
 source ${HOME}/sklearn-env/bin/activate
 export PYTHON="${HOME}/sklearn-env/bin/python"
 
-julia ./vae_full.jl ${MAX_SEED} $DATASET $HP_SAMPLING $CONTAMINATION
+julia ./vae_full.jl ${MAX_SEED} $DATASET ${HP_SAMPLING} $CONTAMINATION
