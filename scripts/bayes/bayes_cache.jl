@@ -45,6 +45,7 @@ using GenerativeAD
 using ValueHistories
 using LinearAlgebra
 using OrderedCollections
+using Suppressor
 
 # If run outside our main repository - RECOMMENDED
 DrWatson.projectdir() = "/home/skvarvit/generativead/GenerativeAD.jl"
@@ -147,11 +148,13 @@ for dataset in datasets           # hot run
         r = BSON.load(f)
 
         try
-            GenerativeAD.register_run!(
-                cache, r;
-                metric=:val_auc,
-                flip_sign=true,
-                ignore=ignored_hyperparams) # ignore hyperparameters
+            @suppress begin
+                GenerativeAD.register_run!(
+                    cache, r;
+                    metric=:val_auc,
+                    flip_sign=true,
+                    ignore=ignored_hyperparams) # ignore hyperparameters
+            end
         catch e
             @warn("Register run on $(f) has failed due to $(e)")
         end
