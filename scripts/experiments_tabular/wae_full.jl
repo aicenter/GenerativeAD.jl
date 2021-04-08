@@ -9,6 +9,8 @@ using Flux
 using IPMeasures
 using GenerativeModels
 using Distributions
+using PyCall
+using OrderedCollections
 
 s = ArgParseSettings()
 @add_arg_table! s begin
