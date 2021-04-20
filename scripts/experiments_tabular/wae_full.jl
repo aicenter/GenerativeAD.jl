@@ -202,7 +202,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
 				# now loop over all anomaly score funs
-								all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
+				all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
 				if sampling == "bayes" && length(all_scores) > 0
 					@info("Updating cache with $(length(all_scores)) results.")
 					GenerativeAD.update_bayes_cache(dataset_folder, 
