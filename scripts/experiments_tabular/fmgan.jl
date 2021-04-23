@@ -65,7 +65,8 @@ function create_space()
     lr          = pyReal(1f-4, 1f-3, prior="log-uniform",       name="lr"),
     batchsize   = pyInt(5, 7,                                   name="log2_batchsize"),
     activation  = pyCat(categories=["relu", "swish", "tanh"],   name="activation"),
-    nlayers     = pyInt(2, 4,                                   name="nlayers")
+    nlayers     = pyInt(2, 4,                                   name="nlayers"),
+    alpha       = pyReal(1f-3, 1f3, prior="log-uniform",        name="alpha")
     )
 end
 """
