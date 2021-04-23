@@ -158,7 +158,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 		end
 
 	    for seed in 1:max_seed
-			savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
+			savepath = joinpath(dataset_folder, "seed=$(seed)")
 			mkpath(savepath)
 
 			# get data
