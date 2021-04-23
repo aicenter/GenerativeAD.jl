@@ -168,6 +168,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 			
 			# edit parameters
  			edited_parameters = sampling == "bayes" ? parameters : GenerativeAD.edit_params(data, parameters)	
+ 			
 			@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
 			@info "Train/validation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[3][1], 2))"
 			@info "Number of features: $(size(data[1][1], 1))"
