@@ -33,7 +33,7 @@ end
 function collect_scores(path)
 	try
 		fs = readdir(path)
-		fs = filter(x->!(occursin("model", x)), fs)
+		fs = filter(f->(f[1:5] != "model"), fs)
 		scores = map(f->val_score(joinpath(path,f)), fs)
 		return scores
 	catch e
@@ -61,7 +61,7 @@ end
 function select_best_model(mp, dataset, model, seeds)
 	dp = joinpath(mp, dataset)
 	sps = map(s->joinpath(dp, "seed=$s"), seeds) # paths of seed results
-	sfs = map(x->filter(f->!(occursin("model", f)), isdir(x) ? readdir(x) : []), sps) # all filenames
+	sfs = map(x->filter(f->(f[1:5] != "model"), isdir(x) ? readdir(x) : []), sps) # all filenames
 	scores = map(collect_scores, sps) # all scores
 	ufs = unique(vcat(sfs...)) # unique filenames
 	
@@ -106,8 +106,9 @@ function copy_models(seeds, sps, best_model, dataset, outpath, model)
 		end
 	end
 end
-model = "sptn"
-dataset = "annthyroid"
+
+model = "vae_knn"
+dataset = "iris"
 
 for model in models
 	@info "Processing model $model..."
