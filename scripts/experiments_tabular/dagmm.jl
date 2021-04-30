@@ -32,7 +32,7 @@ function sample_params()
         hdim 		= 2 .^(1:8),
         nlayers 	= 2:3,
         ncomp       = 2:8,
-        lambda_rat 	= 1:9,
+        lambda_rat 	= 1:2:9,
         lr 			= [1f-3, 1f-4, 1f-5],
         batchsize 	= 2 .^ (5:8),
         activation	= ["tanh"],
