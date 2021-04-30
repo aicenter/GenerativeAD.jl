@@ -14,7 +14,7 @@ outpath = datadir("experiments/tabular_clean_val_score")
 mkpath(outpath)
 models = [
 	"aae_full", "adVAE", "GANomaly", "vae_full", "wae_full", "abod", "hbos", "if", "knn", "loda", "lof",
-	"ocsvm_rbf", "ocsvm", "pidforest", "MAF", "RealNVP", "sptn", "fmgan", "gan", "MO_GAAL", "DeepSVDD", 
+	"ocsvm", "pidforest", "MAF", "RealNVP", "sptn", "fmgan", "gan", "MO_GAAL", "DeepSVDD", 
 	"vae_knn", "vae_ocsvm"
 	]
 seeds = 1:5

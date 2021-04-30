@@ -5,6 +5,8 @@ using GenerativeAD
 import StatsBase: fit!, predict
 using StatsBase
 using BSON
+using Distances
+using Statistics
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -24,14 +26,33 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, contamination = parsed_args
 
+dataset = "iris"
+max_seed = 2
+contamination = 0.0
+seed = 1
+data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
+
+
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "ocsvm"
-function sample_params()
-	par_vec = (round.([10^x for x in -4:0.1:2],digits=5),["poly", "rbf", "sigmoid"],[0.01, 0.5, 0.99])
-	argnames = (:gamma,:kernel,:nu)
-	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
+function median_l2_dist(X)
+	dists = pairwise(Euclidean(), X)
+	# take only the upper diagonal
+	ds = []
+	for i in 1:size(dists,1)
+		for j in (i+1):size(dists,1)
+			push!(ds, dists[i,j])
+		end
+	end
+	ml=median(ds)
 end
+function set_params(data)
+	D, N = size(data[1][1])
+	gamma = 1/median_l2_dist(data[1][1])
+	return (gamma=gamma, kernel="rbf", nu=0.5)
+end
+
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
 	model = GenerativeAD.Models.OCSVM(;parameters...)
@@ -64,23 +85,21 @@ try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
-    parameters = sample_params()
-
     for seed in 1:max_seed
-		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
+		savepath = datadir("experiments/tabular_clean_val_default/$(modelname)/$(dataset)/seed=$(seed)")
 		mkpath(savepath)
 
 		# get data
 		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
 		
 		# edit parameters
-		edited_parameters = GenerativeAD.edit_params(data, parameters)
+		parameters = set_params(data)
 		
-		@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
+		@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
 		# check if a combination of parameters and seed alread exists
-		if GenerativeAD.check_params(savepath, edited_parameters)
+		if GenerativeAD.check_params(savepath, parameters)
 			# fit
-			training_info, results = fit(data, edited_parameters)
+			training_info, results = fit(data, parameters)
 			# here define what additional info should be saved together with parameters, scores, labels and predict times
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
