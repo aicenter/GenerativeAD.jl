@@ -30,7 +30,7 @@ function sample_params()
     parameter_rng = (
         zdim 		= 2 .^(0:2),
         hdim 		= 2 .^(1:8),
-        nlayers 	= 1:3,
+        nlayers 	= 2:3,
         ncomp       = 2:8,
         lambda_rat 	= 1:9,
         lr 			= [1f-3, 1f-4, 1f-5],
@@ -40,8 +40,14 @@ function sample_params()
         wreg 		= [0.0, 1f-5, 1f-6],
         init_seed 	= 1:Int(1e8),
     )
-
-    (;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
+    parameters = (;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
+    
+    # ensure that zdim < hdim, even though zdim is usually small
+    while parameters.zdim >= parameters.hdim
+        @info "zdim $(parameters.zdim) too large in combination with hdim $(parameters.hdim)"
+		parameters = merge(parameters, (;zdim = sample(parameter_rng.zdim)))
+	end
+    parameters
 end
 
 function fit(data, parameters)
@@ -49,7 +55,7 @@ function fit(data, parameters)
 
     try
         global info, fit_t, _, _, _ = @timed fit!(model, data; max_train_time=82800/max_seed, 
-                        patience=200, check_interval=1, parameters...)
+                        patience=20, check_interval=10, parameters...)
     catch e
         @info "Failed training due to \n$e"
         return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), []
@@ -64,6 +70,7 @@ function fit(data, parameters)
         )
 
     # compute mixture parameters from the whole training data
+    # might be better to do it with batches at some point
     testmode!(model, true)
     _, _, z, gamma = model(data[1][1])
     phi, mu, cov = GenerativeAD.Models.compute_params(z, gamma)
@@ -73,6 +80,17 @@ function fit(data, parameters)
     training_info, [(x -> predict(info.model, x, phi, mu, cov), parameters)]
 end
 
+function GenerativeAD.edit_params(data, parameters)
+	idim = size(data[1][1],1)
+	# set hdim ~ idim/2 if hdim >= idim
+	if parameters.hdim >= idim
+		hdims = 2 .^(1:8)
+		hdim_new = hdims[hdims .< idim//2][end]
+        @info "Lowering width of autoencoder $(parameters.hdim) -> $(hdim_new)"
+		parameters = merge(parameters, (hdim=hdim_new,))
+	end
+	parameters
+end
 
 try_counter = 0
 max_tries = 10*max_seed

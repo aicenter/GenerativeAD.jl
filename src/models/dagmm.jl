@@ -122,13 +122,16 @@ function loss(model::DAGMM, x, λ₁, λ₂)
     reconst_loss + λ₁ * mean(sample_energy) + λ₂ * cov_diag
 end
 
+loss(model::DAGMM, x, λ₁, λ₂, batchsize::Int) = 
+    mean(map(y -> loss(model, y, λ₁, λ₂), Flux.Data.DataLoader(x, batchsize=batchsize)))
+
 # during testing we use params fitted from training
 # testmode is not really necessary because dropout is not part if the autoencoder
 function StatsBase.predict(model::DAGMM, x, phi, mu, cov)
     testmode!(model, true)
     _, _, z, _ = model(x)
     testmode!(model, false)
-    compute_energy(z, phi, mu, cov)[1]
+    compute_energy(z, phi, mu, cov)[1][:]
 end
 
 
@@ -144,6 +147,7 @@ function StatsBase.fit!(model::DAGMM, data::Tuple; max_train_time=82800,
     X = data[1][1]
     # filter only normal data from validation set
     X_val = data[2][1][:, data[2][2] .== 0.0f0]
+    val_N = size(X_val, 2)
 
     # hardcoded parameters, changing only the ratios
     λ₁, λ₂ = 0.1f0 * lambda_rat, 0.005f0 * lambda_rat
@@ -171,6 +175,7 @@ function StatsBase.fit!(model::DAGMM, data::Tuple; max_train_time=82800,
         if (i%check_interval == 0)
             testmode!(trn_model, true)
             val_loss_time = @elapsed val_loss = loss(trn_model, X_val, λ₁, λ₂)
+            # val_loss_time = @elapsed val_loss = val_N > 5000 ? loss(trn_model, X_val, λ₁, λ₂, 512) : loss(trn_model, X_val, λ₁, λ₂)
             testmode!(trn_model, false)
 
             @info "$i - loss: $(frmt(batch_loss)) (batch) | $(frmt(val_loss)) (validation) || $(frmt(grad_time)) (t_grad) | $(frmt(val_loss_time)) (t_val)"
