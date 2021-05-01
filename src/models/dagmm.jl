@@ -40,11 +40,11 @@ end
 
 norm2(x; dims=1) = sqrt.(sum(abs2, x; dims=dims))
 
-function cosine_similarity(x₁, x₂; dims=1, eps=1e-8)
+function cosine_similarity(x₁, x₂; dims=1, ε=1e-8)
     T = eltype(x₁)
     nx₁ = norm2(x₁; dims=dims)
     nx₂ = norm2(x₂; dims=dims)
-    sum(x₁ .* x₂; dims=dims) ./ max.(nx₁ .* nx₂, T(eps))
+    sum(x₁ .* x₂; dims=dims) ./ max.(nx₁ .* nx₂, T(ε))
 end
 
 function compute_reconstruction(x, x̂)
@@ -96,12 +96,12 @@ function compute_params(z, gamma)
     phi, mu, cov
 end
 
-function compute_energy(z, phi, mu, cov; eps=1e-7)
+function compute_energy(z, phi, mu, cov; ε=1e-7)
     T = eltype(z)
     z_mu = unsqueeze(z,2) .- mu
     D, K, _ = size(mu)
 
-    cov = cov .+ Diagonal(ones(Float32, D) .* T(eps))
+    cov = cov .+ Diagonal(ones(Float32, D) .* T(ε))
   
     cov_inverse = stack([inv(cov[:,:,k]) for k in 1:K], 3)
     det_cov = unsqueeze(unsqueeze([det(cov[:,:,k] .* 2 * T.(π)) for k in 1:K],1),1)
@@ -109,7 +109,7 @@ function compute_energy(z, phi, mu, cov; eps=1e-7)
 
     E_z = -T(0.5) .* sum(sum(unsqueeze(z_mu, 1) .* cov_inverse, dims=2) .* unsqueeze(z_mu, 2), dims=1)
     E_z = exp.(E_z)
-    E_z = -log.(sum(unsqueeze(phi', 1).* E_z ./ sqrt.(det_cov), dims=3).+ T(eps))
+    E_z = -log.(sum(unsqueeze(phi', 1).* E_z ./ sqrt.(det_cov), dims=3) .+ T(ε))
           
     E_z, cov_diag
 end
@@ -163,11 +163,15 @@ function StatsBase.fit!(model::DAGMM, data::Tuple; max_train_time=82800,
     for batch in RandomBatches(X, batchsize)
         batch_loss = 0f0
 
-        grad_time = @elapsed begin
-            gs = gradient(() -> begin 
-                batch_loss = loss(trn_model, batch, λ₁, λ₂)
-            end, ps)
-            Flux.update!(opt, ps, gs)
+        grad_time = try 
+            @elapsed begin
+                gs = gradient(() -> begin 
+                    batch_loss = loss(trn_model, batch, λ₁, λ₂)
+                end, ps)
+                Flux.update!(opt, ps, gs)
+            end
+        catch
+            return trn_model, batch
         end
 
         push!(history, :batch_loss, i, batch_loss)
