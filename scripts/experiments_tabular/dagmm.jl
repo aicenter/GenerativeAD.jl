@@ -85,7 +85,7 @@ function GenerativeAD.edit_params(data, parameters)
 	# set hdim ~ idim/2 if hdim >= idim
 	if parameters.hdim >= idim
 		hdims = 2 .^(1:8)
-		hdim_new = hdims[hdims .< idim//2][end]
+		hdim_new = hdims[hdims .<= (idim+1)//2][end]
         @info "Lowering width of autoencoder $(parameters.hdim) -> $(hdim_new)"
 		parameters = merge(parameters, (hdim=hdim_new,))
 	end
