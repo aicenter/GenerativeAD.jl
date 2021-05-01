@@ -4,6 +4,7 @@ using StatsBase
 using Statistics
 using Distributions
 using DistributionsAD
+using MLDataPattern: RandomBatches
 
 struct DAGMM{E,D,S}
     encoder::E
@@ -95,7 +96,7 @@ function compute_params(z, gamma)
     phi, mu, cov
 end
 
-function compute_energy(z, phi, mu, cov; eps=1e-12)
+function compute_energy(z, phi, mu, cov; eps=1e-7)
     T = eltype(z)
     z_mu = unsqueeze(z,2) .- mu
     D, K, _ = size(mu)
