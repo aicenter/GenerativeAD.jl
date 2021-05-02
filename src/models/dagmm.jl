@@ -163,15 +163,11 @@ function StatsBase.fit!(model::DAGMM, data::Tuple; max_train_time=82800,
     for batch in RandomBatches(X, batchsize)
         batch_loss = 0f0
 
-        grad_time = try 
-            @elapsed begin
-                gs = gradient(() -> begin 
-                    batch_loss = loss(trn_model, batch, λ₁, λ₂)
-                end, ps)
-                Flux.update!(opt, ps, gs)
-            end
-        catch
-            return trn_model, batch
+        grad_time = @elapsed begin
+            gs = gradient(() -> begin 
+                batch_loss = loss(trn_model, batch, λ₁, λ₂)
+            end, ps)
+            Flux.update!(opt, ps, gs)
         end
 
         push!(history, :batch_loss, i, batch_loss)
