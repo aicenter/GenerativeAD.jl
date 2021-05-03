@@ -107,8 +107,8 @@ function copy_models(seeds, sps, best_model, dataset, outpath, model)
 	end
 end
 
-model = "vae_knn"
-dataset = "iris"
+model = "maf"
+dataset = "ecoli"
 
 for model in models
 	@info "Processing model $model..."
