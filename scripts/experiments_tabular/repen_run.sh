@@ -1,7 +1,8 @@
 #!/bin/bash
+#SBATCH --partition=cpu
 #SBATCH --time=24:00:00
-#SBATCH --nodes=1 --ntasks-per-node=4 --cpus-per-task=1
-#SBATCH --mem=24G
+#SBATCH --nodes=1 --cpus-per-task=1
+#SBATCH --mem=12G
 #SBATCH --qos==collaborator
 
 MAX_SEED=$1
