@@ -1,3 +1,13 @@
+"""
+    Implements all needed parts for constructing DAGMM model
+        (https://sites.cs.ucsb.edu/~bzong/doc/iclr18-dagmm.pdf) for detecting anomalies.
+    Code is inspired by multiple reimplementations
+    - https://github.com/danieltan07/dagmm
+    - https://github.com/tnakae/DAGMM/
+    - https://github.com/Newcomer520/tf-dagmm
+    - https://github.com/mperezcarrasco/PyTorch-DAGMM
+"""
+
 using Flux: mse, softmax, unsqueeze, stack
 using LinearAlgebra
 using StatsBase
