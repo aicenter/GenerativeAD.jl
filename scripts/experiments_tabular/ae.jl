@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
-using GenerativeAD.Models: anomaly_score, generalized_anomaly_score_gpu
+using GenerativeAD.Models
 using BSON
 using StatsBase: fit!, predict, sample
 
@@ -19,26 +19,23 @@ s = ArgParseSettings()
 		required = true
 		arg_type = String
 		help = "dataset"
-    "contamination"
-    	arg_type = Float64
-    	help = "contamination rate of training data"
-    	default = 0.0
+	"contamination"
+		arg_type = Float64
+		help = "contamination rate of training data"
+		default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, contamination = parsed_args
 
-modelname ="DeepSVDD"
+modelname ="AE"
 
 function sample_params()
 	argnames = (
 		:hdim, 
 		:zdim, 
 		:nlayers, 
-        :activation, 
-        :objective, 
-        :nu,
-        :lr_svdd, 
-        :lr_ae,
+		:activation, 
+		:lr,
 		:batch_size, 
 		:init_seed,
 	)
@@ -46,11 +43,8 @@ function sample_params()
 		2 .^(4:9),
 		2 .^(3:8),
 		3:4,
-        ["relu", "swish", "tanh"],
-        ["soft-boundary", "one-class"],
-        [0.01f0, 0.1f0, 0.5f0, 0.99f0], # paper 0.1
-        10f0 .^ (-4:-3),
-        10f0 .^ (-4:-3),
+		["relu", "swish", "tanh"],
+		10f0 .^ (-4:-3),
 		2 .^ (5:7),
 		1:Int(1e8),
 	)
@@ -64,34 +58,31 @@ function fit(data, parameters)
 		(
 			iters=5000, 
 			check_every=30, 
-			ae_check_every = 30,
 			patience=10, 
-			ae_iters=5000
 		)
 	)
-    
-    svdd = GenerativeAD.Models.svdd_constructor(;all_parameters...) |> gpu
+	
+	ae = GenerativeAD.Models.ae_constructor(;all_parameters...)
 
 	# define optimiser
 	try
-		global info, fit_t, _, _, _ = @timed fit!(svdd, data, all_parameters)
+		global info, fit_t, _, _, _ = @timed fit!(ae, data, all_parameters)
 	catch e
 		println("Error caught => $(e).")
 		return (fit_t = NaN, model = nothing, history = nothing, n_parameters = NaN), []
 	end
 
-    training_info = (
+	training_info = (
 		fit_t = fit_t,
 		model = info[2]|>cpu,
-		history_svdd = info[1][1], # losses through time
-		history_ae = info[1][2],
+		history = info[1], # losses through time
 		npars = info[3], # number of parameters
 		iters = info[4] # optim iterations of model
 		)
 
 
-    return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(svdd, x), parameters)] 
-    # if there is no gpu on pc anomaly_score will automaticly run on cpu
+	return training_info, [(x -> GenerativeAD.Models.anomaly_score(ae, x; dims=1), parameters)] 
+	# if there is no gpu on pc anomaly_score will automaticly run on cpu
 end
 
 #_________________________________________________________________________________________________
@@ -100,16 +91,16 @@ try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
-    parameters = sample_params()
+	parameters = sample_params()
 
-    for seed in 1:max_seed
+	for seed in 1:max_seed
 		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
 		mkpath(savepath)
 
 		# get data
 		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
-		        
-        @info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
+				
+		@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
 		@info "Train/validation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[3][1], 2))"
 		@info "Number of features: $(size(data[1][1])[1])"
 

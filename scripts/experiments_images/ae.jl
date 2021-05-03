@@ -27,15 +27,15 @@ s = ArgParseSettings()
 		arg_type = String
 		default = "leave-one-out"
 		help = "method for data creation -> \"leave-one-out\" or \"leave-one-in\" "
-    "contamination"
-    	arg_type = Float64
-    	help = "contamination rate of training data"
-    	default = 0.0
+	"contamination"
+		arg_type = Float64
+		help = "contamination rate of training data"
+		default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes, method, contamination = parsed_args
 
-modelname ="DeepSVDD"
+modelname ="AE"
 
 function sample_params()
 	# first sample the number of layers
@@ -47,25 +47,17 @@ function sample_params()
 	par_vec = (
 		2 .^(3:8), 
 		10f0 .^(-4:-3), 
-		10f0 .^(-4:-3),
-		[true, false], 
+		[false], 
 		2 .^ (6:7), 
 		["relu", "swish", "tanh"], 
-		["soft-boundary", "one-class"],
-		[0.01f0, 0.1f0, 0.5f0, 0.99f0], # paper 0.1
-		[1e-6], # from paper
 		1:Int(1e8)
 	)
 	argnames = (
 		:zdim, 
-		:lr_ae, 
-		:lr_svdd, 
+		:lr, 
 		:batchnorm,
 		:batch_size, 
 		:activation, 
-		:objective,
-		:nu,
-		:decay,
 		:init_seed
 	)
 	parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
@@ -82,16 +74,14 @@ function fit(data, parameters)
 			idim=size(data[1][1])[1:3], 
 			iters=5000, 
 			check_every=30, 
-			ae_check_every = 200,
 			patience=10, 
-			ae_iters=10000
 		)
 	)
-	svdd = GenerativeAD.Models.conv_svdd_constructor(;all_parameters...) |> gpu
+	ae = GenerativeAD.Models.conv_ae_constructor(;all_parameters...) 
 
 	# define optimiser
 	try
-		global info, fit_t, _, _, _ = @timed fit!(svdd, data, all_parameters)
+		global info, fit_t, _, _, _ = @timed fit!(ae, data, all_parameters)
 	catch e
 		println("Error caught => $(e).")
 		return (fit_t = NaN, model = nothing, history = nothing, n_parameters = NaN), []
@@ -100,13 +90,12 @@ function fit(data, parameters)
 	training_info = (
 		fit_t = fit_t,
 		model = info[2]|>cpu,
-		history_svdd = info[1][1], # losses through time
-		history_ae = info[1][2],
+		history = info[1], # losses through time
 		npars = info[3], # number of parameters
 		iters = info[4] # optim iterations of model
 		)
 
-	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(svdd, x), parameters)]
+	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(ae, x, dims=(1,2,3)), parameters)]
 end
 
 #_________________________________________________________________________________________________
