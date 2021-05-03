@@ -10,11 +10,11 @@ using DataFrames, CSV
 using Random
 using EvalMetrics: ConfusionMatrix, recall, precision, f1_score, roccurve, auc_trapezoidal
 
-for dataset in ["probe", "secom", "u2r"]
+for dataset in ["ad_cat", "apascal", "bank-additional-full_normalised", "lung-1vs5", "probe", "secom", "u2r"]
     for subsample in 2 .^(3:8)
         parameters = (
             confidence_margin  = 1000.0,
-            batchsize 	       = 256,
+            batchsize          = 256,
             zdim               = 20,
             nlayers            = 1,
             hdim               = 10, # does not matter with one layer
