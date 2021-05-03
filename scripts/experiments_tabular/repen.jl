@@ -32,20 +32,13 @@ function sample_params()
         hdim            = 2 .^(1:8),
         conf_margin     = 2 .^(9:11),
         nlayers         = 1:2,
-        ensemble_size   = [25, 50]
+        ensemble_size   = [25, 50],
         subsample_size  = 2 .^(1:8),
         batchsize       = 2 .^ (5:8),
         activation      = ["relu", "tanh"],
         init_seed       = 1:Int(1e8)
     )
     parameters = (;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
-    
-    # ensure that zdim < hdim
-    while parameters.zdim >= parameters.hdim
-        @info "zdim $(parameters.zdim) too large in combination with hdim $(parameters.hdim)"
-        parameters = merge(parameters, (;zdim = sample(parameter_rng.zdim)))
-    end
-    parameters
 end
 
 function fit(data, parameters)
@@ -72,27 +65,43 @@ end
 
 function GenerativeAD.edit_params(data, parameters)
     idim, n = size(data[1][1])
-    # set hdim ~ idim/2 if hdim >= idim
-    if parameters.nlayers > 1 && parameters.hdim >= idim
-        hdims = 2 .^(1:8)
-        hdim_new = hdims[hdims .<= (idim+1)//2][end]
-        @info "Lowering width of embedding $(parameters.hdim) -> $(hdim_new)"
-        parameters = merge(parameters, (hdim=hdim_new,))
+    
+    if parameters.nlayers > 1
+        # set hdim ~ idim/2 if hdim >= idim
+        if parameters.hdim >= idim
+            hdims = 2 .^(1:8)
+            hdim_new = hdims[hdims .<= (idim+1)//2][end]
+            @info "width of hidden layer hdim $(parameters.hdim) too large for input dimension $(idim) lowering -> $(hdim_new)"
+            parameters = merge(parameters, (hdim=hdim_new,))
+        end
+
+        # ensure that zdim < hdim
+        while parameters.zdim >= parameters.hdim
+            new_zdim = sample(2 .^(0:6))
+            @info "zdim $(parameters.zdim) too large in combination with hdim $(parameters.hdim) trying $(new_zdim)"
+            parameters = merge(parameters, (;zdim = new_zdim))
+        end
+    else
+        # ensure that zdim < idim
+        while parameters.zdim >= idim
+            new_zdim = sample(2 .^(0:6))
+            @info "zdim $(parameters.zdim) too large for input dimension $(idim) trying $(new_zdim)"
+            parameters = merge(parameters, (;zdim = new_zdim))
+        end
     end
 
     # modify batchsize to < n/3
     if parameters.batchsize >= n//3
         batchsizes = 2 .^(1:8)
         batchsize_new = batchsizes[batchsizes .< n//3][end]
-        @info "Decreasing batchsize due to small number of samples $(parameters.batchsizes) -> $(batchsize_new)"
+        @info "Decreasing batchsize due to small number of samples $(parameters.batchsize) -> $(batchsize_new)"
         parameters = merge(parameters, (batchsize=batchsize_new,)) 
     end
 
     # modify subsample_size to < n
-    if parameters.subsample_size >= n
-        subsamples = 2 .^(1:8)
-        subsample_new = subsamples[subsamples .< n][end]
-        @info "Decreasing subsample_size due to small number of samples $(parameters.subsample_size) -> $(subsample_new)"
+    while parameters.subsample_size >= n
+        subsample_new = sample(2 .^(1:8))
+        @info "subsample_size $(parameters.subsample_size) too large for number of samples $(n) trying $(subsample_new)"
         parameters = merge(parameters, (subsample_size=subsample_new,)) 
     end
 
