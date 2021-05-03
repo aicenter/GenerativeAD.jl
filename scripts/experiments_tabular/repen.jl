@@ -30,13 +30,13 @@ function sample_params()
     parameter_rng = (
         zdim            = 2 .^(1:6),
         hdim            = 2 .^(1:8),
-        conf_margin     = 1000.0,
+        conf_margin     = 2 .^(9:11),
         nlayers         = 1:2,
         ensemble_size   = [25, 50]
         subsample_size  = 2 .^(1:8),
         batchsize       = 2 .^ (5:8),
         activation      = ["relu", "tanh"],
-        init_seed   = 1:Int(1e8),
+        init_seed       = 1:Int(1e8)
     )
     parameters = (;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
     

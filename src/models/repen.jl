@@ -46,12 +46,12 @@ end
 sqr_euclidean_dist(x,y; dims=1) = sum(abs2, x .- y, dims=dims)
 
 function ranking_loss(input_example, input_positive, input_negative;
-                        confidence_margin=1000.0)
+                        conf_margin=1000.0)
     T = eltype(input_example)
     positive_distances = sqr_euclidean_dist(input_example, input_positive)
     negative_distances = sqr_euclidean_dist(input_example, input_negative)
     
-    mean(max.(T(0.0), T(confidence_margin) .- (negative_distances .- positive_distances)))
+    mean(max.(T(0.0), T(conf_margin) .- (negative_distances .- positive_distances)))
 end
 
 # Is there something random in the way KDTree is created?
@@ -135,7 +135,7 @@ end
 
 function StatsBase.fit!(model::REPEN, data::Tuple; max_train_time=82800,
                         batchsize=64, max_iters=10000, check_interval::Int=10, 
-                        confidence_margin=1000.0, kwargs...)
+                        conf_margin=1000.0, kwargs...)
     
     opt = ADADelta()
     ps = Flux.params(model);
@@ -153,7 +153,7 @@ function StatsBase.fit!(model::REPEN, data::Tuple; max_train_time=82800,
         grad_time = @elapsed begin
             gs = gradient(ps) do
                 z_triplet = model(batch)
-                batch_loss = ranking_loss(z_triplet...; confidence_margin=confidence_margin)
+                batch_loss = ranking_loss(z_triplet...; conf_margin=conf_margin)
             end
             Flux.update!(opt, ps, gs)
         end
