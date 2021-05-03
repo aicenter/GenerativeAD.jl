@@ -54,7 +54,6 @@ function ranking_loss(input_example, input_positive, input_negative;
     mean(max.(T(0.0), T(conf_margin) .- (negative_distances .- positive_distances)))
 end
 
-# Is there something random in the way KDTree is created?
 function lesinn(xq; fit_data=xq, ensemble_size=50, subsample_size=8, kwargs...)
     Random.seed!(42) 
     n = size(fit_data, 2)
@@ -73,15 +72,15 @@ function cutoff_unsorted(vals; th0=1.7321)
     v_mean = mean(vals)
     v_std = std(vals)
     th = v_mean + th0 * v_std 
-    if th >= maximum(vals)
+    if th >= maximum(vals) # return the top-10 outlier scores
         temp = sort(vals)
-        th = temp[-11]
+        th = temp[end-10]
     end
 
     outlier_ind = findall(vals .> th)
     inlier_ind = findall(vals .<= th)
     
-    inlier_ind, outlier_ind;
+    inlier_ind, outlier_ind
 end
 
 
