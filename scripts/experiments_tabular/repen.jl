@@ -120,7 +120,9 @@ while try_counter < max_tries
 
         # get data
         data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
-        edited_parameters = GenerativeAD.edit_params(data, parameters)
+        # edit_params is not deterministic and therefore `edited_parameters` may be different for each seed
+        # as a workaround once it is called it overwrites `parameters`, which should not be changed by the next call
+        parameters = edited_parameters = GenerativeAD.edit_params(data, parameters)
 
         if GenerativeAD.check_params(savepath, edited_parameters)
             @info "Started training $(modelname)$(edited_parameters) on $(dataset):$(seed)"
@@ -129,7 +131,7 @@ while try_counter < max_tries
             
             training_info, results = fit(data, edited_parameters)
 
-            if training_info.model != nothing
+            if training_info.model !== nothing
                 tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
                         Dict("model"=>training_info.model,
                             "fit_t"=>training_info.fit_t,
