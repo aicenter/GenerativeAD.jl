@@ -28,26 +28,21 @@ modelname = "dagmm"
 
 function sample_params()
     parameter_rng = (
-        zdim 		= 2 .^(0:2),
+        zdim 		= 2 .^(0:1),
         hdim 		= 2 .^(1:8),
         nlayers 	= 2:3,
         ncomp       = 2:8,
-        lambda_rat 	= 1:2:9,
+        lambda_e 	= [1.0, 0.5, 0.1],
+        lambda_d    = [1.0, 0.5, 0.1, 0.05, 0.005],
         lr 			= [1f-3, 1f-4, 1f-5],
         batchsize 	= 2 .^ (5:8),
         activation	= ["tanh"],
         dropout		= 0.0:0.1:0.5,
-        wreg 		= [0.0, 1f-5, 1f-6],
+        wreg 		= [0.0],
         init_seed 	= 1:Int(1e8),
     )
-    parameters = (;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
-    
-    # ensure that zdim < hdim, even though zdim is usually small
-    while parameters.zdim >= parameters.hdim
-        @info "zdim $(parameters.zdim) too large in combination with hdim $(parameters.hdim)"
-		parameters = merge(parameters, (;zdim = sample(parameter_rng.zdim)))
-	end
-    parameters
+
+    (;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
 end
 
 function fit(data, parameters)

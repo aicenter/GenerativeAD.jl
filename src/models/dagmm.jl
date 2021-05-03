@@ -138,7 +138,7 @@ end
 
 function StatsBase.fit!(model::DAGMM, data::Tuple; max_train_time=82800,
                         batchsize=64, patience=200, check_interval::Int=1, 
-                        wreg=1f-6, lambda_rat=1, lr=1f-4, kwargs...)
+                        wreg=1f-6, lambda_e=0.1f0, lambda_d=0.005f0, lr=1f-4, kwargs...)
     # add regularization through weight decay in optimizer
     opt = (wreg > 0) ? ADAMW(lr, (0.9, 0.999), wreg) : Flux.ADAM(lr)
     
@@ -149,9 +149,6 @@ function StatsBase.fit!(model::DAGMM, data::Tuple; max_train_time=82800,
     # filter only normal data from validation set
     X_val = data[2][1][:, data[2][2] .== 0.0f0]
     val_N = size(X_val, 2)
-
-    # hardcoded parameters, changing only the ratios
-    λ₁, λ₂ = 0.1f0 * lambda_rat, 0.005f0 * lambda_rat
 
     history = MVHistory()
     _patience = patience
@@ -165,7 +162,7 @@ function StatsBase.fit!(model::DAGMM, data::Tuple; max_train_time=82800,
 
         grad_time = @elapsed begin
             gs = gradient(() -> begin 
-                batch_loss = loss(trn_model, batch, λ₁, λ₂)
+                batch_loss = loss(trn_model, batch, lambda_e, lambda_d)
             end, ps)
             Flux.update!(opt, ps, gs)
         end
@@ -175,8 +172,8 @@ function StatsBase.fit!(model::DAGMM, data::Tuple; max_train_time=82800,
 
         if (i%check_interval == 0)
             testmode!(trn_model, true)
-            val_loss_time = @elapsed val_loss = loss(trn_model, X_val, λ₁, λ₂)
-            # val_loss_time = @elapsed val_loss = val_N > 5000 ? loss(trn_model, X_val, λ₁, λ₂, 512) : loss(trn_model, X_val, λ₁, λ₂)
+            val_loss_time = @elapsed val_loss = loss(trn_model, X_val, lambda_e, lambda_d)
+            # val_loss_time = @elapsed val_loss = val_N > 5000 ? loss(trn_model, X_val, lambda_e, lambda_d, 512) : loss(trn_model, X_val, lambda_e, lambda_d)
             testmode!(trn_model, false)
 
             @info "$i - loss: $(frmt(batch_loss)) (batch) | $(frmt(val_loss)) (validation) || $(frmt(grad_time)) (t_grad) | $(frmt(val_loss_time)) (t_val)"
