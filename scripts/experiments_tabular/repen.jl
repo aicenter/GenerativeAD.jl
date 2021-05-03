@@ -71,7 +71,7 @@ function fit(data, parameters)
 end
 
 function GenerativeAD.edit_params(data, parameters)
-    idim = size(data[1][1],1)
+    idim, n = size(data[1][1])
     # set hdim ~ idim/2 if hdim >= idim
     if parameters.nlayers > 1 && parameters.hdim >= idim
         hdims = 2 .^(1:8)
@@ -79,6 +79,23 @@ function GenerativeAD.edit_params(data, parameters)
         @info "Lowering width of embedding $(parameters.hdim) -> $(hdim_new)"
         parameters = merge(parameters, (hdim=hdim_new,))
     end
+
+    # modify batchsize to < n/3
+    if parameters.batchsize >= n//3
+        batchsizes = 2 .^(1:8)
+        batchsize_new = batchsizes[batchsizes .< n//3][end]
+        @info "Decreasing batchsize due to small number of samples $(parameters.batchsizes) -> $(batchsize_new)"
+        parameters = merge(parameters, (batchsize=batchsize_new,)) 
+    end
+
+    # modify subsample_size to < n
+    if parameters.subsample_size >= n
+        subsamples = 2 .^(1:8)
+        subsample_new = subsamples[subsamples .< n][end]
+        @info "Decreasing subsample_size due to small number of samples $(parameters.subsample_size) -> $(subsample_new)"
+        parameters = merge(parameters, (subsample_size=subsample_new,)) 
+    end
+
     parameters
 end
 
