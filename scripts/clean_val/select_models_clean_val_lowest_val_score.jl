@@ -106,21 +106,3 @@ function copy_models(seeds, sps, best_model, dataset, outpath, model)
 		end
 	end
 end
-
-model = "vae_knn"
-dataset = "iris"
-
-for model in models
-	@info "Processing model $model..."
-	mp = joinpath(master_path, model)
-	datasets = readdir(mp)
-	for dataset in datasets
-		@info "   $dataset"
-		best_model, sps = select_best_model(mp, dataset, model, seeds)
-		if !isnothing(best_model)
-			copy_models(seeds, sps, best_model, dataset, outpath, model)
-		else
-			@warn "No usable data found, skipping"
-		end
-	end
-end

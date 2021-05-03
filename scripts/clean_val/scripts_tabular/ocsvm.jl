@@ -26,13 +26,6 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, contamination = parsed_args
 
-dataset = "iris"
-max_seed = 2
-contamination = 0.0
-seed = 1
-data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
-
-
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "ocsvm"
