@@ -185,19 +185,24 @@ for dataset in datasets           # hot run
     @info "Testing conversion back from skopt to named tuples."
     x0t = [GenerativeAD.from_skopt(space, x) for x in x0s]
 
-    ## helpful for debugging problems with definition of space
-    ## all hyperparameter dimensions must be contained in their bounds
-    # [(x, [py"$(x[i]) in $(p)" for (i, p) in enumerate(space)]) for x in x0s]     
-
     @info "Testing BayesianHyperOpt fit using the tell method."
-    opt = GenerativeAD.BayesianHyperOpt(collect(space))
-    GenerativeAD.tell(opt, x0s, y0)
-
-    x1s = GenerativeAD.ask(opt)
-    @info "Tested sampling of new parameters using ask: $x1s"
-
-    x1 = GenerativeAD.from_skopt(space, x1s)
-    @info "Tested conversion of sampled parameters from skopt to named tuples: $x1"
+    try
+        opt = GenerativeAD.BayesianHyperOpt(collect(space))
+        GenerativeAD.tell(opt, x0s, y0)
+        
+        x1s = GenerativeAD.ask(opt)
+        @info "Tested sampling of new parameters using ask: $x1s"
+        
+        x1 = GenerativeAD.from_skopt(space, x1s)
+        @info "Tested conversion of sampled parameters from skopt to named tuples: $x1"
+    catch e
+        # helpful for debugging problems with definition of space
+        # all hyperparameter dimensions must be contained in their bounds
+        @warn "Failed during dry run of optimization due to $e"
+        @info "This may be due to some points out of bounds showing debug:"
+        @info("", [(x, [py"$(x[i]) in $(p)" for (i, p) in enumerate(space)]) for x in x0s])
+        break
+    end
 
     # if all is well save the cache
     # by default this saves it back to the root directory
@@ -205,4 +210,5 @@ for dataset in datasets           # hot run
     target_folder = datadir("$(target_prefix)/$(modelname)/$(dataset)")
     @info "Saving cache to $(target_folder)"
     GenerativeAD.save_bayes_cache(target_folder, cache)
+    @info "________________________________________________________________________________"
 end
