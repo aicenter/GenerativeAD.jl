@@ -137,9 +137,15 @@ function conv_vae_constructor(;idim=(2,2,1), zdim::Int=1, activation="relu", hdi
 			ConditionalDists.SplitLayer(vecdim, [vecdim, 1], [identity, safe_softplus])
 			)
 	elseif var =="conv"
-		odim = Tuple([idim[1:2]..., 2*idim[3]])
-		decoder_map = GenerativeAD.Models.conv_decoder(odim, zdim, reverse(kernelsizes), reverse(channels), reverse(scalings),
-				activation=activation, vec_output=false)
+		odim = Tuple([idim[1:2]..., idim[3]+1])
+		decoder_map = Chain(
+			conv_decoder(odim, zdim, reverse(kernelsizes), reverse(channels), reverse(scalings),
+				activation=activation, vec_output=false),
+			ConditionalDists.SplitLayer((
+				Conv((1,1), odim[end]=>idim[3]),
+				Chain(Conv((1,1), odim[end]=>1), x->mean(x, dims=(1,2,3)), vec, x->safe_softplus.(x))
+				))
+			)
 	else
 		error("variance $var unknown")
 	end
