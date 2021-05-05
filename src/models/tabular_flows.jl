@@ -116,9 +116,9 @@ function StatsBase.fit!(model::F, data::Tuple; max_train_time=82800,
 		Flux.update!(opt, ps, gs)
 
 		# validation/early stopping
-		testmode!(model, true)
+		testmode!(trn_model, true)
 		val_loss = loss(trn_model, X_val)
-		testmode!(model, false)
+		testmode!(trn_model, false)
 		@info "$i - loss: $l (batch) | $val_loss (validation)"
 		
 		if isnan(val_loss) || isinf(val_loss) || isnan(l) || isinf(l)
