@@ -2,6 +2,7 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
+using PyCall
 using StatsBase: fit!, predict, sample
 using BSON
 using Flux
@@ -16,13 +17,17 @@ s = ArgParseSettings()
         default = "iris"
         arg_type = String
         help = "dataset"
+    "sampling"
+        default = "random"
+        arg_type = String
+        help = "sampling of hyperparameters"
     "contamination"
         arg_type = Float64
         help = "contamination rate of training data"
         default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, contamination = parsed_args
+@unpack dataset, max_seed, sampling, contamination = parsed_args
 
 modelname = "dagmm"
 
@@ -43,6 +48,26 @@ function sample_params()
     )
 
     (;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
+end
+
+function create_space()
+    pyReal = pyimport("skopt.space")["Real"]
+    pyInt = pyimport("skopt.space")["Integer"]
+    pyCat = pyimport("skopt.space")["Categorical"]
+    
+    (;  
+        zdim 		= pyInt(0, 1, 								name="log2_zdim"),
+        hdim 		= pyInt(1, 8, 								name="log2_hdim"),
+        nlayers 	= pyInt(2, 3, 								name="nlayers"),
+        ncomp       = pyInt(2, 8, 								name="ncomp"),
+        lambda_e 	= pyReal(1e-2, 1.0, prior="log-uniform", 	name="lambda_e"),
+        lambda_d    = pyReal(1e-3, 1.0, prior="log-uniform", 	name="lambda_d"),
+        lr 			= pyReal(1f-5, 1f-3, prior="log-uniform", 	name="lr"),
+        batchsize 	= pyInt(5, 7, 								name="log2_batchsize"),
+        activation	= pyCat(categories=["tanh"], 		        name="activation"),
+        dropout		= pyReal(0.0, 0.5,                          name="dropout"),
+        wreg 		= pyCat(categories=[0.0], 			        name="wreg"),
+    )
 end
 
 function fit(data, parameters)
@@ -76,30 +101,40 @@ function fit(data, parameters)
 end
 
 function GenerativeAD.edit_params(data, parameters)
-	idim = size(data[1][1],1)
-	# set hdim ~ idim/2 if hdim >= idim
-	if parameters.hdim >= idim
-		hdims = 2 .^(1:8)
-		hdim_new = hdims[hdims .<= (idim+1)//2][end]
+    idim = size(data[1][1],1)
+    # set hdim ~ idim/2 if hdim >= idim
+    if parameters.hdim >= idim
+        hdims = 2 .^(1:8)
+        hdim_new = hdims[hdims .<= (idim+1)//2][end]
         @info "Lowering width of autoencoder $(parameters.hdim) -> $(hdim_new)"
-		parameters = merge(parameters, (hdim=hdim_new,))
-	end
-	parameters
+        parameters = merge(parameters, (hdim=hdim_new,))
+    end
+    parameters
 end
 
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
+sampling_string = sampling == "bayes" ? "_bayes" : ""
+prefix = "experiments$(sampling_string)/tabular$(cont_string)"
+dataset_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
 while try_counter < max_tries
-    parameters = sample_params()
+    if sampling == "bayes"
+        parameters = GenerativeAD.bayes_params(
+                                create_space(), 
+                                dataset_folder,
+                                sample_params; add_model_seed=true)
+    else
+        parameters = sample_params()
+    end
 
     for seed in 1:max_seed
-        savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
+        savepath = joinpath(dataset_folder, "seed=$(seed)")
         mkpath(savepath)
 
         # get data
         data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
-        edited_parameters = GenerativeAD.edit_params(data, parameters)
+        edited_parameters = sampling == "bayes" ? parameters : GenerativeAD.edit_params(data, parameters)
 
         if GenerativeAD.check_params(savepath, edited_parameters)
             @info "Started training $(modelname)$(edited_parameters) on $(dataset):$(seed)"
@@ -108,7 +143,7 @@ while try_counter < max_tries
             
             training_info, results = fit(data, edited_parameters)
 
-            if training_info.model != nothing
+            if training_info.model !== nothing
                 tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
                         Dict("model"=>training_info.model,
                             "fit_t"=>training_info.fit_t,
@@ -119,8 +154,11 @@ while try_counter < max_tries
             end
             save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
-            for result in results
-                GenerativeAD.experiment(result..., data, savepath; save_entries...)
+            all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
+            if sampling == "bayes" && length(all_scores) > 0
+                @info("Updating cache with $(length(all_scores)) results.")
+                GenerativeAD.update_bayes_cache(dataset_folder, 
+                        all_scores; ignore=Set([:init_seed]))
             end
             global try_counter = max_tries + 1
         else
