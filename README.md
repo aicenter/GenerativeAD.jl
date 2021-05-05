@@ -2,32 +2,42 @@
 Generative models for anomaly detection. This Julia package contains code for the paper "Comparison of Anomaly Detectors: Context Matters" [arXiv preprint](https://arxiv.org/abs/2012.06260).
 
 ## Installation
-
-Install prerequisites:
-```julia
-(@julia) pkg> add https://github.com/vitskvara/UCI.jl.git
-(@julia) pkg> add https://github.com/pevnak/SumProductTransform.jl.git
-(@julia) pkg> add https://github.com/janfrancu/ContinuousFlows.jl.git
-```
-
-Then install the package itself:
-
 1. Clone this repo somewhere.
 2. Run Julia in the cloned dir.
 ```bash
 cd path/to/repo/GenerativeAD.jl
 julia --project
 ```
-3. Install all the packages and compile the package.
+3. Install all the packages using `]instantiate` and compile the package.
 ```julia
-(@julia) pkg> add DrWatson
 (@julia) pkg> instantiate
 (@julia) using GenerativeAD
 ```
 
-## Experimental setup:
+Some of the bash scripts are calling `julia` without `--project` flag and uses `@quickactivate` macro to activate the environment, however this fails, unless `DrWatson` is installed in the base julia environment. In order to avoid these problems install `DrWatson` in your base environment.
+```bash
+cd ~
+julia -e 'using Pkg; Pkg.add("DrWatson");'
+```
 
-To implement a new model, you need to define methods for model construction, fitting and prediction. For details, see e.g. the readme in `scripts/experiments_tabular`, where the experimental setup for running experiment repetitions is explained.
+### Python instalation
+Some models (PIDforest, scikit-learn, PyOD) are available only through PyCall with appropriate environment active. With upcoming bayesian optimisation from `scikit-optimize` every model will require an active environment, which can be setup in following way using python's `venv` module. (Most of the scripts have hardcoded path to this environment, though this can be easily changed).
+```bash
+cd ~
+python -m venv sklearn-env
+
+source ${HOME}/sklearn-env/bin/activate
+export PYTHON="${HOME}/sklearn-env/bin/python"
+```
+Then install requirements inside this repository
+```bash
+cd path/to/repo/GenerativeAD.jl
+
+pip install -r requirements.txt
+pip install git+https://github.com/janfrancu/pidforest.git # not registerd anywhere
+
+julia --project -e 'using Pkg; Pkg.build("PyCall");' # rebuilds PyCall.jl to point to the current environment
+```
 
 ## Running experiments on the RCI cluster
 
