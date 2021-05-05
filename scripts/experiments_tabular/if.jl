@@ -5,6 +5,8 @@ using GenerativeAD
 import StatsBase: fit!, predict
 using StatsBase
 using BSON
+using PyCall
+using OrderedCollections
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -16,13 +18,17 @@ s = ArgParseSettings()
         required = true
         arg_type = String
         help = "dataset"
+    "sampling"
+		default = "random"
+		arg_type = String 
+		help = "sampling of hyperparameters - random/bayes"
     "contamination"
     	arg_type = Float64
     	help = "contamination rate of training data"
     	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, contamination = parsed_args
+@unpack dataset, max_seed, sampling, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -33,6 +39,17 @@ function sample_params()
 	par_vec = (50:50:500,0.5:0.1:1.0,0.5:0.1:1.0)
 	argnames = (:n_estimators,:max_samples, :max_features)
 	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
+end
+function create_space()
+    pyReal = pyimport("skopt.space")["Real"]
+    pyInt = pyimport("skopt.space")["Integer"]
+    pyCat = pyimport("skopt.space")["Categorical"]
+    
+    (;
+    n_estimators = pyInt(50, 500,                                 name="n_estimators"),
+    max_samples  = pyReal(0.5, 1.0,                               name="max_samples"),
+    max_features = pyReal(0.5, 1.0,                               name="max_features"),
+    )
 end
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
@@ -62,18 +79,28 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
+sampling_string = sampling == "bayes" ? "_bayes" : "" 
+prefix = "experiments$(sampling_string)/tabular$(cont_string)"
+dataset_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
 while try_counter < max_tries
-    parameters = sample_params()
+   	if sampling == "bayes"
+		parameters = GenerativeAD.bayes_params(
+								create_space(), 
+								dataset_folder,
+								sample_params; add_model_seed=true)
+	else
+		parameters = sample_params()
+	end
 
     for seed in 1:max_seed
-		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
+		savepath = joinpath(dataset_folder, "seed=$(seed)")
 		mkpath(savepath)
 
 		# get data
 		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
 		
 		# edit parameters
-		edited_parameters = GenerativeAD.edit_params(data, parameters)
+		edited_parameters = sampling == "bayes" ? parameters : GenerativeAD.edit_params(data, parameters)
 
 		@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
 		# check if a combination of parameters and seed alread exists
@@ -84,8 +111,11 @@ while try_counter < max_tries
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
 			# now loop over all anomaly score funs
-			for result in results
-				GenerativeAD.experiment(result..., data, savepath; save_entries...)
+			all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
+			if sampling == "bayes" && length(all_scores) > 0
+				@info("Updating cache with $(length(all_scores)) results.")
+				GenerativeAD.update_bayes_cache(dataset_folder, 
+					all_scores; ignore=Set([:init_seed, :L, :score]))
 			end
 			global try_counter = max_tries + 1
 		else
