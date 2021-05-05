@@ -181,7 +181,7 @@ for dataset in datasets           # hot run
     y0 = [GenerativeAD.objective_value(v[:runs]) for v in values(cache)] 
 
     @info "Testing conversion from named tuples to skopt."
-    x0s = [GenerativeAD.to_skopt(space, x) for x in x0]
+    x0s = [(GenerativeAD.to_skopt(space, x)..., ) for x in x0]
     @info "Testing conversion back from skopt to named tuples."
     x0t = [GenerativeAD.from_skopt(space, x) for x in x0s]
 

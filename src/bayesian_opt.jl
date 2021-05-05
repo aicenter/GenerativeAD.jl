@@ -176,7 +176,9 @@ function bayes_params(space, folder, fallback; add_model_seed=false, kwargs...)
 		x0 = [v[:parameters] for v in values(cache)]
 		y0 = [objective_value(v[:runs], kwargs...) for v in values(cache)] 
 		@info("Loaded cached results from $(folder).")
-		x0 = [to_skopt(space, x) for x in x0]
+		# conversion to tuples this makes skopt happy 
+		# as it cannot parse list of numpy arrays as valid "2D" input
+		x0 = [(to_skopt(space, x)..., ) for x in x0]
 		opt = BayesianHyperOpt(collect(space))
 		tell(opt, x0, y0)
 		@info("Fitted GP with $(length(x0)) samples.")
