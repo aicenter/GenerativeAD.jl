@@ -3,6 +3,7 @@ using DrWatson
 using ArgParse
 using GenerativeAD
 using PyCall
+using OrderedCollections
 using StatsBase: fit!, predict, sample
 using BSON
 using Flux
@@ -20,7 +21,7 @@ s = ArgParseSettings()
     "sampling"
         default = "random"
         arg_type = String
-        help = "sampling of hyperparameters"
+        help = "sampling of hyperparameters [bayes|random]"
     "contamination"
         arg_type = Float64
         help = "contamination rate of training data"
@@ -63,7 +64,7 @@ function create_space()
         lambda_e 	= pyReal(1e-2, 1.0, prior="log-uniform", 	name="lambda_e"),
         lambda_d    = pyReal(1e-3, 1.0, prior="log-uniform", 	name="lambda_d"),
         lr 			= pyReal(1f-5, 1f-3, prior="log-uniform", 	name="lr"),
-        batchsize 	= pyInt(5, 7, 								name="log2_batchsize"),
+        batchsize 	= pyInt(5, 8, 								name="log2_batchsize"),
         activation	= pyCat(categories=["tanh"], 		        name="activation"),
         dropout		= pyReal(0.0, 0.5,                          name="dropout"),
         wreg 		= pyCat(categories=[0.0], 			        name="wreg"),

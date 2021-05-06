@@ -3,6 +3,7 @@ using DrWatson
 using ArgParse
 using GenerativeAD
 using PyCall
+using OrderedCollections
 using StatsBase: fit!, predict, sample
 using BSON
 using Flux
@@ -20,7 +21,7 @@ s = ArgParseSettings()
     "sampling"
         default = "random"
         arg_type = String
-        help = "sampling of hyperparameters"
+        help = "sampling of hyperparameters [bayes|random]"
     "contamination"
         arg_type = Float64
         help = "contamination rate of training data"
@@ -59,7 +60,7 @@ function create_space()
         nlayers         = pyInt(1, 2, 							name="nlayers"),
         ensemble_size   = pyCat(categories=[25, 50], 		    name="ensemble_size"),
         subsample_size  = pyInt(1, 8, 							name="log2_subsample_size"),
-        batchsize       = pyInt(5, 8, 							name="log2_batchsize"),
+        batchsize       = pyInt(3, 8, 							name="log2_batchsize"),
         activation      = pyCat(categories=["relu", "tanh"], 	name="activation"),
     )
 end
