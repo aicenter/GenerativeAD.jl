@@ -164,6 +164,9 @@ for dataset in datasets           # hot run
         end
     end
     @info "Cache creation completed: $(length(cache)) entries"
+    if length(cache) > 140 
+        @warn "There may be too many entries in the cache. Check `ignored_hyperparams`."
+    end
     
     cache_postprocess!(cache)
     @info "Cache postprocess completed: $(length(cache)) entries"

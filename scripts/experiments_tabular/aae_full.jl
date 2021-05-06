@@ -197,7 +197,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 				if sampling == "bayes" && length(all_scores) > 0
 					@info("Updating cache with $(length(all_scores)) results.")
 					GenerativeAD.update_bayes_cache(dataset_folder, 
-						all_scores; ignore=Set([:init_seed, :L, :score]))
+						all_scores; ignore=Set([:init_seed, :L, :score, :alpha]))
 				end
 				global try_counter = max_tries + 1
 			else
