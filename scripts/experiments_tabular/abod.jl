@@ -46,7 +46,7 @@ function create_space()
     pyCat = pyimport("skopt.space")["Categorical"]
     
     (;
-    n_neighbors = pyInt(1, 100,                                 name="n_neighbors"),
+    n_neighbors = pyInt(1, 1000,                                 name="n_neighbors"),
     )
 end
 
