@@ -49,6 +49,7 @@ function _filter_ensembles!(df)
 end
 
 df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
+df_tabular_clean = load(datadir("evaluation/tabular_clean_val_final_eval.bson"))[:df];
 df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
 @info "Loaded results from tabular evaluation."
 
@@ -91,6 +92,9 @@ end
 # basic_summary_table_tabular(copy(df_tabular))
 # basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular)), suffix="_merge_ae")
 basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular)), suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+
+basic_summary_table_tabular(apply_aliases!(copy(df_tabular_clean), col="modelname", d=AE_MERGE), suffix="_clean_default")
+
 # basic_summary_table_tabular(copy(df_tabular_ens), suffix="_ensembles")
 basic_summary_table_tabular(_filter_ensembles!(copy(df_tabular_ens)), suffix="_ensembles_merge_ae_down")
 @info "basic_summary_table_tabular"
@@ -706,6 +710,7 @@ per_seed_ranks_tabular(_merge_ae_filter!(copy(df_tabular)), suffix="_merge_ae_do
 df_images = load(datadir("evaluation/images_eval.bson"))[:df];
 df_images_loi = load(datadir("evaluation/images_leave-one-in_eval.bson"))[:df];
 df_images_ens = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
+df_images_class = load(datadir("evaluation/images_leave-one-out_eval.bson"))[:df];
 @info "Loaded results from images"
 
 function filter_img_models!(df)
@@ -717,12 +722,18 @@ function basic_summary_table_images(df; suffix="")
     basic_summary_table(df; prefix="images", suffix=suffix)
 end
 
+function basic_summary_table_images_class(df; suffix="")
+    select!(df, Not(:anomaly_class)) # neither mnist-c nor mvtech have only one anomaly_class
+    basic_summary_table(df; prefix="images_class", suffix=suffix)
+end
+
 # basic_summary_table_images(copy(df_images))
 # basic_summary_table_images(copy(df_images_ens), suffix="_ensembles")
 
 basic_summary_table_images(filter_img_models!(copy(df_images)), suffix="_filter")
 basic_summary_table_images(copy(df_images_loi), suffix="_loi")
 basic_summary_table_images(filter_img_models!(copy(df_images_ens)), suffix="_ensembles_filter")
+basic_summary_table_images_class(copy(df_images_class); suffix="")
 @info "basic_summary_table_images"
 
 function rank_comparison_agg_images(df, tm=("AUC", :auc); suffix="")
