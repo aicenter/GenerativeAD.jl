@@ -108,7 +108,6 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
 		data_normal, data_anomalous = load_mvtec_ad_data(; category=category, kwargs...)
 	else
 		error("Dataset $(dataset) not known, either not implemented or misspeled.")
-		# TODO add the rest
 	end
 
 	# now do the train/validation/test split

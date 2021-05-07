@@ -22,6 +22,30 @@ Distributions.rand(p::ConditionalMvNormal, z::AbstractArray{T,4}) where T<:Real 
 Distributions.logpdf(p::ConditionalMvNormal, x::AbstractArray{T,4}, z::AbstractArray{T,2}) where T<:Real = 
 	logpdf(condition(p,z), x)
 
+# this has to be overloaded for convolutional models with conv var
+struct BatchTensorMvNormal{Tm<:AbstractArray,Tσ<:AbstractVector} <: ContinuousMatrixDistribution
+    μ::Tm
+    σ::Tσ
+end
+ConditionalDists.BatchMvNormal(μ::AbstractArray{T}, σ::AbstractVector{T}) where T<:Real = BatchTensorMvNormal(μ,σ)
+Base.eltype(d::BatchTensorMvNormal) = eltype(d.μ)
+Distributions.params(d::BatchTensorMvNormal) = (d.μ, d.σ)
+Distributions.mean(d::BatchTensorMvNormal) = d.μ
+Distributions.var(d::BatchTensorMvNormal) = 
+	reshape(ConditionalDists.fillsimilar(d.σ,prod(size(d.μ)[1:3]),1) .* 
+		reshape(d.σ .^2,1,:), size(d.μ))
+function Distributions.rand(d::BatchTensorMvNormal)
+    μ, σ = d.μ, d.σ
+    r = DistributionsAD.adapt_randn(Random.GLOBAL_RNG, μ, size(μ)...)
+    μ .+ σ .* r
+end
+function Distributions.logpdf(d::BatchTensorMvNormal, x::AbstractArray{T}) where T<:Real
+    n = prod(size(d.μ)[1:3])
+    μ = mean(d)
+    σ2 = var(d)
+    -vec(sum(((x - μ).^2) ./ σ2 .+ log.(σ2), dims=(1,2,3)) .+ n*log(T(2π))) ./ 2
+end
+
 """
 	reconstruct(model::AEModel, x)
 
