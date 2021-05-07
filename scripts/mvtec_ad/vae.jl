@@ -15,24 +15,16 @@ s = ArgParseSettings()
 		arg_type = Int
 		help = "seed"
 	"dataset"
-		default = "MNIST"
+		default = "wood"
 		arg_type = String
 		help = "dataset"
-	"anomaly_classes"
-		arg_type = Int
-		default = 10
-		help = "number of anomaly classes"
-	"method"
-		arg_type = String
-		default = "leave-one-out"
-		help = "method for data creation -> \"leave-one-out\" or \"leave-one-in\" "
     "contamination"
     	arg_type = Float64
     	help = "contamination rate of training data"
     	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, anomaly_classes, method, contamination = parsed_args
+@unpack dataset, max_seed, ontamination = parsed_args
 
 
 #######################################################################################
@@ -66,6 +58,11 @@ function GenerativeAD.edit_params(data, parameters)
 		channels = reverse((16,32,64,128)[1:nlayers])
 		scalings = reverse((1,2,2,2)[1:nlayers])
 		parameters = merge(parameters, (nlayers=nlayers,kernelsizes=kernelsizes,channels=channels,scalings=scalings))
+	end
+	# MVTECAD
+	if size(data[1][1],1) >= 100
+		var = "conv"
+		parameters = merge(parameters, (var=var,))
 	end
 	parameters
 end

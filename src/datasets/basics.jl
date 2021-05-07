@@ -100,6 +100,9 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
 		data_normal, data_anomalous = load_mnist_c_data(; kwargs...)
 	elseif dataset == "MVTec-AD"
 		data_normal, data_anomalous = load_mvtec_ad_data(; kwargs...)
+	elseif occursin("MVTec-AD-downscaled", dataset)
+		category = dataset[21:end]
+		data_normal, data_anomalous = load_mvtec_ad_data_downscaled(; category = category, kwargs...)
 	elseif occursin("MNIST-C", dataset) # this is so one can pass both the dataset and category in one string
 		category = dataset[9:end]
 		data_normal, data_anomalous = load_mnist_c_data(; category=category, kwargs...)
@@ -108,7 +111,6 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
 		data_normal, data_anomalous = load_mvtec_ad_data(; category=category, kwargs...)
 	else
 		error("Dataset $(dataset) not known, either not implemented or misspeled.")
-		# TODO add the rest
 	end
 
 	# now do the train/validation/test split

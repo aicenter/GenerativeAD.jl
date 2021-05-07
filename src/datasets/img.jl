@@ -81,6 +81,18 @@ function load_mvtec_ad_data(;category::String="bottle", kwargs...)
 end
 
 """
+	load_mvtec_ad_data_downscaled(;category::String="wood")
+
+Returns the normal and anomalous MVTec-AD data for a given category.
+"""
+function load_mvtec_ad_data_downscaled(;category::String="bottle", kwargs...)
+	inpath = datadir("mvtec_ad/downscaled_data")
+	!ispath(inpath) ? error("downscaled data not available at $inpath") : nothing
+	data = load(joinpath(inpath, "$(category).bson"))
+	return data[:normal], data[:anomalous]
+end
+
+"""
 	img_to_array_rgb(img)
 
 Convert RGB img to a 3D tensor.
