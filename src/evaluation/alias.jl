@@ -26,7 +26,6 @@ const MODEL_TYPE = Dict{String, String}(
 	"ocsvm_rbf"			=> "classical",
 	"ocsvm_nu"			=> "classical",
 	"pidforest" 		=> "classical",
-	"repen" 			=> "classical",
 	"GANomaly" 			=> "autoencoders",
 	"aae" 				=> "autoencoders",
 	"aae_vamp" 			=> "autoencoders",
@@ -44,7 +43,8 @@ const MODEL_TYPE = Dict{String, String}(
 	"aae_ocsvm"			=> "two-stage",
 	"vae_ocsvm" 		=> "two-stage",
 	"vae_knn"	 		=> "two-stage",
-	"DeepSVDD" 			=> "two-stage"
+	"DeepSVDD" 			=> "two-stage",
+	"repen" 			=> "two-stage"
 )
 
 const MODEL_ALIAS = Dict{String, String}(
@@ -67,7 +67,6 @@ const MODEL_ALIAS = Dict{String, String}(
 	"ocsvm_rbf"			=> "orbf",
 	"ocsvm_nu"			=> "osnu",
 	"pidforest" 		=> "pidf",
-	"repen" 			=> "rpn", 
 	"GANomaly" 			=> "gano",
 	"aae" 				=> "aae",
 	"aae_vamp" 			=> "aaev",
@@ -85,7 +84,8 @@ const MODEL_ALIAS = Dict{String, String}(
 	"vae_full"			=> "vaef",
 	"vae_ocsvm" 		=> "vaeo",
 	"vae_knn"			=> "vaek",
-	"DeepSVDD"			=> "dsvd"
+	"DeepSVDD"			=> "dsvd",
+	"repen" 			=> "rpn"
 )
 
 const DATASET_ALIAS = Dict{String, String}(

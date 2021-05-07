@@ -6,6 +6,7 @@ using StatsBase
 import PGFPlots
 include("./utils/pgf_boxplot.jl")
 include("./utils/ranks.jl")
+include("./utils/bayes.jl")
 
 using GenerativeAD.Evaluation: MODEL_MERGE, MODEL_ALIAS, DATASET_ALIAS, MODEL_TYPE, apply_aliases!
 using GenerativeAD.Evaluation: _prefix_symbol, aggregate_stats_mean_max, aggregate_stats_max_mean
@@ -49,6 +50,9 @@ function _filter_ensembles!(df)
 end
 
 df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
+df_tabular_bayes = load(datadir("evaluation_bayes/tabular_eval.bson"))[:df];
+df_tabular_bayes_outerjoin = combine_bayes(df_tabular, df_tabular_bayes; outer=true);
+df_tabular_bayes_innerjoin = combine_bayes(df_tabular, df_tabular_bayes; outer=false);
 df_tabular_clean = load(datadir("evaluation/tabular_clean_val_final_eval.bson"))[:df];
 df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
 @info "Loaded results from tabular evaluation."
@@ -93,7 +97,13 @@ end
 # basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular)), suffix="_merge_ae")
 basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular)), suffix="_merge_ae_down", downsample=DOWNSAMPLE)
 
+## default/clean parameters table
 basic_summary_table_tabular(apply_aliases!(copy(df_tabular_clean), col="modelname", d=AE_MERGE), suffix="_clean_default")
+
+## bayes results combined with initial random samples and other methods that were not optimized that way
+basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular_bayes_outerjoin)), suffix="_bayes_outerjoin", downsample=DOWNSAMPLE)
+## bayes results combined with initial random samples
+basic_summary_table_tabular(_merge_ae_filter!(copy(df_tabular_bayes_innerjoin)), suffix="_bayes_innerjoin", downsample=DOWNSAMPLE)
 
 # basic_summary_table_tabular(copy(df_tabular_ens), suffix="_ensembles")
 basic_summary_table_tabular(_filter_ensembles!(copy(df_tabular_ens)), suffix="_ensembles_merge_ae_down")
