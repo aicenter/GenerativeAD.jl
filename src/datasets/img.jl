@@ -61,12 +61,16 @@ List of the available MVTec-AD categories.
 mvtec_ad_categories() = readdir(datadep"MVTec-AD")
 
 """
-	load_mvtec_ad_data(;category::String="bottle")
+	load_mvtec_ad_data(;category::String="bottle", img_size=nothing)
 
 Loads the corrupted MNIST dataset for given category. Returns normal (non-corrupted) and anomalous data. For 
 a list of available corruption categories, run `GenerativeAD.Datasets.mnist_c_categories()`.
 """
-function load_mvtec_ad_data(;category::String="bottle", kwargs...)
+function load_mvtec_ad_data(;category::String="bottle", img_size=nothing, kwargs...)
+	# return the downscaled version if needed
+	isnothing(img_size) ? nothing : 
+		return load_mvtec_ad_data_downscaled(category=category, img_size=img_size)
+	# else get the original
 	dp = datadep"MVTec-AD"
 	available_categories = mvtec_ad_categories()
 	!(category in available_categories) ? error("Requested category $category not found, $(available_categories) available.") : nothing
@@ -81,14 +85,14 @@ function load_mvtec_ad_data(;category::String="bottle", kwargs...)
 end
 
 """
-	load_mvtec_ad_data_downscaled(;category::String="wood")
+	load_mvtec_ad_data_downscaled(;img_size = 256, category::String="wood")
 
 Returns the normal and anomalous MVTec-AD data for a given category.
 """
-function load_mvtec_ad_data_downscaled(;category::String="bottle", kwargs...)
+function load_mvtec_ad_data_downscaled(;img_size = 256, category::String="bottle", kwargs...)
 	inpath = datadir("mvtec_ad/downscaled_data")
 	!ispath(inpath) ? error("downscaled data not available at $inpath") : nothing
-	data = load(joinpath(inpath, "$(category).bson"))
+	data = load(joinpath(inpath, "$(category)_$(img_size).bson"))
 	return data[:normal], data[:anomalous]
 end
 
