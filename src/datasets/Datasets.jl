@@ -1,5 +1,6 @@
 module Datasets
 
+using DrWatson
 using UCI
 using MLDatasets
 using DataDeps
