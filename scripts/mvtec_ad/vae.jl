@@ -130,7 +130,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 		parameters = sample_params()
 
 		for seed in 1:max_seed
-			savepath = datadir("experiments/images_mvtec$(cont_string)/$(modelname)/$(category)/seed=$(seed)")
+			savepath = datadir("experiments/images_mvtec$(cont_string)/$(modelname)/$(category)/ac=1/seed=$(seed)")
 			mkpath(savepath)
 
 			# get data
