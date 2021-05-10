@@ -10,10 +10,10 @@ using GenerativeModels
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-   "seed"
+   "max_seed"
 		default = 1
 		arg_type = Int
-		help = "seed"
+		help = "max_seed"
 	"category"
 		default = "wood"
 		arg_type = String
@@ -24,7 +24,7 @@ s = ArgParseSettings()
     	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack category, seed, contamination = parsed_args
+@unpack category, max_seed, contamination = parsed_args
 
 
 #######################################################################################
@@ -82,7 +82,7 @@ function fit(data, parameters)
 	# fit train data
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data, loss; max_iters = 10000, 
-			max_train_time=23*3600/4, 
+			max_train_time=23*3600/max_seed/4, 
 			patience=20, check_interval=50, parameters...)
 	catch e
 		# return an empty array if fit fails so nothing is computed
@@ -124,59 +124,61 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
 	# set a maximum for parameter sampling retries
 	try_counter = 0
-	max_tries = 10
+	max_tries = 10*max_seed
 	cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 	while try_counter < max_tries
 		parameters = sample_params()
 
-		savepath = datadir("experiments/images_mvtec$(cont_string)/$(modelname)/$(category)/seed=$(seed)")
-		mkpath(savepath)
+		for seed in 1:max_seed
+			savepath = datadir("experiments/images_mvtec$(cont_string)/$(modelname)/$(category)/seed=$(seed)")
+			mkpath(savepath)
 
-		# get data
-		data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
-			contamination=contamination, img_size=128)
-		
-		# edit parameters
-		edited_parameters = GenerativeAD.edit_params(data, parameters)
+			# get data
+			data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
+				contamination=contamination, img_size=128)
+			
+			# edit parameters
+			edited_parameters = GenerativeAD.edit_params(data, parameters)
 
-		@info "Trying to fit $modelname on $category with parameters $(edited_parameters)..."
-		@info "Train/validation/test splits: $(size(data[1][1], 4)) | $(size(data[2][1], 4)) | $(size(data[3][1], 4))"
-		@info "Number of features: $(size(data[1][1])[1:3])"
+			@info "Trying to fit $modelname on $category with parameters $(edited_parameters)..."
+			@info "Train/validation/test splits: $(size(data[1][1], 4)) | $(size(data[2][1], 4)) | $(size(data[3][1], 4))"
+			@info "Number of features: $(size(data[1][1])[1:3])"
 
-		# check if a combination of parameters and seed alread exists
-		if GenerativeAD.check_params(savepath, edited_parameters)
-			# fit
-			training_info, results = fit(data, edited_parameters)
+			# check if a combination of parameters and seed alread exists
+			if GenerativeAD.check_params(savepath, edited_parameters)
+				# fit
+				training_info, results = fit(data, edited_parameters)
 
-			# save the model separately			
-			if training_info.model !== nothing
-				tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
-					Dict("model"=>training_info.model,
-						 "tr_encodings"=>training_info.tr_encodings,
-						 "val_encodings"=>training_info.val_encodings,
-						 "tst_encodings"=>training_info.tst_encodings,
-						 "fit_t"=>training_info.fit_t,
-						 "history"=>training_info.history,
-						 "parameters"=>edited_parameters
-						 ), 
-					safe = true)
-				training_info = merge(training_info, 
-					(model=nothing,tr_encodings=nothing,val_encodings=nothing,tst_encodings=nothing))
+				# save the model separately			
+				if training_info.model !== nothing
+					tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
+						Dict("model"=>training_info.model,
+							 "tr_encodings"=>training_info.tr_encodings,
+							 "val_encodings"=>training_info.val_encodings,
+							 "tst_encodings"=>training_info.tst_encodings,
+							 "fit_t"=>training_info.fit_t,
+							 "history"=>training_info.history,
+							 "parameters"=>edited_parameters
+							 ), 
+						safe = true)
+					training_info = merge(training_info, 
+						(model=nothing,tr_encodings=nothing,val_encodings=nothing,tst_encodings=nothing))
+				end
+
+				# here define what additional info should be saved together with parameters, scores, labels and predict times
+				save_entries = merge(training_info, (modelname = modelname, seed = seed, 
+					category = category,
+					contamination=contamination))
+
+				# now loop over all anomaly score funs
+				for result in results
+					GenerativeAD.experiment(result..., data, savepath; save_entries...)
+				end
+				global try_counter = max_tries + 1
+			else
+				@info "Model already present, trying new hyperparameters..."
+				global try_counter += 1
 			end
-
-			# here define what additional info should be saved together with parameters, scores, labels and predict times
-			save_entries = merge(training_info, (modelname = modelname, seed = seed, 
-				category = category,
-				contamination=contamination))
-
-			# now loop over all anomaly score funs
-			for result in results
-				GenerativeAD.experiment(result..., data, savepath; save_entries...)
-			end
-			global try_counter = max_tries + 1
-		else
-			@info "Model already present, trying new hyperparameters..."
-			global try_counter += 1
 		end
 	end
 	(try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing

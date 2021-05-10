@@ -5,11 +5,11 @@
 #SBATCH --partition=gpu
 #SBATCH --mem=80G
 
-SEED=$1
+MAX_SEED=$1
 CATEGORY=$2
 CONTAMINATION=$3
 
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-julia ./vae.jl ${SEED} $CATEGORY $CONTAMINATION
+julia ./vae.jl ${MAX_SEED} $CATEGORY $CONTAMINATION
