@@ -4,77 +4,86 @@ using ArgParse
 using GenerativeAD
 using GenerativeAD.Models
 using BSON
+using PyCall
 using StatsBase: fit!, predict, sample
 
 using Flux
 using MLDataPattern
+using OrderedCollections
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-   "max_seed"
-		required = true
+	"max_seed"
+		default = 1
 		arg_type = Int
-		help = "seed"
+		help = "maximum number of seeds to run through"
 	"dataset"
-		required = true
+		default = "iris"
 		arg_type = String
 		help = "dataset"
-    "contamination"
-    	arg_type = Float64
-    	help = "contamination rate of training data"
-    	default = 0.0
+	"sampling"
+		default = "random"
+		arg_type = String
+		help = "sampling of hyperparameters"
+	"contamination"
+		arg_type = Float64
+		help = "contamination rate of training data"
+		default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, contamination = parsed_args
+@unpack dataset, max_seed, sampling, contamination = parsed_args
 
 modelname ="adVAE"
 
 function sample_params()
-	argnames = (
-		:hdim, 
-		:zdim, 
-		:nlayers, 
-		:activation,
-		:gamma,
-		:lambda,
-		:mx,
-		:mz,
-		:lr, 
-		:decay,
-		:batch_size, 
-		:iters, 
-		:check_every, 
-		:patience, 
-		:init_seed,
-	)
-	par_vec = (
-		2 .^(4:9),
-		2 .^(1:8),
-		3:4,
-		["relu", "swish", "tanh"],
-		[0.0005, 0.001, 0.005], # γ
-		[0.005, 0.01, 0.05], # λ  # better params
-		[1, 1.5],  #mx #0.5:0.5:2.5
- 		[40, 50, 60], #mz 10:10:100
-		10f0 .^ (-4:-3),
-		0f0:0.1:0.5,
-		2 .^ (5:6),
-		[10000],
-		[30],
-		[10],
-		1:Int(1e8),
+	parameters_rng = (
+		hdim   		= 2 .^(4:9), 
+		zdim   		= 2 .^(1:8), 
+		nlayers   	= 3:4, 
+		activation  = ["relu", "swish", "tanh"],
+		gamma   	= [0.0005, 0.001, 0.005],
+		lambda   	= [0.005, 0.01, 0.05],
+		mx   		= [1, 1.5],
+		mz   		= [40, 50, 60],
+		lr   		= 10f0 .^ (-4:-3), 
+		decay   	= 0f0:0.1:0.5,
+		batch_size  = 2 .^ (5:6), 
+		init_seed   = 1:Int(1e8),
 	)
 
-	return NamedTuple{argnames}(map(x->sample(x,1)[1], par_vec))
+	return (;zip(keys(parameters_rng), map(x->sample(x, 1)[1], parameters_rng))...)
+end
+
+function create_space()
+	pyReal = pyimport("skopt.space")["Real"]
+	pyInt = pyimport("skopt.space")["Integer"]
+	pyCat = pyimport("skopt.space")["Categorical"]
+	
+	parameters_rng = (
+		hdim   		= pyInt(4, 9,						          name="log2_hdim"),
+		zdim   		= pyInt(1, 8,						          name="log2_zdim"), 
+		nlayers   	= pyInt(3, 4,						          name="nlayers"), 
+		activation  = pyCat(categories=["relu", "swish", "tanh"], name="activation"),
+		gamma   	= pyReal(1f-4, 1f-1,                    	  name="gamma"),
+		lambda   	= pyReal(1f-4, 1f-1,                    	  name="lambda"),
+		mx   		= pyReal(0.5f0, 10.0f0,                    	  name="mx"),
+		mz   		= pyInt(10, 100,                              name="mz"),
+		lr   		= pyReal(1f-5, 1f-3, prior="log-uniform",	  name="lr"), 
+		decay   	= pyReal(0.0f0, 0.5f0,                    	  name="decay"),
+		batch_size  = pyInt(5, 7, 								  name="log2_batch_size"),
+	)
 end
 
 function fit(data, parameters)
-	# define models (Generator, Discriminator)
-	advae = GenerativeAD.Models.adVAE(;parameters...)
+	default_params = (iters=10000, check_every=30, patience=10,)
+	all_parameters = merge(parameters, default_params)
 
-	# define optimiser
+	# define models 
+	advae = GenerativeAD.Models.adVAE(;all_parameters...)
+
+	# define optimiser
 	try
-		global info, fit_t, _, _, _ = @timed fit!(advae |> gpu, data, parameters)
+		global info, fit_t, _, _, _ = @timed fit!(advae |> gpu, data, all_parameters)
 	catch e
 		println("Error caught.")
 		return (fit_t = NaN, model = nothing, history = nothing, n_parameters = NaN), []
@@ -89,7 +98,7 @@ function fit(data, parameters)
 		)
 
 	return training_info, 
-	[(x -> GenerativeAD.Models.anomaly_score(advae|>cpu, x; dims=1, L=100)[:], merge(parameters, (L=100, )))]
+	[(x -> GenerativeAD.Models.anomaly_score(advae|>cpu, x; dims=1, L=100)[:], parameters)]
 	# L = samples for one x in anomaly_score computation
 end
 
@@ -98,17 +107,27 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
+sampling_string = sampling == "bayes" ? "_bayes" : ""
+prefix = "experiments$(sampling_string)/tabular$(cont_string)"
+dataset_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
 while try_counter < max_tries
-    parameters = sample_params()
+	if sampling == "bayes"
+		parameters = GenerativeAD.bayes_params(
+								create_space(), 
+								dataset_folder,
+								sample_params; add_model_seed=true)
+	else
+		parameters = sample_params()
+	end
 
-    for seed in 1:max_seed
-		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
+	for seed in 1:max_seed
+		savepath = joinpath(dataset_folder, "seed=$(seed)")
 		mkpath(savepath)
 
 		# get data
 		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
 
-		# update parameter
+		# update parameter
 		parameters = merge(parameters, (idim=size(data[1][1],1), ))
 		# here, check if a model with the same parameters was already tested
 		if GenerativeAD.check_params(savepath, parameters)
@@ -121,8 +140,11 @@ while try_counter < max_tries
 			end
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 			# now loop over all anomaly score funs
-			for result in results
-				GenerativeAD.experiment(result..., data, savepath; save_entries...)
+			all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
+			if sampling == "bayes" && length(all_scores) > 0
+				@info("Updating cache with $(length(all_scores)) results.")
+				GenerativeAD.update_bayes_cache(dataset_folder, 
+						all_scores; ignore=Set([:init_seed, :L, :idim]))
 			end
 			global try_counter = max_tries + 1
 		else

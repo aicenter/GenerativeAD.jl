@@ -5,9 +5,16 @@
 
 MAX_SEED=$1
 DATASET=$2
-CONTAMINATION=$3
+HP_SAMPLING=$3
+CONTAMINATION=$4
 
-module load Julia/1.5.1-linux-x86_64
+module load Julia/1.5.3-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-julia ./adVAE.jl ${MAX_SEED} $DATASET $CONTAMINATION 
+# load virtualenv
+source ${HOME}/AD/bin/activate
+export PYTHON="${HOME}/AD/bin/python"
+
+julia --project -e 'using Pkg; Pkg.instantiate();'
+
+julia ./adVAE.jl ${MAX_SEED} $DATASET ${HP_SAMPLING} $CONTAMINATION 
