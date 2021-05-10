@@ -25,4 +25,4 @@ while read CATEGORY; do
 
     # for local testing    
     # ./${MODEL}_run.sh $MAX_SEED $d 10
-done < ${DATASET_FILE}
+done < ${CATEGORY_FILE}
