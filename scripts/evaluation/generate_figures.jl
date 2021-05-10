@@ -463,7 +463,7 @@ ensemble_sensitivity(
 @info "ensemble_sensitivity_images"
 
 # training time rank vs avg rank
-function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf", downsample=Dict{String,Int}())
+function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", prefix="tabular", format="pdf", downsample=Dict{String,Int}())
     apply_aliases!(df, col="modelname", d=MODEL_MERGE)
     df["model_type"] = copy(df["modelname"])
     apply_aliases!(df, col="model_type", d=MODEL_TYPE)
@@ -478,10 +478,9 @@ function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf", dow
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)
 
-        # only meanmax to be consistent
         for (name, agg) in zip(
-                    ["meanmax"], 
-                    [aggregate_stats_mean_max])
+                    ["maxmean", "meanmax"], 
+                    [aggregate_stats_max_mean, aggregate_stats_mean_max])
 
             df_agg = agg(df, val_metric, add_col=:total_eval_t, downsample=downsample)
             rt = rank_table(df_agg, tst_metric) 
@@ -500,7 +499,7 @@ function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", format="pdf", dow
                     [PGFPlots.Plots.Node(m, xx + 0.5, yy + 0.7) for (m, xx, yy) in zip(models, x, y)]...],
                     xlabel="avg. rnk",
                     ylabel="avg. time rnk")
-            filename = "$(projectdir())/paper/figures/tabular_$(time_col)_vs_$(metric)_$(name)$(suffix).$(format)"
+            filename = "$(projectdir())/paper/figures/$(prefix)_$(time_col)_vs_$(metric)_$(name)$(suffix).$(format)"
             PGFPlots.save(filename, a; include_preamble=false)
         end
     end
@@ -513,9 +512,9 @@ end
 # plot_tabular_fit_time(copy(df_tabular); time_col=:total_eval_t, format="tex")
 
 plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:fit_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
-plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:tr_eval_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
-plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:val_eval_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
-plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:tst_eval_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+# plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:tr_eval_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+# plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:val_eval_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
+# plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:tst_eval_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
 plot_tabular_fit_time(_merge_ae_filter!(copy(df_tabular)); time_col=:total_eval_t, format="tex", suffix="_merge_ae_down", downsample=DOWNSAMPLE)
 @info "plot_tabular_fit_time"
 
@@ -727,6 +726,10 @@ function filter_img_models!(df)
     filter!(x -> (x.modelname != "aae_ocsvm") && (x.modelname != "fAnoGAN-GP"), df)
 end    
 
+function filter_class_datasets!(df)
+    select!(df, Not(:anomaly_class))
+end    
+
 function basic_summary_table_images(df; suffix="")
     filter!(x -> x.seed == 1, df)
     basic_summary_table(df; prefix="images", suffix=suffix)
@@ -881,6 +884,14 @@ plot_knowledge_images_repre(copy(df_images), representatives; format="tex", suff
 # plot_knowledge_images_type(copy(df_images_ens), suffix="_ensembles", format="tex")
 # @info "plot_knowledge_images_type"
 
+
+plot_tabular_fit_time(filter_img_models!(copy(df_images)); prefix="images", time_col=:fit_t, format="tex", suffix="_filter")
+plot_tabular_fit_time(filter_img_models!(copy(df_images)); prefix="images", time_col=:total_eval_t, format="tex", suffix="_filter")
+plot_tabular_fit_time(copy(df_images_loi); prefix="images", time_col=:fit_t, format="tex", suffix="_loi")
+plot_tabular_fit_time(copy(df_images_loi); prefix="images", time_col=:total_eval_t, format="tex", suffix="_loi")
+plot_tabular_fit_time(filter_class_datasets!(copy(df_images_class)); prefix="images", time_col=:fit_t, format="tex", suffix="_class")
+plot_tabular_fit_time(filter_class_datasets!(copy(df_images_class)); prefix="images", time_col=:total_eval_t, format="tex", suffix="_class")
+@info "plot_image_fit_time"
 
 # this is just specific figure for the main text
 function plot_knowledge_combined(df_tab, df_img; format="pdf")
