@@ -474,6 +474,15 @@ function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", prefix="tabular",
     # add all eval times together
     df["total_eval_t"] = df["tr_eval_t"] .+ df["tst_eval_t"] .+ df["val_eval_t"]
 
+    # compute ranks from averaged values over each dataset
+    # should reduce the noise in the results
+    agg_cols = vcat(Symbol.(TRAIN_EVAL_TIMES), :total_eval_t)
+    df_time_avg = combine(groupby(df, [:dataset, :modelname]), agg_cols .=> mean .=> agg_cols)
+    df_time_avg[_prefix_symbol(time_col, "top_10_std")] = 0.0   # add dummy column
+    df_time_avg[_prefix_symbol(time_col, "std")] = 0.0          # add dummy column
+    df_time_avg[time_col] .= -df_time_avg[time_col]
+    rtt = rank_table(df_time_avg, time_col)
+
     for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)
@@ -482,14 +491,9 @@ function plot_tabular_fit_time(df; time_col=:fit_t, suffix="", prefix="tabular",
                     ["maxmean", "meanmax"], 
                     [aggregate_stats_max_mean, aggregate_stats_mean_max])
 
-            df_agg = agg(df, val_metric, add_col=:total_eval_t, downsample=downsample)
-            rt = rank_table(df_agg, tst_metric) 
+            df_agg = agg(df, val_metric; downsample=downsample)
+            rt = rank_table(df_agg, tst_metric)
             
-            # time is computed only for the best models
-            # maybe should be averaged over all samples
-            df_agg[time_col] .= -df_agg[time_col]
-            rtt = rank_table(df_agg, time_col)
-
             models = names(rt)[2:end]
             x = Vector(rt[end, 2:end])
             y = Vector(rtt[end, 2:end])
