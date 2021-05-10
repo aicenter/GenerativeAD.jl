@@ -1,34 +1,59 @@
 using DrWatson
 @quickactivate
 using ArgParse
+using PyCall
 using GenerativeAD
 using StatsBase: fit!, predict, sample
+using OrderedCollections
 using BSON
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-   "max_seed"
-        required = true
-        arg_type = Int
-        help = "seed"
-    "dataset"
-        required = true
-        arg_type = String
-        help = "dataset"
-    "contamination"
-    	arg_type = Float64
-    	help = "contamination rate of training data"
-    	default = 0.0
+	"max_seed"
+		default = 1
+		arg_type = Int
+		help = "maximum number of seeds to run through"
+	"dataset"
+		default = "iris"
+		arg_type = String
+		help = "dataset"
+	"sampling"
+		default = "random"
+		arg_type = String
+		help = "sampling of hyperparameters"
+	"contamination"
+		arg_type = Float64
+		help = "contamination rate of training data"
+		default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, contamination = parsed_args
+@unpack dataset, max_seed, sampling, contamination = parsed_args
 
 modelname = "pidforest"
 function sample_params()
-	par_vec = (6:2:10, 50:25:200, [50, 100, 250, 500, 1000, 5000], 3:6, [0.05, 0.1, 0.2], )
-	argnames = (:max_depth, :n_trees, :max_samples, :max_buckets, :epsilon, )
+	parameters_rng = (;
+		max_depth	= 6:2:10, 
+		n_trees		= 50:25:200, 
+		max_samples	= [50, 100, 250, 500, 1000, 5000], 
+		max_buckets	= 3:6, 
+		epsilon		= [0.05, 0.1, 0.2]
+	)
 
-	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
+	return (;zip(keys(parameters_rng), map(x->sample(x, 1)[1], parameters_rng))...)
+end
+
+function create_space()
+	pyReal = pyimport("skopt.space")["Real"]
+	pyInt = pyimport("skopt.space")["Integer"]
+	pyCat = pyimport("skopt.space")["Categorical"]
+	
+	(;
+		max_depth	= pyInt(6, 10, 							name="max_depth"),
+		n_trees		= pyInt(50, 200,						name="n_trees"),
+		max_samples	= pyInt(25, 5000, prior="log-uniform",	name="max_samples"),
+		max_buckets	= pyInt(3, 6, 							name="max_buckets"), 
+		epsilon		= pyReal(0.05, 0.2, 					name="epsilon")
+	)
 end
 
 function GenerativeAD.edit_params(data, parameters)
@@ -73,17 +98,27 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
+sampling_string = sampling == "bayes" ? "_bayes" : ""
+prefix = "experiments$(sampling_string)/tabular$(cont_string)"
+dataset_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
 while try_counter < max_tries
-    parameters = sample_params()
+	if sampling == "bayes"
+		parameters = GenerativeAD.bayes_params(
+								create_space(), 
+								dataset_folder,
+								sample_params)
+	else
+		parameters = sample_params()
+	end
 
-    for seed in 1:max_seed
-		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
+	for seed in 1:max_seed
+		savepath = joinpath(dataset_folder, "seed=$(seed)")
 		mkpath(savepath)
 
 		# get data
 		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
 		data = remove_constant_features(data)
-		edited_parameters = GenerativeAD.edit_params(data, parameters)
+		edited_parameters = sampling == "bayes" ? parameters : GenerativeAD.edit_params(data, parameters)
 
 		if GenerativeAD.check_params(savepath, edited_parameters)
 			@info "Started training PIDForest$(edited_parameters) on $(dataset):$(seed)"
@@ -91,8 +126,11 @@ while try_counter < max_tries
 			training_info, results = fit(data, edited_parameters)
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
-			for result in results
-				GenerativeAD.experiment(result..., data, savepath; save_entries...)
+			all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
+			if sampling == "bayes" && length(all_scores) > 0
+				@info("Updating cache with $(length(all_scores)) results.")
+				GenerativeAD.update_bayes_cache(dataset_folder, 
+						all_scores; ignore=Set([:percentile]))
 			end
 			global try_counter = max_tries + 1
 		else

@@ -2,6 +2,8 @@ using DrWatson
 @quickactivate
 using ArgParse
 using GenerativeAD
+using PyCall
+using OrderedCollections
 using StatsBase: fit!, predict, sample
 using BSON
 using Flux
@@ -16,13 +18,17 @@ s = ArgParseSettings()
         default = "iris"
         arg_type = String
         help = "dataset"
+    "sampling"
+        default = "random"
+        arg_type = String
+        help = "sampling of hyperparameters [bayes|random]"
     "contamination"
         arg_type = Float64
         help = "contamination rate of training data"
         default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, contamination = parsed_args
+@unpack dataset, max_seed, sampling, contamination = parsed_args
 
 modelname = "repen"
 
@@ -38,7 +44,25 @@ function sample_params()
         activation      = ["relu", "tanh"],
         init_seed       = 1:Int(1e8)
     )
-    parameters = (;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
+
+    (;zip(keys(parameter_rng), map(x->sample(x, 1)[1], parameter_rng))...)
+end
+
+function create_space()
+    pyReal = pyimport("skopt.space")["Real"]
+    pyInt = pyimport("skopt.space")["Integer"]
+    pyCat = pyimport("skopt.space")["Categorical"]
+    
+    (;
+        zdim            = pyInt(0, 6, 							name="log2_zdim"),
+        hdim            = pyInt(1, 8, 							name="log2_hdim"),
+        conf_margin     = pyInt(250, 2050,                      name="conf_margin"),
+        nlayers         = pyInt(1, 2, 							name="nlayers"),
+        ensemble_size   = pyCat(categories=[25, 50], 		    name="ensemble_size"),
+        subsample_size  = pyInt(1, 8, 							name="log2_subsample_size"),
+        batchsize       = pyInt(3, 8, 							name="log2_batchsize"),
+        activation      = pyCat(categories=["relu", "tanh"], 	name="activation"),
+    )
 end
 
 function fit(data, parameters)
@@ -111,18 +135,32 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
+sampling_string = sampling == "bayes" ? "_bayes" : ""
+prefix = "experiments$(sampling_string)/tabular$(cont_string)"
+dataset_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
 while try_counter < max_tries
-    parameters = sample_params()
+    if sampling == "bayes"
+        parameters = GenerativeAD.bayes_params(
+                                create_space(), 
+                                dataset_folder,
+                                sample_params; add_model_seed=true)
+    else
+        parameters = sample_params()
+    end
 
     for seed in 1:max_seed
-        savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
+        savepath = joinpath(dataset_folder, "seed=$(seed)")
         mkpath(savepath)
 
         # get data
         data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
         # edit_params is not deterministic and therefore `edited_parameters` may be different for each seed
         # as a workaround once it is called it overwrites `parameters`, which should not be changed by the next call
-        parameters = edited_parameters = GenerativeAD.edit_params(data, parameters)
+        if sampling == "bayes"
+            edited_parameters = parameters
+        else
+            edited_parameters = parameters = GenerativeAD.edit_params(data, parameters)
+        end
 
         if GenerativeAD.check_params(savepath, edited_parameters)
             @info "Started training $(modelname)$(edited_parameters) on $(dataset):$(seed)"
@@ -142,8 +180,11 @@ while try_counter < max_tries
             end
             save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
-            for result in results
-                GenerativeAD.experiment(result..., data, savepath; save_entries...)
+            all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
+            if sampling == "bayes" && length(all_scores) > 0
+                @info("Updating cache with $(length(all_scores)) results.")
+                GenerativeAD.update_bayes_cache(dataset_folder, 
+                        all_scores; ignore=Set([:init_seed]))
             end
             global try_counter = max_tries + 1
         else

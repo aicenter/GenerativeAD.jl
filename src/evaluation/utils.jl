@@ -36,7 +36,12 @@ function collect_files_th(target::String)
     end
     results = Vector{Vector{String}}(undef, length(files))
     @threads for i in 1:length(files)
-        results[i] = collect_files_th(files[i])
+        # ignore any file that lives alongside a folder
+        if !isfile(files[i])
+            results[i] = collect_files_th(files[i])
+        else
+            results[i] = String[]
+        end
     end
     reduce(vcat, results)
 end

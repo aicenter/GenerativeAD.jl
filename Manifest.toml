@@ -1230,6 +1230,11 @@ repo-url = "https://github.com/pevnak/SumProductTransform.jl.git"
 uuid = "433b66b6-b370-11e9-0fbb-5537bf1cf77b"
 version = "0.1.0"
 
+[[Suppressor]]
+git-tree-sha1 = "a819d77f31f83e5792a76081eee1ea6342ab8787"
+uuid = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
+version = "0.2.0"
+
 [[TableTraits]]
 deps = ["IteratorInterfaceExtensions"]
 git-tree-sha1 = "b1ad568ba658d8cbb3b892ed5380a6f3e781a81e"

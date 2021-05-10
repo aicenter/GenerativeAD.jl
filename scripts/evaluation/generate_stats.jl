@@ -46,7 +46,8 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 	filter!(x -> !startswith(basename(x), "model"), files)
 	@info "Collected $(length(files)) files from $source folder."
 	# it might happen that when appending results some of the cores
-	# just go over already computed files
+	# just go over already computed files, unless force flag is present
+	# then we have to recompute all the things
 	files = files[randperm(length(files))]
 
 	@threads for f in files
@@ -54,7 +55,8 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 		target = joinpath(target_dir, "eval_$(basename(f))")
 		try
 			if (isfile(target) && force) || ~isfile(target)
-				df = GenerativeAD.Evaluation.compute_stats(f)
+				r = load(f)
+				df = GenerativeAD.Evaluation.compute_stats(r)
 				wsave(target, Dict(:df => df))
 				@info "Saving evaluation results at $(target)"
 			end

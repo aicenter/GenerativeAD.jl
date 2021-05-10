@@ -59,7 +59,7 @@ function lesinn(xq; fit_data=xq, ensemble_size=50, subsample_size=8, kwargs...)
     n = size(fit_data, 2)
     scores = zeros(Float32, size(xq, 2))
     for i in 1:ensemble_size
-        subsample = fit_data[:, randperm(n)[1:subsample_size]]
+        subsample = fit_data[:, randperm(n)[1:min(subsample_size, round(Int, 3n//4))]]
         kdt = KDTree(subsample, Euclidean(); leafsize = 40)
         _, dists = knn(kdt, xq, 1)
         scores .+= getindex.(dists, 1)

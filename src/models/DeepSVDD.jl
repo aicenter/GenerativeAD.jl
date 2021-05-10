@@ -101,8 +101,8 @@ function conv_svdd_constructor(
 	init_seed=nothing, 
 	objective="soft-boundary",
 	batchnorm=false, 
-	nu::Float32 = 0.1f0,
-	R::Float32 = 0f0,
+	nu::AbstractFloat = 0.1f0,
+	R::AbstractFloat = 0f0,
 	c = nothing,
 	kwargs...
 )
@@ -135,8 +135,8 @@ function svdd_constructor(
 	nlayers::Int=3, 
 	init_seed=nothing, 
 	objective="soft-boundary",
-	nu::Float32 = 0.1f0,
-	R::Float32 = 0f0,
+	nu::AbstractFloat = 0.1f0,
+	R::AbstractFloat = 0f0,
 	c = nothing,
 	kwargs...
 	)

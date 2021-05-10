@@ -1,37 +1,59 @@
 using DrWatson
 @quickactivate
 using ArgParse
+using PyCall
 using GenerativeAD
-import StatsBase: fit!, predict
-using StatsBase
+using StatsBase: fit!, predict, sample
+using OrderedCollections
 using BSON
 
 s = ArgParseSettings()
 @add_arg_table! s begin
-   "max_seed"
-        required = true
-        arg_type = Int
-        help = "seed"
-    "dataset"
-        required = true
-        arg_type = String
-        help = "dataset"
-    "contamination"
+	"max_seed"
+		default = 1
+		arg_type = Int
+		help = "maximum number of seeds to run through"
+	"dataset"
+		default = "iris"
+		arg_type = String
+		help = "dataset"
+	"sampling"
+		default = "random"
+		arg_type = String
+		help = "sampling of hyperparameters"
+	"contamination"
 		arg_type = Float64
-    	help = "contamination rate of training data"
-    	default = 0.0
+		help = "contamination rate of training data"
+		default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, contamination = parsed_args
+@unpack dataset, max_seed, sampling, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "ocsvm"
+
 function sample_params()
-	par_vec = (round.([10^x for x in -4:0.1:2],digits=5),["poly", "rbf", "sigmoid"],[0.01, 0.5, 0.99])
-	argnames = (:gamma,:kernel,:nu)
-	return (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
+	parameter_rng = (
+		gamma 		= round.([10^x for x in -4:0.1:2],digits=5),
+		kernel 		= ["poly", "rbf", "sigmoid"],
+		nu 			= [0.01, 0.5, 0.99]
+	)
+	return (;zip(keys(parameters_rng), map(x->sample(x, 1)[1], parameters_rng))...)
 end
+
+function create_space()
+	pyReal = pyimport("skopt.space")["Real"]
+	pyInt = pyimport("skopt.space")["Integer"]
+	pyCat = pyimport("skopt.space")["Categorical"]
+	
+	(;
+		gamma 		= pyReal(1e-4, 1e2, prior="log-uniform",		name="gamma"),
+		kernel 		= pyCat(categories=["poly", "rbf", "sigmoid"],	name="kernel"),
+		nu 			= pyReal(0.01, 0.99, 							name="nu")
+	)
+end
+
 function fit(data, parameters)
 	# construct model - constructor should only accept kwargs
 	model = GenerativeAD.Models.OCSVM(;parameters...)
@@ -63,18 +85,28 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
+sampling_string = sampling == "bayes" ? "_bayes" : ""
+prefix = "experiments$(sampling_string)/tabular$(cont_string)"
+dataset_folder = datadir("$(prefix)/$(modelname)/$(dataset)")
 while try_counter < max_tries
-    parameters = sample_params()
+	if sampling == "bayes"
+		parameters = GenerativeAD.bayes_params(
+								create_space(), 
+								dataset_folder,
+								sample_params)
+	else
+		parameters = sample_params()
+	end
 
-    for seed in 1:max_seed
-		savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
+	for seed in 1:max_seed
+		savepath = joinpath(dataset_folder, "seed=$(seed)")
 		mkpath(savepath)
 
 		# get data
 		data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
 		
 		# edit parameters
-		edited_parameters = GenerativeAD.edit_params(data, parameters)
+		edited_parameters = sampling == "bayes" ? parameters : GenerativeAD.edit_params(data, parameters)
 		
 		@info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
 		# check if a combination of parameters and seed alread exists
@@ -85,8 +117,10 @@ while try_counter < max_tries
 			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, contamination = contamination))
 
 			# now loop over all anomaly score funs
-			for result in results
-				GenerativeAD.experiment(result..., data, savepath; save_entries...)
+			all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
+			if sampling == "bayes" && length(all_scores) > 0
+				@info("Updating cache with $(length(all_scores)) results.")
+				GenerativeAD.update_bayes_cache(dataset_folder, all_scores)
 			end
 			global try_counter = max_tries + 1
 		else
