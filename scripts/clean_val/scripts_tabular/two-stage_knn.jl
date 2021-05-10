@@ -1,0 +1,137 @@
+using DrWatson
+@quickactivate
+using ArgParse
+using GenerativeAD
+import StatsBase: fit!, predict
+using StatsBase
+using BSON
+# because of vae and 2stage
+using DataFrames
+using CSV
+using ValueHistories
+using Flux
+using ConditionalDists
+using GenerativeModels
+import GenerativeModels: VAE
+using Distributions
+using DistributionsAD
+using Distances
+using Statistics
+
+s = ArgParseSettings()
+@add_arg_table! s begin
+   "max_seed"
+		required = true
+		arg_type = Int
+		help = "seed"
+	"dataset"
+		required = true
+		arg_type = String
+		help = "dataset"
+	"contamination"
+    	arg_type = Float64
+    	help = "contamination rate of training data"
+    	default = 0.0
+end
+parsed_args = parse_args(ARGS, s)
+@unpack dataset, max_seed, contamination = parsed_args
+
+# we select the encoding of the model with lowest loss
+tab_name = "vae_LOSS_tabular"
+mi = 1
+
+#######################################################################################
+################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
+# get criterion
+sp = split(tab_name, "_")
+enc = sp[1]
+criterion = lowercase(sp[2])
+
+modelname = "$(enc)_knn"
+
+# max(10, 0.03n)
+function set_params(data)
+	D, N = size(data[1][1])
+	nn = max(10, ceil(Int,0.03*N))
+	return (k=nn,)
+end
+"""
+	fit(data, parameters)
+
+This is the most important function - returns `training_info` and a tuple or a vector of tuples `(score_fun, final_parameters)`.
+`training_info` contains additional information on the training process that should be saved, the same for all anomaly score functions.
+Each element of the return vector contains a specific anomaly score function - there can be multiple for each trained model.
+Final parameters is a named tuple of names and parameter values that are used for creation of the savefile name.
+"""
+function fit(data, parameters, aux_info)
+	# construct model - constructor should only accept kwargs
+	model = GenerativeAD.Models.knn_constructor(;v=:kappa, parameters...)
+
+	# fit train data
+	try
+		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
+	catch e
+		# return an empty array if fit fails so nothing is computed
+		return (fit_t = NaN,), [] 
+	end
+
+	# construct return information - put e.g. the model structure here for generative models
+	training_info = (
+		fit_t = fit_t,
+		model = nothing
+		)
+
+	# now return the different scoring functions
+	function knn_predict(model, x, v::Symbol)
+		try 
+			return predict(model, x, v)
+		catch e
+			if isa(e, ArgumentError) # this happens in the case when k > number of points
+				return NaN # or nothing?
+			else
+				rethrow(e)
+			end
+		end
+	end
+	parameters = merge(parameters, aux_info)
+	training_info, [(x -> knn_predict(model, x, v), merge(parameters, (distance = v,))) for v in [:delta]]
+end
+
+####################################################################
+################ THIS PART IS COMMON FOR ALL MODELS ################
+# set a maximum for parameter sampling retries
+cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
+for seed in 1:max_seed
+	savepath = datadir("experiments/tabular_clean_val_default/$(modelname)/$(dataset)/seed=$(seed)")
+	mkpath(savepath)
+
+	aux_info = (model_index=mi, criterion=criterion)
+	# get data
+	data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
+	output, encode_t, _, _, _ = @timed GenerativeAD.Models.load_encoding(tab_name, data, dataset=dataset, seed=seed, model_index=mi)
+	data, encoding_name, encoder_params, encoder_fit_t = output
+
+	# edit parameters
+	parameters = set_params(data)
+
+	@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
+	# check if a combination of parameters and seed alread exists
+	# fit
+	training_info, results = fit(data, parameters, aux_info)
+	# here define what additional info should be saved together with parameters, scores, labels and predict times
+	save_entries = merge(training_info, (modelname = modelname, 
+										 seed = seed, 
+										 dataset = dataset, 
+										 encoder=encoding_name,
+										 encoder_fit_t = encoder_fit_t,
+										 encoder_params = encoder_params,
+										 encode_t = encode_t,
+										 model_index=mi,
+										 criterion=criterion,
+										 contamination = contamination))
+
+	# now loop over all anomaly score funs
+	for result in results
+		GenerativeAD.experiment(result..., data, savepath; save_entries...)
+	end
+end
