@@ -96,7 +96,7 @@ while try_counter < max_tries
 
 		# get data
 		data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
-			contamination=contamination, img_size=128)
+			contamination=contamination, img_size=64)
 		data = GenerativeAD.Datasets.vectorize(data)
 
 		# edit parameters
