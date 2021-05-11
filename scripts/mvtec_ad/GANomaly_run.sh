@@ -12,4 +12,9 @@ CONTAMINATION=$3
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
+# PyCall needs to be rebuilt if environment changed
+julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
+
+julia --project -e 'using Pkg; Pkg.instantiate();'
+
 julia ./GANomaly.jl ${MAX_SEED} $CATEGORY $CONTAMINATION
