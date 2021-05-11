@@ -12,4 +12,4 @@ CONTAMINATION=$3
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-julia ./vae.jl ${MAX_SEED} $CATEGORY $CONTAMINATION
+julia ./aae.jl ${MAX_SEED} $CATEGORY $CONTAMINATION

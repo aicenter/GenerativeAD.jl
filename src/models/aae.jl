@@ -114,11 +114,12 @@ Constructs a convolutional adversarial autoencoder.
 	- `pseudoinput_mean=nothing`: mean of data used to initialize the VAMP prior.
 	- `k::Int=1`: number of VAMP components.
 	- `batchnorm=false`: use batchnorm (discouraged). 
+	- `var="dense"`: one of ["dense", "conv"]
 """
 function conv_aae_constructor(;idim=(2,2,1), zdim::Int=1, activation="relu", dnlayers::Int=1, 
 	hdim=1024, kernelsizes=(1,1), channels=(1,1), scalings=(1,1),
 	init_seed=nothing, prior="normal", pseudoinput_mean=nothing, k=1, 
-	batchnorm=false, kwargs...)
+	batchnorm=false, var="dense", kwargs...)
 	# if seed is given, set it
 	(init_seed != nothing) ? Random.seed!(init_seed) : nothing
 	
@@ -134,11 +135,25 @@ function conv_aae_constructor(;idim=(2,2,1), zdim::Int=1, activation="relu", dnl
 	# decoder - we will optimize only a shared scalar variance for all dimensions
 	# also, the decoder output will be vectorized so the usual logpdfs vcan be used
 	vecdim = reduce(*,idim[1:3]) # size of vectorized data
-	decoder_map = Chain(
-		conv_decoder(idim, zdim, reverse(kernelsizes), reverse(channels), reverse(scalings),
-			activation=activation, vec_output=true, vec_output_dim=nothing, batchnorm=batchnorm)...,
-		ConditionalDists.SplitLayer(vecdim, [vecdim, 1], [identity, safe_softplus])
-		)
+	if var == "dense" # this does not work if the image is big
+		decoder_map = Chain(
+			conv_decoder(idim, zdim, reverse(kernelsizes), reverse(channels), reverse(scalings),
+				activation=activation, vec_output=true, vec_output_dim=nothing, batchnorm=batchnorm)...,
+			ConditionalDists.SplitLayer(vecdim, [vecdim, 1], [identity, safe_softplus])
+			)
+	elseif var =="conv"
+		odim = Tuple([idim[1:2]..., idim[3]+1])
+		decoder_map = Chain(
+			conv_decoder(odim, zdim, reverse(kernelsizes), reverse(channels), reverse(scalings),
+				activation=activation, vec_output=false),
+			ConditionalDists.SplitLayer((
+				Conv((1,1), odim[end]=>idim[3]),
+				Chain(Conv((1,1), odim[end]=>1), x->mean(x, dims=(1,2,3)), vec, x->safe_softplus.(x))
+				))
+			)
+	else
+		error("variance $var unknown")
+	end
 	decoder = ConditionalMvNormal(decoder_map)
 
 	# discriminator
