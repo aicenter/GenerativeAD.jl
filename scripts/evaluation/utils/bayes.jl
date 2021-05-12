@@ -26,7 +26,7 @@ function combine_bayes(df, df_bayes; outer=true)
             phashes = unique(reduce(vcat, [c[:phashes] for c in values(cache)][1:50]))
             dff = copy(filter(x -> (x.modelname == modelname) && (x.dataset == dataset) && (x.phash in phashes), df))
             if nrow(dff) > 0
-                @info "$modelname - $dataset - fetched $(nrow(dff)) rows"
+                @info "$modelname - $dataset - fetched $(nrow(dff)) rows with $(length(phashes)) hashes"
             else
                 @warn "$modelname - $dataset - could not fetch samples based on stored phashes"
             end
