@@ -101,14 +101,13 @@ try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
-	parameters = set_params()
-
 	for seed in 1:max_seed
 		for i in 1:anomaly_classes
 			savepath = datadir("experiments/images_$(method)_clean_val_default$cont_string/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 
 			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method, contamination=contamination)
 			data = GenerativeAD.Datasets.vectorize(data)
+			parameters = set_params(data)
 
 			# here, check if a model with the same parameters was already tested
 			if GenerativeAD.check_params(savepath, parameters)
