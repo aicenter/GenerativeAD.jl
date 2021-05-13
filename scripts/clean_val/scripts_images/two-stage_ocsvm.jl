@@ -47,7 +47,7 @@ parsed_args = parse_args(ARGS, s)
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 
-tab_name = "vae_LOSS_tabular"
+tab_name = "vae_LOSS_images"
 mi = 1
 sp = split(tab_name, "_")
 enc = sp[1]
