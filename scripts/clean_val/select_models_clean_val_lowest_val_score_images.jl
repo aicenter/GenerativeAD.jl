@@ -12,6 +12,8 @@ using LinearAlgebra
 # all the models will use the lowest anomaly score on normal validation data
 master_path = datadir("experiments/images_leave-one-out")
 outpath = datadir("experiments/images_leave-one-out_clean_val_score")
+master_path = datadir("experiments/images_leave-one-in")
+outpath = datadir("experiments/images_leave-one-in_clean_val_score")
 mkpath(outpath)
 
 models = readdir(master_path)
@@ -89,7 +91,7 @@ end
 model = models[1]
 dataset = "MNIST"
 
-for model in models[1:3]
+for model in models
 	@info "Processing model $model..."
 	mp = joinpath(master_path, model)
 	datasets = readdir(mp)
