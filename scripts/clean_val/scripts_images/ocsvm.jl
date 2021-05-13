@@ -6,6 +6,8 @@ using GenerativeAD.Models
 using BSON
 using StatsBase
 using StatsBase: fit!, predict, sample
+using Distances
+using Statistics
 
 using MLDataPattern
 
