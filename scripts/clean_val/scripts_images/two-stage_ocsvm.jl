@@ -28,6 +28,10 @@ s = ArgParseSettings()
 		required = true
 		arg_type = String
 		help = "dataset"
+	"anomaly_classes"
+		arg_type = Int
+		default = 10
+		help = "number of anomaly classes"
 	"method"
 		arg_type = String
 		default = "leave-one-out"
@@ -38,12 +42,11 @@ s = ArgParseSettings()
     	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, method, contamination = parsed_args
+@unpack dataset, anomaly_classes, max_seed, method, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 
-anomaly_classes=10
 tab_name = "vae_LOSS_tabular"
 mi = 1
 sp = split(tab_name, "_")
