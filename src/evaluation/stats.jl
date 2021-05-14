@@ -107,7 +107,7 @@ now there is option not to compute them by setting `top_metrics=false`.
 function compute_stats(r::Dict{Symbol,Any}; top_metrics=true)
 	row = (
 		modelname = r[:modelname],
-		dataset = r[:dataset],
+		dataset = Symbol("dataset") in keys(r) ? r[:dataset] : "MVTec-AD_" * r[:category], # until the files are fixed
 		phash = hash(r[:parameters]),
 		parameters = savename(r[:parameters], digits=6), 
 		fit_t = r[:fit_t],
