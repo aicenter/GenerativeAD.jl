@@ -109,7 +109,16 @@ while try_counter < max_tries
 		aux_info = (model_index=mi, criterion=criterion)
 
 		data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method, contamination=contamination)
-		data, encoding_name, encoder_params = GenerativeAD.Models.load_encoding(tab_name, data, i, dataset=dataset, seed=seed, model_index=mi)
+		not_loaded = true
+		while not_loaded
+			try
+				data, encoding_name, encoder_params = GenerativeAD.Models.load_encoding(tab_name, data, i, dataset=dataset, seed=seed, model_index=mi)
+				global not_loaded = false
+			catch e		
+				@info "model index $mi not working, trying the next one"
+				global mi += 1
+			end
+		end
 		parameters = set_params(data)
 
 		# here, check if a model with the same parameters was already tested
