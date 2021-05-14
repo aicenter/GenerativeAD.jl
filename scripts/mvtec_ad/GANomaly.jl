@@ -125,7 +125,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 					training_info = merge(training_info, (model = nothing,))
 				end
 				save_entries = merge(training_info, (modelname = modelname, seed = seed,
-					category = category,
+					category = category, dataset = "MVTec-AD_$category",
 					contamination=contamination))
 
 				# now loop over all anomaly score funs
