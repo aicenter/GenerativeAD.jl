@@ -5,7 +5,7 @@
 
 MAX_SEED=$1
 DATASET=$2
-ANOMALY_CLASSES=$3
+ANOMALY_CLASS=$3
 METHOD=$4
 CONTAMINATION=$5
 
@@ -19,4 +19,4 @@ export PYTHON="${HOME}/sklearn-env/bin/python"
 # PyCall needs to be rebuilt if environment changed
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-julia ./ocsvm.jl ${MAX_SEED} $DATASET ${ANOMALY_CLASSES} $METHOD $CONTAMINATION
+julia ./ocsvm.jl ${MAX_SEED} $DATASET ${ANOMALY_CLASS} $METHOD $CONTAMINATION

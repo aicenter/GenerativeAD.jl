@@ -21,10 +21,10 @@ s = ArgParseSettings()
 		default = "MNIST"
 		arg_type = String
 		help = "dataset"
-	"anomaly_classes"
+	"anomaly_class"
 		arg_type = Int
-		default = 10
-		help = "number of anomaly classes"
+		default = 1
+		help = "anomaly class"
 	"method"
 		arg_type = String
 		default = "leave-one-out"
@@ -35,7 +35,7 @@ s = ArgParseSettings()
     	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, anomaly_classes, method, contamination = parsed_args
+@unpack dataset, max_seed, anomaly_class, method, contamination = parsed_args
 
 modelname = "ocsvm"
 
@@ -104,28 +104,27 @@ max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
 	for seed in 1:max_seed
-		for i in 1:anomaly_classes
-			savepath = datadir("experiments/images_$(method)_clean_val_default$cont_string/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
+		i = anomaly_class
+		savepath = datadir("experiments/images_$(method)_clean_val_default$cont_string/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 
-			data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method, contamination=contamination)
-			data = GenerativeAD.Datasets.vectorize(data)
-			parameters = set_params(data)
+		data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method, contamination=contamination)
+		data = GenerativeAD.Datasets.vectorize(data)
+		parameters = set_params(data)
 
-			# here, check if a model with the same parameters was already tested
-			if GenerativeAD.check_params(savepath, parameters)
-				training_info, results = fit(data, parameters)
-				# here define what additional info should be saved together with parameters, scores, labels and predict times
-				save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i,
-					contamination=contamination))
-				# now loop over all anomaly score funs
-				for result in results
-					GenerativeAD.experiment(result..., data, savepath; save_entries...)
-				end
-				global try_counter = max_tries + 1
-			else
-				@info "Model already present, sampling new hyperparameters..."
-				global try_counter += 1
+		# here, check if a model with the same parameters was already tested
+		if GenerativeAD.check_params(savepath, parameters)
+			training_info, results = fit(data, parameters)
+			# here define what additional info should be saved together with parameters, scores, labels and predict times
+			save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i,
+				contamination=contamination))
+			# now loop over all anomaly score funs
+			for result in results
+				GenerativeAD.experiment(result..., data, savepath; save_entries...)
 			end
+			global try_counter = max_tries + 1
+		else
+			@info "Model already present, sampling new hyperparameters..."
+			global try_counter += 1
 		end
 	end
 end
