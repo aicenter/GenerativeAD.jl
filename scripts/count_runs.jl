@@ -45,6 +45,7 @@ function check_model_dataset(modelpath, check_validity=true, min_samples=100)
 		println(Crayon(foreground=(255,255,255)), "DATASET = $dataset")
 		seedpaths = joinpath.(datasetpath, readdir(datasetpath))
 		for seedpath in seedpaths
+			isfile(seedpath) ? continue : nothing # ignore bayes_cache.bson if present
 			seed = basename(seedpath)[end]
 			ufiles = joinpath.(seedpath,list_files(seedpath))
 			nuf = length(ufiles)
