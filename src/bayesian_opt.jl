@@ -175,7 +175,7 @@ function bayes_params(space, folder, fallback; add_model_seed=false, kwargs...)
 	if cache !== nothing		
 		x0 = [v[:parameters] for v in values(cache)]
 		y0 = [objective_value(v[:runs], kwargs...) for v in values(cache)] 
-		@info("Loaded cached results from $(folder).")
+		@info("Loaded $(length(cache)) cached results from $(folder).")
 		# conversion to tuples this makes skopt happy 
 		# as it cannot parse list of numpy arrays as valid "2D" input
 		x0 = [(to_skopt(space, x)..., ) for x in x0]
@@ -186,6 +186,7 @@ function bayes_params(space, folder, fallback; add_model_seed=false, kwargs...)
 		
 		# registers only parameters with empty arrays and store cache
 		register_run!(cache, (;parameters=p); fit_results=false)
+		@info("Updated cache size: $(length(cache)). Saving.")
 		save_bayes_cache(folder, cache)
 
 		@info("Fetched new hyperparameters: $(p).")
@@ -224,9 +225,11 @@ Additional keyword arguments are passed into `register_run!`.
 """
 function update_bayes_cache(folder, results; kwargs...)
 	cache = load_bayes_cache(folder)
+	@info("Loaded cache size: $(length(cache)). Updating.")
 	for r in results
 		register_run!(cache, r; kwargs...)
 	end
+	@info("Updated cache size: $(length(cache)). Saving.")
 	save_bayes_cache(folder, cache)
 end
 
@@ -258,6 +261,7 @@ function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=tr
 								# there may be colisions (e.g. parameter being run with two seeds)
 
 	if ophash in keys(cache) && fit_results				# add to existing entry
+		@info("Adding run to existing entry $(ophash) - $(parameters).")
 		entry = cache[ophash]
 		seed = r[:seed]
 		anomaly_class = _get_anomaly_class(r)
@@ -274,6 +278,7 @@ function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=tr
 
 		cache[ophash] = merge(entry, (;runs=runs, phashes=phashes))
 	elseif !(ophash in keys(cache)) && fit_results		# or create new entry if there are results (mainly used during manual cache creation)
+		@info("Creating new non-empty entry $(ophash) - $(parameters).")
 		seed = r[:seed]
 		anomaly_class = _get_anomaly_class(r)
 		runs = Dict((seed, anomaly_class) => flip_sign ? -metric_value : metric_value)
@@ -284,6 +289,7 @@ function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=tr
 			runs = runs,
 			phashes=phashes)
 	else							# otherwise add an empty entry (this is to indicate that such parameters are about to be trained)
+		@info("Creating new empty entry $(ophash) - $(parameters).")
 		entry = (;
 			parameters = parameters,
 			runs = Dict{Tuple{Int,Int}, Any}(),
