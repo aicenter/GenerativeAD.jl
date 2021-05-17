@@ -261,7 +261,7 @@ function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=tr
 								# there may be colisions (e.g. parameter being run with two seeds)
 
 	if ophash in keys(cache) && fit_results				# add to existing entry
-		@info("Adding run to existing entry $(ophash) - $(parameters).")
+		@info("Adding run to existing entry $(repr(ophash)) - $(parameters).")
 		entry = cache[ophash]
 		seed = r[:seed]
 		anomaly_class = _get_anomaly_class(r)
@@ -278,7 +278,7 @@ function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=tr
 
 		cache[ophash] = merge(entry, (;runs=runs, phashes=phashes))
 	elseif !(ophash in keys(cache)) && fit_results		# or create new entry if there are results (mainly used during manual cache creation)
-		@info("Creating new non-empty entry $(ophash) - $(parameters).")
+		@info("Creating new non-empty entry $(repr(ophash)) - $(parameters).")
 		seed = r[:seed]
 		anomaly_class = _get_anomaly_class(r)
 		runs = Dict((seed, anomaly_class) => flip_sign ? -metric_value : metric_value)
@@ -288,13 +288,15 @@ function register_run!(cache, r; fit_results=true, metric=:val_auc, flip_sign=tr
 			parameters = parameters,
 			runs = runs,
 			phashes=phashes)
-	else							# otherwise add an empty entry (this is to indicate that such parameters are about to be trained)
-		@info("Creating new empty entry $(ophash) - $(parameters).")
+	elseif !(ophash in keys(cache)) && fit_results == false 	# add an empty entry (this is to indicate that such parameters are about to be trained)
+		@info("Creating new empty entry $(repr(ophash)) - $(parameters).")
 		entry = (;
 			parameters = parameters,
 			runs = Dict{Tuple{Int,Int}, Any}(),
 			phashes = UInt64[])
 
 		cache[ophash] = entry
+	else 		# otherwise warn the user that the chosen parameters already exist in the cache
+		@warn("Entry $(repr(ophash)) - $(parameters) already exist in the cache.")
 	end
 end
