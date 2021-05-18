@@ -85,7 +85,7 @@ max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
 	for seed in 1:max_seed
-		savepath = datadir("experiments/images_mvtec_clean_val_default$cont_string/$(modelname)/$(category)/ac=$(i)/seed=$(seed)")
+		savepath = datadir("experiments/images_mvtec_clean_val_default$cont_string/$(modelname)/$(category)/ac=1/seed=$(seed)")
 		mkpath(savepath)
 
 		# get data
