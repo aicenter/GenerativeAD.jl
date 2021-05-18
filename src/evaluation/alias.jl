@@ -1,11 +1,5 @@
 using DataFrames
 
-const MODEL_MERGE = Dict{String, String}(
-	"aae_vamp" 	=> "aae",
-	"wae_vamp" 	=> "wae",
-	"vae+ocsvm" => "vae_ocsvm"
-)
-
 const MODEL_TYPE = Dict{String, String}(
 	"MAF" 				=> "flows",
 	"RealNVP"			=> "flows",
@@ -39,8 +33,8 @@ const MODEL_TYPE = Dict{String, String}(
 	"vae_full"			=> "autoencoders",
 	"Conv-GANomaly" 	=> "autoencoders",
 	"Conv-SkipGANomaly" => "autoencoders",
-	"dagmm"				=> "autoencoders",
 	"aae_ocsvm"			=> "two-stage",
+	"dagmm"				=> "two-stage",
 	"vae_ocsvm" 		=> "two-stage",
 	"vae_knn"	 		=> "two-stage",
 	"DeepSVDD" 			=> "two-stage",
@@ -147,7 +141,10 @@ const DATASET_ALIAS = Dict{String, String}(
 	"MNIST-C_spatter" 			=> "spatter",
 	"MNIST-C_stripe" 			=> "stripe",
 	"MNIST-C_translate" 		=> "translt",
-	"MNIST-C_zigzag" 			=> "zigzag"
+	"MNIST-C_zigzag" 			=> "zigzag",
+	"MVTec-AD_grid"         	=> "grid",
+	"MVTec-AD_transistor"   	=> "transistor",
+	"MVTec-AD_wood"         	=> "wood"
 )
 
 const AC_CONVERSION = Dict(
