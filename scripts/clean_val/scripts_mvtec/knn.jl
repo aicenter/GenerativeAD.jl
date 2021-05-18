@@ -74,7 +74,7 @@ function fit(data, parameters)
 			end
 		end
 	end
-	training_info, [(x -> knn_predict(model, x, v), merge(parameters, (distance = v,))) for v in [:gamma, :kappa, :delta]]
+	training_info, [(x -> knn_predict(model, x, v), merge(parameters, (distance = v,))) for v in [:delta]]
 end
 
 ####################################################################
