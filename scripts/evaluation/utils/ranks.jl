@@ -9,6 +9,31 @@ function compute_ranks(rt)
 	reduce(hcat, rs)
 end
 
+const MODEL_RENAME = Dict(
+    "aae_full" => "aae",
+    "wae_full" => "wae", 
+    "vae_full" => "vae")
+
+"""
+	sorted_rank(d, agg; val_metric=:val_auc, tst_metric=:tst_auc, downsample=Dict{String, Int}())
+
+Computes rank table from `d` and aggregation `agg`. Applies model and dataset aliases. 
+Sorts models based on model_type. Returns the rank table and also the aggregated dataframe.
+"""
+function sorted_rank(d, agg, val_metric=:val_auc, tst_metric=:tst_auc, downsample=Dict{String, Int}(); verbose=true)
+	df_agg = agg(d, val_metric; downsample=downsample, verbose=verbose)
+	
+	df_agg["model_type"] = copy(df_agg["modelname"])
+	apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
+	apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+	apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
+	apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
+	
+	sort!(df_agg, (:dataset, :model_type, :modelname))
+	rt = rank_table(df_agg, tst_metric)
+	names(rt)[2:end], rt
+end
+
 # top 10 mean-max
 function aggregate_stats_mean_max_top_10(df::DataFrame, 
 										criterion_col=:val_auc; 

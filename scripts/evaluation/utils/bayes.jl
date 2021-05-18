@@ -19,23 +19,27 @@ corresponding random samplings runs in `df` (outer join).
 function combine_bayes(df, df_bayes; outer=true)
     models = outer ? unique(df.modelname) : unique(df_bayes.modelname)
     datasets = unique(df.dataset)
-    dfs = map(Base.Iterators.product(datasets, models)) do (dataset, modelname)
+    df[:index] = collect(1:nrow(df))
+    subsets = map(Base.Iterators.product(datasets, models)) do (dataset, modelname)
         folder = datadir("experiments_bayes/tabular/$(modelname)/$(dataset)")
         cache = load_bayes_cache(folder)
         if length(cache) > 0
-            phashes = unique(reduce(vcat, [c[:phashes] for c in values(cache)][1:50]))
-            dff = copy(filter(x -> (x.modelname == modelname) && (x.dataset == dataset) && (x.phash in phashes), df))
-            if nrow(dff) > 0
-                @info "$modelname - $dataset - fetched $(nrow(dff)) rows with $(length(phashes)) hashes"
+            n = length(cache)
+            phashes = unique(reduce(vcat, [c[:phashes] for c in values(cache)][1:min(50, n)]))
+            indx = filter(x -> (x.modelname == modelname) && (x.dataset == dataset) && (x.phash in phashes), df)[:index]
+            if length(indx) > 0
+                @info "$modelname - $dataset - fetched $(length(indx)) rows with $(length(phashes)) hashes"
             else
                 @warn "$modelname - $dataset - could not fetch samples based on stored phashes"
             end
-            dff
+            indx
         else
-            dff = copy(filter(x -> (x.modelname == modelname) && (x.dataset == dataset), df))
-            @info "$modelname - $dataset - no bayes samples - fetching all $(nrow(dff)) rows"
-            dff
+            indx = filter(x -> (x.modelname == modelname) && (x.dataset == dataset), df)[:index]
+            @warn "$modelname - $dataset - no bayes samples - fetching all $(length(indx)) rows"
+            indx
         end
     end
-    vcat(df_bayes, reduce(vcat, dfs))
+    subset = reduce(vcat, subsets[:])
+    select!(df, Not(:index)) # drop index
+    vcat(df_bayes, df[subset, :])
 end
