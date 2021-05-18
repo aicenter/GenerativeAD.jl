@@ -15,6 +15,8 @@ using GenerativeModels
 import GenerativeModels: VAE
 using Distributions
 using DistributionsAD
+using Distances
+using Statistics
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -32,7 +34,7 @@ s = ArgParseSettings()
 		default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack category, max_seed, contamination = parsed_args
+@unpack dataset, category, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -42,25 +44,54 @@ mi = 1
 sp = split(tab_name, "_")
 enc = sp[1]
 criterion = lowercase(sp[2])
+modelname = "$(enc)_ocsvm"
 
-modelname = "$(enc)_knn"
-
-
-# max(10, 0.03n)
+function median_l2_dist(X)
+	dists = pairwise(Euclidean(), X)
+	# take only the upper diagonal
+	ds = []
+	for i in 1:size(dists,1)
+		for j in (i+1):size(dists,1)
+			push!(ds, dists[i,j])
+		end
+	end
+	ml=median(ds)
+end
 function set_params(data)
 	D, N = size(data[1][1])
-	nn = max(10, ceil(Int,0.03*N))
-	return (k=nn,)
+	gamma = 1/median_l2_dist(data[1][1])
+	return (gamma=gamma, kernel="rbf", nu=0.5)
 end
 
-function fit(data, parameters, aux_info)
-	# construct model - constructor should only accept kwargs
-	model = GenerativeAD.Models.knn_constructor(;v=:kappa, parameters...)
+function joint_fit(models, data_splits)
+	info = []
+	for (model, data) in zip(models, data_splits)
+		push!(info, fit!(model, data))
+	end
+	return info
+end
 
-	# fit train data
+function joint_prediction(models, data)
+	joint_pred = Array{Float32}(undef, length(models), size(data,2))
+	for (i,model) in enumerate(models)
+		joint_pred[i,:] = predict(model, data)
+	end
+	return vec(mean(joint_pred, dims=1))
+end
+
+function StatsBase.fit(data, parameters, n_models, aux_info)
+	# construct model - constructor should only accept kwargs
+	models = [GenerativeAD.Models.OCSVM(;parameters...) for _ = 1:n_models]
+	
+	# sumbsample and fit train data
+	tr_data = data[1][1]
+	M,N = size(tr_data)
+	split_size = floor(N/n_models)
+	data_splits = [tr_data[:,Int(split_size*i+1):Int(split_size*(i+1))] for i = 0:n_models-1]
+
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data[1][1])
-	catch e
+		global info, fit_t, _, _, _ = @timed joint_fit(models, data_splits)
+ 	catch e
 		# return an empty array if fit fails so nothing is computed
 		return (fit_t = NaN,), [] 
 	end
@@ -72,19 +103,7 @@ function fit(data, parameters, aux_info)
 		)
 
 	# now return the different scoring functions
-	function knn_predict(model, x, v::Symbol)
-		try 
-			return predict(model, x, v)
-		catch e
-			if isa(e, ArgumentError) # this happens in the case when k > number of points
-				return NaN # or nothing?
-			else
-				rethrow(e)
-			end
-		end
-	end
-	parameters = merge(parameters, aux_info)
-	training_info, [(x -> knn_predict(model, x, v), merge(parameters, (distance = v,))) for v in [:delta]]
+	training_info, [(x->joint_prediction(models, x),  merge(parameters, aux_info))]
 end
 
 
@@ -94,19 +113,18 @@ end
 try_counter = 0
 max_tries = 10*max_seed
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
-while try_counter < max_tries
+while try_counter < max_tries	
 	for seed in 1:max_seed
 		i = 1
-		savepath = datadir("experiments/images_mvtec_clean_val_default$cont_string/$(modelname)/$(category)/ac=1/seed=$(seed)")
+		savepath = datadir("experiments/images_mvtec_clean_val_default$cont_string/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
 		aux_info = (model_index=mi, criterion=criterion)
 
-		# load data
 		global data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
-			contamination=contamination, img_size=64)
+			contamination=contamination, img_size=128)
 		not_loaded = true
 		while not_loaded
 			try
-				global data, encoding_name, encoder_params = GenerativeAD.Models.load_encoding(tab_name, data, i, dataset = "MVTec-AD_$category", seed=seed, model_index=mi)
+				global data, encoding_name, encoder_params = GenerativeAD.Models.load_encoding(tab_name, data, i, dataset="MVTec-AD_$category", seed=seed, model_index=mi)
 				not_loaded = false
 			catch e		
 				println(e)
@@ -119,7 +137,7 @@ while try_counter < max_tries
 		# here, check if a model with the same parameters was already tested
 		@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
 		if GenerativeAD.check_params(savepath, merge(parameters, aux_info))
-			training_info, results = fit(data, parameters, aux_info)
+			training_info, results = fit(data, parameters, 1, aux_info)
 			# here define what additional info should be saved together with parameters, scores, labels and predict times
 			save_entries = merge(training_info, (modelname = modelname, 
 												 seed = seed, 
@@ -143,4 +161,3 @@ while try_counter < max_tries
 	end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
-
