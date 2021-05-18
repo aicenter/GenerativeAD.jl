@@ -168,21 +168,6 @@ function return_best_n1(df, rev=false, n=10)
 	return vcat(df_top...)
 end
 
-function return_best_n2(df, rev=false, n=10)
-	sorted = sort(df, :criterion, rev=rev)
-	df_top = []
-	for dataset in unique(df.dataset)
-		for ac = 1:max(df.ac...)
-			for seed = 1:max(df.seed...)
-				top = first(sorted[(sorted.dataset .== dataset) .& (sorted.ac .== ac), :], n)
-				ind = 1:n
-				push!(df_top, hcat(top, DataFrame(ind=ind)))
-			end
-		end
-	end
-	return vcat(df_top...)
-end
-
 
 #path = "/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/images_mnistc/vae/"
 #models = models_and_params(path)
