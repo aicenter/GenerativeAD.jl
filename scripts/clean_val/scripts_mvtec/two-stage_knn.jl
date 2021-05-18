@@ -118,7 +118,7 @@ while try_counter < max_tries
 		parameters = set_params(data)
 
 		# here, check if a model with the same parameters was already tested
-		@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
+		@info "Trying to fit $modelname on $category with parameters $(parameters)..."
 		if GenerativeAD.check_params(savepath, merge(parameters, aux_info))
 			training_info, results = fit(data, parameters, aux_info)
 			# here define what additional info should be saved together with parameters, scores, labels and predict times
