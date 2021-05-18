@@ -106,7 +106,8 @@ while try_counter < max_tries
 		not_loaded = true
 		while not_loaded
 			try
-				global data, encoding_name, encoder_params = GenerativeAD.Models.load_encoding(tab_name, data, i, dataset = "MVTec-AD_$category", seed=seed, model_index=mi)
+				global data, encoding_name, encoder_params = 
+				GenerativeAD.Models.load_encoding(tab_name, data, 1, dataset=category, seed=seed, model_index=mi)
 				not_loaded = false
 			catch e		
 				println(e)

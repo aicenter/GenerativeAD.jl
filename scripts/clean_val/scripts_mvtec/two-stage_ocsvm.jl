@@ -117,14 +117,16 @@ while try_counter < max_tries
 	for seed in 1:max_seed
 		i = 1
 		savepath = datadir("experiments/images_mvtec_clean_val_default$cont_string/$(modelname)/$(category)/ac=$(i)/seed=$(seed)")
+		mkpath(savepath)
+
 		aux_info = (model_index=mi, criterion=criterion)
 
 		global data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
-			contamination=contamination, img_size=128)
+					contamination=contamination, img_size=128)
 		not_loaded = true
 		while not_loaded
 			try
-				global data, encoding_name, encoder_params = GenerativeAD.Models.load_encoding(tab_name, data, i, dataset="MVTec-AD_$category", seed=seed, model_index=mi)
+				global data, encoding_name, encoder_params = GenerativeAD.Models.load_encoding(tab_name, data, 1, dataset=category, seed=seed, model_index=mi)
 				not_loaded = false
 			catch e		
 				println(e)
