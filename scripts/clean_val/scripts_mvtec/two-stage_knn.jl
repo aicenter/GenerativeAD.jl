@@ -92,7 +92,7 @@ end
 ################ THIS PART IS COMMON FOR ALL MODELS ################
 # set a maximum for parameter sampling retries
 try_counter = 0
-max_tries = 10*max_seed
+max_tries = 1
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries
 	for seed in 1:max_seed
