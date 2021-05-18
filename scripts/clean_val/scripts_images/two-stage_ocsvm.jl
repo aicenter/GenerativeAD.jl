@@ -31,7 +31,7 @@ s = ArgParseSettings()
 	"anomaly_class"
 		arg_type = Int
 		default = 1
-		help = "number of anomaly classes"
+		help = "anomaly classes"
 	"method"
 		arg_type = String
 		default = "leave-one-out"
