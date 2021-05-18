@@ -96,7 +96,8 @@ while try_counter < max_tries
 		parameters = GenerativeAD.bayes_params(
 								create_space(), 
 								dataset_folder,
-								sample_params; add_model_seed=true)
+								sample_params)
+		parameters = merge(parameters, (;method="fast"))
 	else
 		parameters = sample_params()
 	end
@@ -124,7 +125,7 @@ while try_counter < max_tries
 			if sampling == "bayes" && length(all_scores) > 0
 				@info("Updating cache with $(length(all_scores)) results.")
 				GenerativeAD.update_bayes_cache(dataset_folder, 
-					all_scores; ignore=Set([:init_seed, :L, :score]))
+					all_scores; ignore=Set([:method]))
 			end
 			global try_counter = max_tries + 1
 		else

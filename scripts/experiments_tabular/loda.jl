@@ -16,13 +16,17 @@ s = ArgParseSettings()
         required = true
         arg_type = String
         help = "dataset"
+    "sampling"
+		default = "random"
+		arg_type = String 
+		help = "sampling of hyperparameters - random/bayes"
     "contamination"
     	arg_type = Float64
     	help = "contamination rate of training data"
     	default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, max_seed, contamination = parsed_args
+@unpack dataset, max_seed, sampling, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -80,7 +84,7 @@ while try_counter < max_tries
 		parameters = GenerativeAD.bayes_params(
 								create_space(), 
 								dataset_folder,
-								sample_params; add_model_seed=true)
+								sample_params)
 	else
 		parameters = sample_params()
 	end
@@ -107,8 +111,7 @@ while try_counter < max_tries
 			all_scores = [GenerativeAD.experiment(result..., data, savepath; save_entries...) for result in results]
 			if sampling == "bayes" && length(all_scores) > 0
 				@info("Updating cache with $(length(all_scores)) results.")
-				GenerativeAD.update_bayes_cache(dataset_folder, 
-					all_scores; ignore=Set([:init_seed, :L, :score]))
+				GenerativeAD.update_bayes_cache(dataset_folder, all_scores)
 			end
 			global try_counter = max_tries + 1
 		else
