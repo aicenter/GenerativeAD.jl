@@ -47,8 +47,8 @@ function create_space()
     
     (;
     n_bins = pyInt(1, 100,                                 name="n_bins"),
-    alpha  = pyReal(0.001, 1,                                 name="alpha"),
-    tol    = pyReal(0, 1,                                 name="tol"),
+    alpha  = pyReal(0.001, 0.999,                          name="alpha"),
+    tol    = pyReal(0.001, 0.999,                          name="tol"),
     )
 end
 
