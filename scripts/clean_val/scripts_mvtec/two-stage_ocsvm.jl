@@ -27,7 +27,7 @@ s = ArgParseSettings()
 	"category"
 		default = "wood"
 		arg_type = String
-		help = "dataset"
+		help = "category"
 	"contamination"
 		arg_type = Float64
 		help = "contamination rate of training data"
@@ -116,7 +116,7 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries	
 	for seed in 1:max_seed
 		i = 1
-		savepath = datadir("experiments/images_mvtec_clean_val_default$cont_string/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
+		savepath = datadir("experiments/images_mvtec_clean_val_default$cont_string/$(modelname)/$(category)/ac=$(i)/seed=$(seed)")
 		aux_info = (model_index=mi, criterion=criterion)
 
 		global data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
@@ -135,7 +135,7 @@ while try_counter < max_tries
 		parameters = set_params(data)
 
 		# here, check if a model with the same parameters was already tested
-		@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
+		@info "Trying to fit $modelname on $category with parameters $(parameters)..."
 		if GenerativeAD.check_params(savepath, merge(parameters, aux_info))
 			training_info, results = fit(data, parameters, 1, aux_info)
 			# here define what additional info should be saved together with parameters, scores, labels and predict times
