@@ -101,7 +101,7 @@ while try_counter < max_tries
 		aux_info = (model_index=mi, criterion=criterion)
 
 		# load data
-		data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
+		global data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
 			contamination=contamination, img_size=64)
 		not_loaded = true
 		while not_loaded
@@ -122,7 +122,7 @@ while try_counter < max_tries
 			# here define what additional info should be saved together with parameters, scores, labels and predict times
 			save_entries = merge(training_info, (modelname = modelname, 
 												 seed = seed, 
-												 dataset = = "MVTec-AD_$category",
+												 dataset = "MVTec-AD_$category",
 												 category = category, 
 												 anomaly_class = i, 
 												 encoder=encoding_name,
