@@ -34,7 +34,7 @@ s = ArgParseSettings()
 		default = 0.0
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, category, contamination = parsed_args
+@unpack max_seed, category, contamination = parsed_args
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
