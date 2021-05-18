@@ -108,8 +108,8 @@ function create_df(models; score::String="LOSS", images::Bool=true)
 						joinpath(root,mod), 
 						string(info[:parameters]),
 						path,
-						info[:dataset], 
-						info[:anomaly_class], 
+						info[:dataset], # category <- mvtec
+						info[:anomaly_class], # 1 <- mvtec
 						info[:seed],
 						compute_score(info, score)
 					]
@@ -135,6 +135,25 @@ function create_df(models; score::String="LOSS", images::Bool=true)
 end
 
 function return_best_n(df, rev=false, n=10)
+	# filtering
+	df = df[map(x->(sum(df.params .== x)==5), df.params),:]
+	#df = df[df.dataset .== dataset, :]
+	dff = sort(by(df, [:params, :dataset, :ac], :criterion => mean), :criterion_mean, rev=rev)
+	df_top = []
+	for dataset in unique(dff.dataset)
+		for ac in 1:max(dff.ac...)
+			top = first(dff[(dff.dataset .== dataset) .& (dff.ac .== ac), :], n)
+			for i=1:n
+				tmp = df[df.params .== top.params[i],:]
+				ind = i.*ones(size(tmp,1))
+				push!(df_top, hcat(tmp, DataFrame(ind=ind)))
+			end
+		end
+	end
+	return vcat(df_top...)
+end
+
+function return_best_n1(df, rev=false, n=10)
 	#df = df[df.dataset .== dataset, :]
 	dff = sort(by(df, [:params, :dataset], :criterion => mean), :criterion_mean, rev=rev)
 	df_top = []
@@ -153,34 +172,40 @@ function return_best_n2(df, rev=false, n=10)
 	sorted = sort(df, :criterion, rev=rev)
 	df_top = []
 	for dataset in unique(df.dataset)
-		for ac = 1:10
-			top = first(sorted[(sorted.dataset .== dataset) .& (sorted.ac .== ac), :], n)
-			ind = 1:n
-			push!(df_top, hcat(top, DataFrame(ind=ind)))
+		for ac = 1:max(df.ac...)
+			for seed = 1:max(df.seed...)
+				top = first(sorted[(sorted.dataset .== dataset) .& (sorted.ac .== ac), :], n)
+				ind = 1:n
+				push!(df_top, hcat(top, DataFrame(ind=ind)))
+			end
 		end
 	end
 	return vcat(df_top...)
 end
 
 
-#path = "/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/images/vae/"
+#path = "/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/images_mnistc/vae/"
 #models = models_and_params(path)
 #df = create_df(models, images=true)
-#CSV.write(datadir("vae_tab.csv"), df)
+#print(df)
+#CSV.write("vae_tab.csv", df)
+
+cheetsheet = Dict("images_mnistc"=> true, "images_mvtec"=> true)
 
 encoders =["vae"]  # ["vae","wae", "wae_vamp"]
 
-for type in ["images_leave-one-in"] #["images", "tabular"]
+for type in ["images_mvtec"] #["images", "tabular"]
 	for encoder in encoders
-		for score in ["LOSS", "AUC"] #, "AUPRC", "TPR@5", "F1@5"] # LOSS->validation_likelihood
+		for score in ["LOSS"] #, "AUPRC", "TPR@5", "F1@5"] # LOSS->validation_likelihood
 			@info "working on $(type)-$(encoder)-$(score)"
-			#models = models_and_params("/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/$(type)/$(encoder)") #shortcut
-			models = models_and_params(datadir("experiments/$(type)/$(encoder)"))
-			df = create_df(models, score=score, images=(type!="tabular"))
+			models = models_and_params("/home/skvarvit/generativead/GenerativeAD.jl/data/experiments/$(type)/$(encoder)") #shortcut
+			#models = models_and_params(datadir("experiments/$(type)/$(encoder)"))
+			df = create_df(models, score=score, images=cheetsheet[type])
+			@info "dataframe created -> size $(size(df))"
 			# change name just because i would be easier to separater model name later
 			#encoder = (encoder == "wae_vamp") ? "wae-vamp" : encoder
 			CSV.write(datadir("tables/$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_tab.csv"), df)
-			CSV.write(datadir("tables/$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_best_tab.csv"), return_best_n2(df, score!="LOSS", 10))
+			CSV.write(datadir("tables/$((encoder == "wae_vamp") ? "wae-vamp" : encoder)_$(score)_$(type)_best_tab.csv"), return_best_n(df, score!="LOSS", 10))
 			println("$(encoder)-$(score)-$(type) ... done")
 		end
 	end
