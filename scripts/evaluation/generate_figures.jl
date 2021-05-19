@@ -46,7 +46,7 @@ end
 df_tabular = load(datadir("evaluation/tabular_eval.bson"))[:df];
 df_tabular_autoencoders = _filter_autoencoders!(copy(df_tabular));
 # with autoencoders separate, it is now safe to just filter out models that do not get into the big comparison
-_tabular_filter!(df_tabular)
+_tabular_filter!(df_tabular);
 
 df_tabular_bayes = load(datadir("evaluation_bayes/tabular_eval.bson"))[:df];
 bayes_models = Set(unique(df_tabular_bayes.modelname))
@@ -737,8 +737,8 @@ plot_fiteval_time_image_custom(filter_img_models!(copy(df_images)), copy(df_imag
 @info "plot_fiteval_time_image_custom"
 
 # this is just specific figure for the main text
+# rewrite it such that it does not need a copy
 function plot_knowledge_combined(df_tab, df_img; format="pdf")
-    filter!(x -> (x.seed == 1), df_img);
     apply_aliases!(df_img, col="modelname", d=MODEL_TYPE);
     apply_aliases!(df_tab, col="modelname", d=MODEL_TYPE);
     
@@ -785,9 +785,9 @@ function plot_knowledge_combined(df_tab, df_img; format="pdf")
             end
 
             extended_criterions = (ctype == "pat") ? criterions[4:end] : criterions
-            extended_criterions = vcat(extended_criterions, [val_metric, tst_metric])
+            extended_criterions = vcat(extended_criterions, [val_metric])
             extended_cnames = (ctype == "pat") ? cnames[4:end] : cnames
-            extended_cnames = vcat(extended_cnames, ["\$$(mn)_{val}\$", "\$$(mn)_{tst}\$"])
+            extended_cnames = vcat(extended_cnames, ["\$$(mn)_{val}\$"])
 
             ranks_tab, metric_means_tab = _rank(df_tab, extended_criterions, aggregate_stats_mean_max)
             p = [1,2,4,5,3] # make sure that flows are last
@@ -796,8 +796,8 @@ function plot_knowledge_combined(df_tab, df_img; format="pdf")
             metric_means_tab = metric_means_tab[:, p]
             a_tab, b_tab = _plot(ranks_tab, metric_means_tab, extended_criterions, extended_cnames, models_tab)
 
-            extended_criterions = vcat(criterions, [val_metric, tst_metric])
-            extended_cnames = vcat(cnames, ["\$$(mn)_{val}\$", "\$$(mn)_{tst}\$"])
+            extended_criterions = vcat(criterions, [val_metric])
+            extended_cnames = vcat(cnames, ["\$$(mn)_{val}\$"])
 
             ranks_img, metric_means_img = _rank(df_img, extended_criterions, aggregate_stats_max_mean)
             models_img = names(ranks_img)
