@@ -241,7 +241,65 @@ function ensemble_sensitivity(df, df_ensemble; prefix="tabular", suffix="", down
 end
 
 ensemble_sensitivity(df_tabular, df_tabular_ens; prefix="tabular", downsample=DOWNSAMPLE)
-@info "ensemble_sensitivity_images"
+@info "ensemble_sensitivity_tabular"
+
+# only meanmax as we don't have bayes for images
+function bayes_sensitivity(df, df_bayes; prefix="tabular", suffix="", downsample=Dict{String, Int}())
+    ranks = []
+    
+    # differences in performance in both metrics
+    for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric) 
+        
+        # computing baseline
+        models, rt = sorted_rank(df, aggregate_stats_mean_max, val_metric, tst_metric, downsample)
+        rt["sampling-metric"] = "random-$(mn)"
+        select!(rt, vcat(["sampling-metric"], models))
+        push!(ranks, rt[end:end, :])
+                
+        models, rt_bayes = sorted_rank(df_bayes, aggregate_stats_mean_max, val_metric, tst_metric)
+        rt_bayes["sampling-metric"] = "bayes-$(mn)"
+        select!(rt_bayes, vcat(["sampling-metric"], models))
+        
+        metric_dif = Matrix(rt_bayes[1:end-3, 2:end]) - Matrix(rt[1:end-3, 2:end])
+        mean_dif = round.(mean(metric_dif, dims=1), digits=2)
+        
+        rank_dif = Vector(rt_bayes[end, 2:end]) - Vector(rt[end, 2:end])
+
+        push!(rt_bayes, ["rank. change", rank_dif...])
+        push!(rt_bayes, ["avg. change", mean_dif...])
+        push!(ranks, rt_bayes[end-2:end, :])
+    end
+
+    df_ranks = reduce(vcat, ranks)
+    hl_best_rank = LatexHighlighter(
+                    (data, i, j) -> (i%4 != 0) && (data[i,j] == minimum(df_ranks[i, 2:end])),
+                    ["color{red}","textbf"])
+
+    hl_best_dif = LatexHighlighter(
+                    (data, i, j) -> (i%4 == 0) && (data[i,j] == maximum(df_ranks[i, 2:end])),
+                    ["color{blue}","textbf"])
+
+    f_float = (v, i, j) -> (i%4 == 0) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
+
+    file = "$(projectdir())/paper/tables/$(prefix)_bayes_comp$(suffix).tex"
+    open(file, "w") do io
+        pretty_table(
+            io, df_ranks,
+            backend=:latex,
+            formatters=f_float,
+            highlighters=(hl_best_rank, hl_best_dif),
+            nosubheader=true,
+            tf=latex_booktabs)
+    end
+end
+
+bayes_sensitivity(df_tabular, df_tabular_bayes_outerjoin; prefix="tabular", downsample=DOWNSAMPLE)
+bayes_sensitivity(
+    filter(x->x.modelname != "ocsvm_rbf", df_tabular), 
+    filter(x->x.modelname != "ocsvm_rbf", df_tabular_bayes_outerjoin); prefix="tabular", suffix="_noorbf", downsample=DOWNSAMPLE)
+@info "bayes_sensitivity_tabular"
 
 # training time rank vs avg rank
 function plot_fiteval_time(df; time_col=:fit_t, suffix="", prefix="tabular", format="pdf", downsample=Dict{String,Int}())
