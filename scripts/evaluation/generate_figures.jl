@@ -538,8 +538,16 @@ df_images_loi_clean = load(datadir("evaluation/images_leave-one-in_clean_val_fin
 
 df_images_mnistc = load(datadir("evaluation/images_mnistc_eval.bson"))[:df];
 df_images_mvtec = load(datadir("evaluation/images_mvtec_eval.bson"))[:df];
-select!(df_images_mnistc, Not(:anomaly_class))
+select!(df_images_mnistc, Not(:anomaly_class)); # mnistc contains anomaly_class but mvtec does not
 df_images_single = vcat(df_images_mnistc, df_images_mvtec)
+df_images_single[:anomaly_class] = -1; # add dummy anomaly_class to indicate that we have single class anomaly dataset
+
+# there will be also the clean versions
+df_images_mnistc_clean = load(datadir("evaluation/images_mnistc_clean_val_final_eval.bson"))[:df];
+df_images_mvtec_clean = load(datadir("evaluation/images_mvtec_clean_val_final_eval.bson"))[:df];
+
+select!(df_images_mnistc_clean, Not(:anomaly_class))
+df_images_single_clean = vcat(df_images_mnistc, df_images_mvtec_clean)
 @info "Loaded results from images"
 
 function _filter_image_multi!(df)
@@ -547,34 +555,60 @@ function _filter_image_multi!(df)
     filter!(x -> ~(x.modelname in ["aae_ocsvm", "fAnoGAN-GP"]), df)
 end
 
-function _filter_image_single!(df)
-    select!(df, Not(:anomaly_class))
-end   
-
 _filter_image_multi!(df_images_loo);
 _filter_image_multi!(df_images_loi);
 _filter_image_multi!(df_images_loo_clean);
 _filter_image_multi!(df_images_loi_clean);
 @info "Applied basic filters"
 
+basic_summary_table(df_images_loo, prefix="images_multi", suffix="_loo")
+basic_summary_table(df_images_loi, prefix="images_multi", suffix="_loi")
+basic_summary_table(df_images_loo_clean, prefix="images_multi", suffix="_loo_clean_default")
+basic_summary_table(df_images_loi_clean, prefix="images_multi", suffix="_loi_clean_default")
 
-function basic_summary_table_images_multi(df; suffix="")
-    basic_summary_table(df; prefix="images_multi", suffix=suffix)
+basic_summary_table(df_images_single; prefix="images_single", suffix="")
+@info "basic_summary_table_images separated"
+
+
+df_images = vcat(df_images_loi, df_images_single);
+df_images_clean = vcat(df_images_loi_clean, df_images_single_clean);
+
+SEMANTIC_IMAGE_ANOMALIES = Set(["CIFAR10", "SVHN2", "MVTec-AD_grid", "MVTec-AD_transistor", "MVTec-AD_wood"])
+SEMANTIC_IMAGE_ANOMALIES = Set(["CIFAR10", "SVHN2", "MVTec-AD_grid", "MVTec-AD_transistor", "MVTec-AD_wood", "MNIST-C_rotate" , "MNIST-C_scale", "MNIST-C_shear", "MNIST-C_translate"])
+# splits single and multi class image datasets into 
+_split_image_datasets(df) = (
+            filter(x -> x.dataset in SEMANTIC_IMAGE_ANOMALIES, df), 
+            filter(x -> ~(x.dataset in SEMANTIC_IMAGE_ANOMALIES), df)
+        )
+
+df_images_semantic, df_images_stat = _split_image_datasets(df_images);
+df_images_semantic_clean, df_images_stat_clean =  _split_image_datasets(df_images_clean);
+
+# works for both image and tabular data assuming that tabular has anomaly_class column = -1
+function basic_summary_table_autoagg(df; suffix="", prefix="", downsample=Dict{String, Int}())
+    for metric in [:auc, :tpr_5]
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric)    
+
+        _, rt = sorted_rank(df, aggregate_stats_auto, val_metric, tst_metric, downsample)
+
+        rt[end-2, 1] = "\$\\sigma_1\$"
+        rt[end-1, 1] = "\$\\sigma_{10}\$"
+        rt[end, 1] = "rnk"
+
+        file = "$(projectdir())/paper/tables/$(prefix)_$(metric)_$(metric)_autoagg$(suffix).tex"
+        open(file, "w") do io
+            print_rank_table(io, rt; backend=:tex)
+        end
+    end
 end
 
-function basic_summary_table_images_single(df; suffix="")
-    basic_summary_table(df; prefix="images_single", suffix=suffix)
-end
+basic_summary_table_autoagg(df_images_semantic, prefix="images_semantic", suffix="")
+basic_summary_table_autoagg(df_images_stat, prefix="images_stat", suffix="")
 
-basic_summary_table_images_multi(df_images_loo, suffix="_loo")
-basic_summary_table_images_multi(df_images_loi, suffix="_loi")
-basic_summary_table_images_multi(df_images_loo_clean, suffix="_loo_clean_default")
-basic_summary_table_images_multi(df_images_loi_clean, suffix="_loi_clean_default")
-
-# basic_summary_table_images(filter_img_models!(copy(df_images_ens)), suffix="_ensembles_filter")
-
-basic_summary_table_images_single(df_images_single; suffix="")
-@info "basic_summary_table_images"
+basic_summary_table_autoagg(df_images_semantic, prefix="images_semantic", suffix="_split_c")
+basic_summary_table_autoagg(df_images_stat, prefix="images_stat", suffix="_split_c")
+@info "basic_summary_table_images stat/semantic"
 
 function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="")
     filter!(x -> (x.seed == 1), df)
