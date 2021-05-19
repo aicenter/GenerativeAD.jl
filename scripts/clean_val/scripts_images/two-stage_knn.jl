@@ -46,6 +46,7 @@ parsed_args = parse_args(ARGS, s)
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 
 tab_name = "vae_LOSS_images"
+tab_name = (method == "leave-one-in") ? "$(tab_name)_leave-one-in" : tab_name
 mi = 1
 sp = split(tab_name, "_")
 enc = sp[1]
