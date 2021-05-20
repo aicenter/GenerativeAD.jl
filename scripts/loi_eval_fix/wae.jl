@@ -12,7 +12,8 @@ parsed_args = parse_args(ARGS, s)
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "aae"
+modelname = "wae"
+
 batch_score(scoref, model, x, batchsize=128) =
 	vcat(map(y->cpu(scoref(model, gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 """
@@ -22,7 +23,7 @@ This is a slightly updated version of the original run script.
 function evaluate(model_data, data, parameters)
 	# load the model file, extract params and model
 	model = model_data["model"] |> gpu
-
+	
 	# compute encodings
 	encodings = map(x->cpu(GenerativeAD.Models.encode_mean_gpu(model, x, 32)), (data[1][1], data[2][1], data[3][1]))
 
