@@ -1,3 +1,5 @@
+using GenerativeAD.Models: anomaly_score
+using StatsBase: fit!, predict, sample
 include("utils.jl") # contains most dependencies and the saving function
 
 s = ArgParseSettings()
@@ -12,10 +14,8 @@ parsed_args = parse_args(ARGS, s)
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "wae"
+modelname = "Conv-GANomaly"
 
-batch_score(scoref, model, x, batchsize=128) =
-	vcat(map(y->cpu(scoref(model, gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 """
 This returns encodings, parameters and scoring functions in order to reconstruct the experiment. 
 This is a slightly updated version of the original run script.
@@ -32,19 +32,14 @@ function evaluate(model_data, data, parameters)
 		fit_t = get(model_data, "fit_t", nothing),
 		history = get(model_data, "history", nothing),
 		npars = get(model_data, "npars", nothing),
-		model = model |> cpu,
-		tr_encodings = encodings[1],
-		val_encodings = encodings[2],
-		tst_encodings = encodings[3]
+		iters = get(model_data, "iters", nothing),
+		model = model |> cpu
 		)
 
-	# now return the different scoring functions
-	training_info, [
-		(x -> batch_score(GenerativeAD.Models.reconstruction_score, model, x), merge(parameters, (score = "reconstruction",))),
-		(x -> batch_score(GenerativeAD.Models.reconstruction_score_mean, model, x), merge(parameters, (score = "reconstruction-mean",))),
-		]
+	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(generator|>cpu, x; dims=3)[:], parameters)]
 end
 
-####################################################################
-################ THIS PART IS COMMON FOR ALL MODELS ################
+##################
+# this is common #
+##################
 include("run_loop.jl")
