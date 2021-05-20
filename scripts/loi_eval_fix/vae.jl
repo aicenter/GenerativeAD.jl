@@ -1,4 +1,3 @@
-#########
 include("utils.jl") # contains most dependencies and the saving function
 
 s = ArgParseSettings()

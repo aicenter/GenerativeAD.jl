@@ -15,7 +15,6 @@ fi
 while read d; do
 	# submit to slurm
     sbatch \
-    --array=1-${NUM_SAMPLES}%${NUM_CONC} \
     --output="${LOG_DIR}/${d}-%A_%a.out" \
      ./${MODEL}_run.sh $d
 
