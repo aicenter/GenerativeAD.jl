@@ -16,11 +16,11 @@ using FileIO
 using DistributionsAD
 
 """
-	save_results(parameters, training_info, results, savepath, data)
+	save_results(parameters, training_info, results, savepath, data, ac)
 
 this computes and saves score and model files
 """
-function save_results(parameters, training_info, results, savepath, data)
+function save_results(parameters, training_info, results, savepath, data, ac)
 	# save the model separately			
 	tagsave(joinpath(savepath, savename("model", parameters, "bson", digits=5)), 
 		Dict("model"=>training_info.model,
