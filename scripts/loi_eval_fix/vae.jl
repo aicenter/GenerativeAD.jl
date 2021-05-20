@@ -74,6 +74,7 @@ for ac in 1:10
 		model_data = load(mf)
 		parameters = model_data["parameters"]
 		training_info, results = evaluate(model_data, data, parameters) # this produces parameters, encodings, score funs
-		save_results(parameters, training_info, results, savepath, data, ac) # this computes and saves score and model files
+		save_results(parameters, training_info, results, savepath, data, 
+			ac, modelname, seed, dataset, contamination) # this computes and saves score and model files
 	end
 end
