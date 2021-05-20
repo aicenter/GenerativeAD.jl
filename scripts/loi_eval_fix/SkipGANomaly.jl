@@ -1,3 +1,4 @@
+using GenerativeAD.Models: anomaly_score, generalized_anomaly_score_gpu
 include("utils.jl") # contains most dependencies and the saving function
 
 s = ArgParseSettings()
@@ -12,9 +13,8 @@ parsed_args = parse_args(ARGS, s)
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "vae"
-batch_score(scoref, model, x, batchsize=512) =
-	vcat(map(y->cpu(scoref(model, gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+modelname = "Conv-SkipGANomaly"
+
 """
 This returns encodings, parameters and scoring functions in order to reconstruct the experiment. 
 This is a slightly updated version of the original run script.
@@ -30,20 +30,14 @@ function evaluate(model_data, data, parameters)
 	training_info = (
 		fit_t = get(model_data, "fit_t", nothing),
 		history = get(model_data, "history", nothing),
+		iters = get(model_data, "iters", nothing),
 		npars = get(model_data, "npars", nothing),
-		model = model |> cpu,
-		tr_encodings = encodings[1],
-		val_encodings = encodings[2],
-		tst_encodings = encodings[3]
+		model = model |> cpu
 		)
 
-	# now return the different scoring functions
-	training_info, [
-		(x -> batch_score(GenerativeAD.Models.reconstruction_score, model, x), merge(parameters, (score = "reconstruction",))),
-		(x -> batch_score(GenerativeAD.Models.reconstruction_score_mean, model, x), merge(parameters, (score = "reconstruction-mean",))),
-		(x -> batch_score(GenerativeAD.Models.latent_score, model, x), merge(parameters, (score = "latent",))),
-		(x -> batch_score(GenerativeAD.Models.latent_score_mean, model, x), merge(parameters, (score = "latent-mean",))),
-		]
+	return training_info, [(x -> generalized_anomaly_score_gpu(model|>cpu, x, R=r, L=l, lambda=lam), 
+		merge(parameters, (R=r, L=l, test_lambda=lam,)))
+		for r in ["mae", "mse"] for l in ["mae", "mse"] for lam = 0.1:0.1:0.9 ]
 end
 
 ##################
