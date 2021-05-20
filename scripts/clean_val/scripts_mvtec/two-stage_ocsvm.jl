@@ -115,8 +115,7 @@ max_tries = 1
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 while try_counter < max_tries	
 	for seed in 1:max_seed
-		i = 1
-		savepath = datadir("experiments/images_mvtec_clean_val_default$cont_string/$(modelname)/$(category)/ac=$(i)/seed=$(seed)")
+		savepath = datadir("experiments/images_mvtec_clean_val_default$cont_string/$(modelname)/$(category)/seed=$(seed)")
 		mkpath(savepath)
 
 		aux_info = (model_index=mi, criterion=criterion)
@@ -145,7 +144,6 @@ while try_counter < max_tries
 												 seed = seed, 
 												 dataset = "MVTec-AD_$category",
 												 category = category, 
-												 anomaly_class = i, 
 												 encoder=encoding_name,
 												 encoder_params=encoder_params,
 												 model_index=mi,
