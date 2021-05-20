@@ -26,9 +26,9 @@ function save_results(parameters, training_info, results, savepath, data, ac, mo
 	# save the model separately			
 	tagsave(joinpath(savepath, savename("model", parameters, "bson", digits=5)), 
 		Dict("model"=>training_info.model,
-			 "tr_encodings"=>training_info.tr_encodings,
-			 "val_encodings"=>training_info.val_encodings,
-			 "tst_encodings"=>training_info.tst_encodings,
+			 "tr_encodings"=>get(training_info, :tr_encodings, nothing),
+			 "val_encodings"=>get(training_info, :val_encodings, nothing),
+			 "tst_encodings"=>get(training_info, :tst_encodings, nothing),
 			 "fit_t"=>training_info.fit_t,
 			 "history"=>training_info.history,
 			 "parameters"=>parameters
