@@ -252,34 +252,47 @@ function bayes_sensitivity(df, df_bayes; prefix="tabular", suffix="", downsample
         
         # computing baseline
         models, rt = sorted_rank(df, aggregate_stats_mean_max, val_metric, tst_metric, downsample)
-        rt["sampling-metric"] = "random-$(mn)"
-        select!(rt, vcat(["sampling-metric"], models))
+        rt["exp"] = "random-$(mn)"
+        select!(rt, vcat(["exp"], models))
         push!(ranks, rt[end:end, :])
                 
         models, rt_bayes = sorted_rank(df_bayes, aggregate_stats_mean_max, val_metric, tst_metric)
-        rt_bayes["sampling-metric"] = "bayes-$(mn)"
-        select!(rt_bayes, vcat(["sampling-metric"], models))
+        rt_bayes["exp"] = "bayes-$(mn)"
+        select!(rt_bayes, vcat(["exp"], models))
         
         metric_dif = Matrix(rt_bayes[1:end-3, 2:end]) - Matrix(rt[1:end-3, 2:end])
+        num_inc = sum(metric_dif .> 0, dims=1)
+        num_dec = sum(metric_dif .< 0, dims=1)
         mean_dif = round.(mean(metric_dif, dims=1), digits=2)
         
         rank_dif = Vector(rt_bayes[end, 2:end]) - Vector(rt[end, 2:end])
 
         push!(rt_bayes, ["rank. change", rank_dif...])
         push!(rt_bayes, ["avg. change", mean_dif...])
-        push!(ranks, rt_bayes[end-2:end, :])
+        push!(rt_bayes, ["num. inc", num_inc...])
+        push!(rt_bayes, ["num. dec", num_dec...])
+        push!(ranks, rt_bayes[end-4:end, :])
     end
-
     df_ranks = reduce(vcat, ranks)
+    # first six rows correspond to AUC and the rest to TPR
+    # 1. random ranks          :: minimum
+    # 2. bayes  ranks          :: minimum
+    # 3. bayes - random ranks  :: minimum
+    # 4. bayes - random metric :: maximum
+    # 5. bayes > random metric :: maximum
+    # 6. bayes < random metric :: maximum
+
+    min_rows = [1,2,3,7,8,9]
+    max_rows = setdiff(collect(1:12), min_rows)
     hl_best_rank = LatexHighlighter(
-                    (data, i, j) -> (i%4 != 0) && (data[i,j] == minimum(df_ranks[i, 2:end])),
+                    (data, i, j) -> (i in min_rows) && (data[i,j] == minimum(df_ranks[i, 2:end])),
                     ["color{red}","textbf"])
 
     hl_best_dif = LatexHighlighter(
-                    (data, i, j) -> (i%4 == 0) && (data[i,j] == maximum(df_ranks[i, 2:end])),
+                    (data, i, j) -> (i in max_rows) && (data[i,j] == maximum(df_ranks[i, 2:end])),
                     ["color{blue}","textbf"])
 
-    f_float = (v, i, j) -> (i%4 == 0) ? ft_printf("%.2f")(v,i,j) : ft_printf("%.1f")(v,i,j)
+    f_float = (v, i, j) -> (i == 4 || i == 10) ? ft_printf("%.2f")(v,i,j) : (i in [5,6,11,12]) ? ft_printf("%.0f")(v,i,j) : ft_printf("%.1f")(v,i,j)
 
     file = "$(projectdir())/paper/tables/$(prefix)_bayes_comp$(suffix).tex"
     open(file, "w") do io
