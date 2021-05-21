@@ -30,7 +30,7 @@ function evaluate(model_data, data, parameters)
 		model = model |> cpu
 		)
 
-	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(svdd, x), parameters)]
+	return training_info, [(x -> GenerativeAD.Models.anomaly_score_gpu(model, x), parameters)]
 end
 
 ##################
