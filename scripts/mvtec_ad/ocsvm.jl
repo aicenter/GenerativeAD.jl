@@ -50,7 +50,7 @@ function joint_prediction(models, data)
 	return vec(mean(joint_pred, dims=1))
 end
 
-function StatsBase.fit(data, parameters, n_models=10)
+function StatsBase.fit(data, parameters, n_models=1)
 	# construct model - constructor should only accept kwargs
 	models = [GenerativeAD.Models.OCSVM(;parameters...) for _ = 1:n_models]
 	
