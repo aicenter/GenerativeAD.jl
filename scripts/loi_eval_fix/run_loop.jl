@@ -23,8 +23,12 @@ for ac in 1:10
 		# load the bson file on top level, otherwise we get world age problems
 		model_data = load(mf)
 		parameters = model_data["parameters"]
-		training_info, results = evaluate(model_data, data, parameters) # this produces parameters, encodings, score funs
-		save_results(parameters, training_info, results, savepath, data, 
-			ac, modelname, seed, dataset, contamination) # this computes and saves score and model files
+		try
+			training_info, results = evaluate(model_data, data, parameters) # this produces parameters, encodings, score funs
+			save_results(parameters, training_info, results, savepath, data, 
+				ac, modelname, seed, dataset, contamination) # this computes and saves score and model files
+		catch e
+			@warn "$mf failed during result evaluation due to $e"
+		end
 	end
 end
