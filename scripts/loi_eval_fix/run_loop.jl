@@ -35,7 +35,11 @@ for ac in 1:10
 			save_results(parameters, training_info, results, savepath, data, 
 				ac, modelname, seed, dataset, contamination) # this computes and saves score and model files
 		catch e
-			@warn "$mf failed during result evaluation due to $e"
+			if isa(e, LoadError)
+				@warn "$mf failed during result evaluation due to $e"
+			else
+				rethrow(e)
+			end
 		end
 	end
 end
