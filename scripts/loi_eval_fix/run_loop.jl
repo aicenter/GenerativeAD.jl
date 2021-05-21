@@ -9,7 +9,7 @@ mkpath(main_savepath)
 # this loop unfortunately cannot be in a function, since loading of bson is only safe ot top level
 for ac in 1:10
 	data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=method, 
-	contamination=contamination)
+		contamination=contamination)
 
 	inpath = joinpath(main_inpath, "ac=$ac/seed=$seed")
 	savepath = joinpath(main_savepath, "ac=$ac/seed=$seed")
@@ -22,7 +22,14 @@ for ac in 1:10
 	for mf in mfs
 		# load the bson file on top level, otherwise we get world age problems
 		model_data = load(mf)
-		parameters = model_data["parameters"]
+		if haskey(model_data, "parameters")
+			parameters = model_data["parameters"]
+		else # this is in case parameters are not saved in the model file
+			init_seed = DrWatson.parse_savename(mf)[2]["init_seed"]
+			sf = sfs[map(x->DrWatson.parse_savename(x)[2]["init_seed"], sfs) .== init_seed][1]
+			score_data = load(sf)
+			parameters = score_data[:parameters]
+		end
 		training_info, results = evaluate(model_data, data, parameters) # this produces parameters, encodings, score funs
 		save_results(parameters, training_info, results, savepath, data, 
 			ac, modelname, seed, dataset, contamination) # this computes and saves score and model files
