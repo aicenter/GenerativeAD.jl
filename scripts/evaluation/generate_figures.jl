@@ -606,7 +606,7 @@ df_images_mvtec.modelname |> countmap
 ###
 
 select!(df_images_mnistc_clean, Not(:anomaly_class));
-df_images_single_clean = vcat(df_images_mnistc, df_images_mvtec_clean);
+df_images_single_clean = vcat(df_images_mnistc_clean, df_images_mvtec_clean);
 df_images_single_clean[:anomaly_class] = -1; # this is needed when concatenating with multiclass datasets
 @info "Loaded results from images"
 
