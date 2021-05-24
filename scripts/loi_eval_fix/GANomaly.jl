@@ -22,7 +22,8 @@ This is a slightly updated version of the original run script.
 """
 function evaluate(model_data, data, parameters)
 	# load the model file, extract params and model
-	model = model_data["model"] |> gpu
+	model = model_data["model"]
+	generator = model[1] |> gpu
 	
 	# construct return information - put e.g. the model structure here for generative models
 	training_info = (
