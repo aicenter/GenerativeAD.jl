@@ -312,12 +312,8 @@ bayes_sensitivity(
 @info "bayes_sensitivity_tabular"
 
 # training time rank vs avg rank
+# should work for all dataset types as it uses the automatic aggregation
 function plot_fiteval_time(df; time_col=:fit_t, suffix="", prefix="tabular", format="pdf", downsample=Dict{String,Int}())
-    
-    df["model_type"] = copy(df["modelname"])
-    apply_aliases!(df, col="model_type", d=MODEL_TYPE)
-    apply_aliases!(df, col="modelname", d=MODEL_ALIAS)
-    
     # add first stage time for encoding and training of encoding
     df["fit_t"] .+= df["fs_fit_t"] .+ df["fs_fit_t"]
     # add all eval times together
@@ -351,15 +347,14 @@ function plot_fiteval_time(df; time_col=:fit_t, suffix="", prefix="tabular", for
                     PGFPlots.Plots.Scatter(x, y),
                     [PGFPlots.Plots.Node(m, xx + 0.5, yy + 0.7) for (m, xx, yy) in zip(models, x, y)]...],
                     xlabel="avg. rnk",
-                    ylabel="avg. time rnk")
-            file = "$(projectdir())/paper/figures/$(prefix)_$(time_col)_vs_$(metric)_$(name)$(suffix).$(format)"
-            PGFPlots.save(file, a; include_preamble=false)
-        end
+                ylabel="avg. \$$(String(time_col))\$ rnk")
+        file = "$(projectdir())/paper/figures/$(prefix)_$(time_col)_vs_$(metric)$(suffix).$(format)"
+        PGFPlots.save(file, a; include_preamble=false)
     end
 end
 
-plot_fiteval_time(df_tabular; time_col=:fit_t, format="tex", downsample=DOWNSAMPLE)
-plot_fiteval_time(df_tabular; time_col=:total_eval_t, format="tex", downsample=DOWNSAMPLE)
+plot_fiteval_time(filter(x->x.modelname != "ocsvm_rbf", df_tabular); time_col=:total_fit_t, format="tex", downsample=DOWNSAMPLE)
+plot_fiteval_time(filter(x->x.modelname != "ocsvm_rbf", df_tabular); time_col=:total_eval_t, format="tex", downsample=DOWNSAMPLE)
 @info "plot_fiteval_time_tabular"
 
 # show basic table only for autoencoders
@@ -766,77 +761,10 @@ plot_knowledge_images_repre(copy(df_images), representatives; format="tex", suff
 # plot_knowledge_images_type(copy(df_images_ens), suffix="_ensembles", format="tex")
 # @info "plot_knowledge_images_type"
 
-# this function combines all the image datasets and applies specific agg to each of them
-# this can be rewritten using the autoagg function
-function plot_fiteval_time_image_custom(dfloo, dfloi, dfc; time_col=:fit_t, suffix="", format="pdf")
-    
-    df_times = map([dfloo, dfloi, dfc]) do df
-        # add first stage time for encoding and training of encoding
-        df["fit_t"] .+= df["fs_fit_t"] .+ df["fs_fit_t"]
-        # add all eval times together
-        df["total_eval_t"] = df["tr_eval_t"] .+ df["tst_eval_t"] .+ df["val_eval_t"]
+plot_fiteval_time(df_images; prefix="images", time_col=:total_fit_t, format="tex", suffix="")
+plot_fiteval_time(df_images; prefix="images", time_col=:total_eval_t, format="tex", suffix="")
+@info "plot_fiteval_time_images"
 
-        # compute ranks from averaged values over each dataset
-        # should reduce the noise in the results
-        agg_cols = vcat(Symbol.(TRAIN_EVAL_TIMES), :total_eval_t)
-        df_time_avg = combine(groupby(df, [:dataset, :modelname]), agg_cols .=> mean .=> agg_cols)
-        df_time_avg[_prefix_symbol(time_col, "top_10_std")] = 0.0   # add dummy column
-        df_time_avg[_prefix_symbol(time_col, "std")] = 0.0          # add dummy column
-        df_time_avg[time_col] .= -df_time_avg[time_col]
-        apply_aliases!(df_time_avg, col="modelname", d=MODEL_ALIAS)
-        
-        df_time_avg
-    end
-
-    # distinguish LOI and LOO datasets
-    df_times[2][:dataset] .= df_times[2][:dataset] .* "_loi"
-
-    df_time = reduce(vcat, df_times)
-    # compute ranks accross all datasets
-    rtt = rank_table(df_time, time_col)
-    models = names(rtt)[2:end]
-    
-    for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
-        val_metric = _prefix_symbol("val", metric)
-        tst_metric = _prefix_symbol("tst", metric)
-
-        df_aggs = map(zip([dfloo, dfloi, dfc], [aggregate_stats_max_mean, aggregate_stats_max_mean, aggregate_stats_mean_max])) do (df, agg)
-            df_agg = agg(df, val_metric)
-        end
-        # distinguish LOI and LOO datasets
-        df_aggs[2][:dataset] .= df_aggs[2][:dataset] .* "_loi"
-        # remove columns not present in maxmean aggregation
-        select!(df_aggs[3], Not([:phash, :psamples, :parameters, :dsamples, :dsamples_valid]))
-
-        df_agg = reduce(vcat, df_aggs)
-
-        rt = rank_table(df_agg, tst_metric)
-
-        x = Vector(rt[end, 2:end])
-        y = Vector(rtt[end, 2:end])
-
-        a = PGFPlots.Axis([
-                PGFPlots.Plots.Scatter(x, y),
-                [PGFPlots.Plots.Node(m, xx + 0.5, yy + 0.7) for (m, xx, yy) in zip(models, x, y)]...],
-                xlabel="avg. rnk",
-                ylabel="avg. time rnk")
-        file = "$(projectdir())/paper/figures/images_$(time_col)_vs_$(metric)_data_combined.$(format)"
-        PGFPlots.save(file, a; include_preamble=false)
-    end
-end
-
-# plot_fiteval_time(df_images)); prefix="images", time_col=:fit_t, format="tex", suffix="_filter")
-# plot_fiteval_time(df_images)); prefix="images", time_col=:total_eval_t, format="tex", suffix="_filter")
-# plot_fiteval_time(copy(df_images_loi); prefix="images", time_col=:fit_t, format="tex", suffix="_loi")
-# plot_fiteval_time(copy(df_images_loi); prefix="images", time_col=:total_eval_t, format="tex", suffix="_loi")
-# plot_fiteval_time(filter_class_datasets!(copy(df_images_class)); prefix="images", time_col=:fit_t, format="tex", suffix="_class")
-# plot_fiteval_time(filter_class_datasets!(copy(df_images_class)); prefix="images", time_col=:total_eval_t, format="tex", suffix="_class")
-# @info "plot_fiteval_time_images"
-
-
-plot_fiteval_time_image_custom(filter_img_models!(copy(df_images)), copy(df_images_loi), filter_class_datasets!(copy(df_images_class)); time_col=:fit_t, format="tex")
-plot_fiteval_time_image_custom(filter_img_models!(copy(df_images)), copy(df_images_loi), filter_class_datasets!(copy(df_images_class)); time_col=:total_eval_t, format="tex")
-@info "plot_fiteval_time_image_custom"
 
 # this is just specific figure for the main text
 # grouptype = true  - renames models according to model type
