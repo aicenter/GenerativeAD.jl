@@ -302,7 +302,8 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc;
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
 			partial_results = []
 
-			if ("anomaly_class" in names(df))
+			# if there is only the dummy class don't print the warnings for missing anomaly class
+			if ("anomaly_class" in names(df)) && maximum(mg[:anomaly_class]) > 0
 				classes = unique(mg.anomaly_class)
 				dif = setdiff(collect(1:10), classes)
 				if (length(classes) < 10) && verbose
