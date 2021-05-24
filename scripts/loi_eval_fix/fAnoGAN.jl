@@ -1,4 +1,6 @@
 include("utils.jl") # contains most dependencies and the saving function
+using PDMats
+using FillArrays
 
 s = ArgParseSettings()
 @add_arg_table! s begin
