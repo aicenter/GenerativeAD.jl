@@ -1,6 +1,6 @@
+include("utils.jl") # contains most dependencies and the saving function
 using GenerativeAD.Models: anomaly_score
 using StatsBase: fit!, predict, sample
-include("utils.jl") # contains most dependencies and the saving function
 
 s = ArgParseSettings()
 @add_arg_table! s begin

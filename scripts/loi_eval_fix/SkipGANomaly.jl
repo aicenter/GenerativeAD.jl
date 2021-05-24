@@ -1,5 +1,5 @@
-using GenerativeAD.Models: anomaly_score, generalized_anomaly_score_gpu
 include("utils.jl") # contains most dependencies and the saving function
+using GenerativeAD.Models: anomaly_score, generalized_anomaly_score_gpu
 
 s = ArgParseSettings()
 @add_arg_table! s begin
