@@ -50,9 +50,9 @@ df_tabular_autoencoders = _filter_autoencoders!(copy(df_tabular));
 _tabular_filter!(df_tabular);
 
 df_tabular_bayes = load(datadir("evaluation_bayes/tabular_eval.bson"))[:df];
-bayes_models = Set(unique(df_tabular_bayes.modelname))
 df_tabular_bayes_outerjoin = combine_bayes(df_tabular, df_tabular_bayes; outer=true);
-df_tabular_bayes_innerjoin = filter(x -> x.modelname in bayes_models, df_tabular_bayes_outerjoin)
+bayes_models = Set(unique(df_tabular_bayes.modelname))
+df_tabular_bayes_innerjoin = filter(x -> x.modelname in bayes_models, df_tabular_bayes_outerjoin);
 
 
 df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
@@ -668,8 +668,8 @@ basic_summary_table_autoagg(df_images_semantic, prefix="images_semantic", suffix
 basic_summary_table_autoagg(df_images_stat, prefix="images_stat", suffix="")
 @info "basic_summary_table_images stat/semantic"
 
-basic_summary_table(df_images_semantic, prefix="images_semantic", suffix="_clean_default")
-basic_summary_table(df_images_stat, prefix="images_stat", suffix="_clean_default")
+basic_summary_table(df_images_semantic_clean, prefix="images_semantic", suffix="_clean_default")
+basic_summary_table(df_images_stat_clean, prefix="images_stat", suffix="_clean_default")
 @info "basic_summary_table_images stat/semantic clean"
 
 function comparison_images_ensemble(df, df_ensemble, tm=("AUC", :auc); suffix="")
@@ -776,6 +776,7 @@ function plot_knowledge_combined(df_tab, df_img_stat, df_img_sem; grouptype=true
 
     # tabulars are single class anomaly datasets
     df_tab[:anomaly_class] = -1
+    # not include anomaly_class in datadir to avoid a wall of warnings
     df_img_stat_clean = select(df_img_stat_clean, Not(:anomaly_class))
     df_img_sem_clean = select(df_img_sem_clean, Not(:anomaly_class))
 
@@ -798,55 +799,66 @@ function plot_knowledge_combined(df_tab, df_img_stat, df_img_sem; grouptype=true
             ranks, metric_means = [], []
             for criterion in criterions
                 df_agg = agg(df, criterion)
+                apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
+                apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
                 sort!(df_agg, [:dataset, :modelname])
                 rt = rank_table(df_agg, tst_metric)
+                # _meanfinite(a) = mean([x for x in a if !isnan(x)])
+                # mm = DataFrame([Symbol(model) => _meanfinite(rt[1:end-3, model]) for model in names(rt)[2:end]])
+                mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model]) for model in names(rt)[2:end]])
+                # @info("", criterion, rt, mm)
                 push!(ranks, rt[end:end, 2:end])
-                push!(metric_means, mean(Matrix(rt[1:end-3, 2:end]), dims=1))
+                push!(metric_means, mm)
             end
             vcat(ranks...), vcat(metric_means...)
         end
 
-        function _plot(df_ranks, metric_mean, cnames, models)
+        function _plot(df_ranks, metric_mean, cnames, models, title)
             a = PGFPlots.Axis([PGFPlots.Plots.Linear(
                         1:length(cnames), 
-                        df_ranks[:, i]) for (i, m) in enumerate(models)], 
+                        df_ranks[:, m]) for m in models], 
                 ylabel="avg. rnk",
+                title=title,
                 style="xtick=$(_pgf_array(1:length(cnames))), 
                     xticklabels=$(_pgf_array(cnames)),
                     width=5cm, height=3cm, scale only axis=true,
-                    x tick label style={rotate=50,anchor=east}")
+                    x tick label style={rotate=50,anchor=east},
+                    title style={at={(current bounding box.south)}, anchor=west}")
             b = PGFPlots.Axis([PGFPlots.Plots.Linear(
                         1:length(cnames), 
-                        metric_mean[:, i], 
-                            legendentry=m) for (i, m) in enumerate(models)], 
+                        metric_mean[:, m], 
+                            legendentry=m) for m in models],
                 ylabel="avg. $mn",
-                legendStyle = "at={(0.1,1.15)}, anchor=west",
+                legendStyle = "at={(0.3,1.30)}, anchor=west",
                 style="width=5cm, height=3cm, scale only axis=true, 
                 xtick=$(_pgf_array(1:length(cnames))), 
-                xticklabels={}, legend columns = -1")
+                xticklabels={}")
             a, b
         end
         
         extended_criterions = vcat(criterions, [val_metric])
         extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
+        titles = ["(tab)", "(stat)", "(semantic)"]
         
         ab_plots = map(enumerate([(df_tab, df_tab_clean), (df_img_stat, df_img_stat_clean), (df_img_sem, df_img_sem_clean)])) do (i, (df, df_clean))
             ranks_clean, metric_means_clean = _incremental_rank(df_clean, [val_metric], aggregate_stats_max_mean)
-            ranks, metric_means = _incremental_rank(df, extended_criterions, aggregate_stats_auto)
-
-            ranks, metric_means = vcat(ranks_clean, ranks), vcat(metric_means_clean, metric_means)
+            ranks_inc, metric_means_inc = _incremental_rank(df, extended_criterions, aggregate_stats_auto)
             
+            ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc), vcat(metric_means_clean, metric_means_inc) # add union here?
+            # @info("", ranks_clean, ranks_inc)
+            # @info("", metric_means_clean, metric_means_inc)
+
             # reorder table on tabular data as there is additional class of models (flows)
             # one can do this manually at the end
             if i == 1 && grouptype
                 p = [1,2,4,5,3] # make sure that flows are last
-                models = names(ranks)[p]
-                select!(ranks, p)
-                metric_means = metric_means[:, p]
-                a, b = _plot(ranks, metric_means, extended_cnames, models)
+                models = names(ranks_all)[p]
+                select!(ranks_all, p)
+                select!(metric_means_all, p)
+                a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
             else
-                models = names(ranks)
-                a, b = _plot(ranks, metric_means, extended_cnames, models)
+                models = names(ranks_all)
+                a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
             end
             a, b
         end
@@ -875,24 +887,35 @@ function plot_knowledge_combined(df_tab, df_img_stat, df_img_sem; grouptype=true
     end
 end
 
-### TEMPORARY
-# df_tab = df_tabular, df_tabular_clean;
-# df_img_stat = df_images_stat, df_images_stat_clean;
-# df_img_sem = df_images_semantic, df_images_semantic_clean;
-# format = "tex"
-###
+#= TEMPORARY
+df_tab = df_tabular, df_tabular_clean;
+df_img_stat = df_images_stat, df_images_stat_clean;
+df_img_sem = df_images_semantic, df_images_semantic_clean;
+format = "tex"
+grouptype=false
+suffix=""
+=#
 
 plot_knowledge_combined(
     (df_tabular, df_tabular_clean), 
     (df_images_stat, df_images_stat_clean), 
     (df_images_semantic, df_images_semantic_clean); format="tex", suffix="_grouptype")
 
-representatives=["ocsvm", "knn", "wae_full", "wae", "RealNVP", "fmgan", "DeepSVDD"]
+representatives=["ocsvm", "knn", "wae_full", "wae", "RealNVP", "fmgan", "vae_ocsvm"]
 ff(df) = filter(x -> x.modelname in representatives, df)
 
 df_tab = df_tabular |> ff, df_tabular_clean |> ff;
 df_img_stat = df_images_stat |> ff, df_images_stat_clean |> ff;
 df_img_sem = df_images_semantic |> ff, df_images_semantic_clean |> ff;
+
+#= TEMPORARY
+df_tab[1].modelname |> countmap
+df_tab[2].modelname |> countmap
+df_img_stat[1].modelname |> countmap
+df_img_stat[2].modelname |> countmap
+df_img_sem[1].modelname |> countmap
+df_img_sem[2].modelname |> countmap
+=#
 
 plot_knowledge_combined(df_tab, df_img_stat, df_img_sem; 
                     grouptype=false, format="tex", suffix="_repre")
