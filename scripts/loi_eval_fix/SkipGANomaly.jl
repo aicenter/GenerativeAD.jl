@@ -23,9 +23,6 @@ function evaluate(model_data, data, parameters)
 	# load the model file, extract params and model
 	model = model_data["model"] |> gpu
 	
-	# compute encodings
-	encodings = map(x->cpu(GenerativeAD.Models.encode_mean_gpu(model, x, 32)), (data[1][1], data[2][1], data[3][1]))
-
 	# construct return information - put e.g. the model structure here for generative models
 	training_info = (
 		fit_t = get(model_data, "fit_t", nothing),
