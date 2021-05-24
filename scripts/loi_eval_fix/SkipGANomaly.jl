@@ -55,8 +55,6 @@ for ac in 1:10
 	in_ch = size(data[1][1],3)
 	isize = maximum([size(data[1][1],1),size(data[1][1],2)])
 	isize = (isize % 16 != 0) ? isize + 16 - isize % 16 : isize
-	# update parameter
-	data = GenerativeAD.Models.preprocess_images(data, parameters)
 
 	inpath = joinpath(main_inpath, "ac=$ac/seed=$seed")
 	savepath = joinpath(main_savepath, "ac=$ac/seed=$seed")
@@ -78,6 +76,9 @@ for ac in 1:10
 			parameters = score_data[:parameters]
 		end
 		parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
+		# update parameter
+		data = GenerativeAD.Models.preprocess_images(data, parameters)
+
 		try
 			training_info, results = evaluate(model_data, data, parameters) # this produces parameters, encodings, score funs
 			save_results(parameters, training_info, results, savepath, data, 
