@@ -52,8 +52,8 @@ function aggregate_stats_auto(df::DataFrame, criterion_col=:val_auc; kwargs...)
 		return	vcat(df_agg_single, df_agg_multi, cols=:intersect)
 	elseif nrow(df_single) > 0
 		return aggregate_stats_mean_max(df_single, criterion_col; kwargs...)
-	else nrow(df_multi) > 0
-		return aggregate_stats_max_mean(df_single, criterion_col; kwargs...)
+	else
+		return aggregate_stats_max_mean(df_multi, criterion_col; kwargs...)
 	end
 end
 
