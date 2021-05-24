@@ -533,6 +533,53 @@ per_seed_ranks_tabular(filter(x->x.modelname != "ocsvm_rbf", df_tabular), suffix
 per_seed_ranks_tabular(filter(x->x.modelname != "ocsvm", df_tabular), suffix="_orbf", downsample=DOWNSAMPLE)
 @info "per_seed_ranks_tabular"
 
+# metric sensitivity
+# should be both for image and tabular data
+function metric_sensitivity(df; prefix="tabular", suffix="", downsample=Dict{String, Int}())
+    ranks = []
+    
+    # compute rank table for each metric
+    for (mn, metric) in zip(["AUC", "TPR@5"],[:auc, :tpr_5])
+        val_metric = _prefix_symbol("val", metric)
+        tst_metric = _prefix_symbol("tst", metric) 
+        
+        models, rt = sorted_rank(df, aggregate_stats_auto, val_metric, tst_metric, downsample)
+        rt["metric"] = "$(mn)"
+        select!(rt, vcat(["metric"], models))
+        push!(ranks, rt[end:end, :])
+    end
+    
+    # each row contains average ranks for each metric
+    df_ranks = reduce(vcat, ranks)
+    rank_dif = Vector(df_ranks[2, 2:end]) .- Vector(df_ranks[1, 2:end])
+    push!(df_ranks, ["rank. change", rank_dif...])
+
+    min_rows = [1,2,3]
+    max_rows = [3]
+    hl_best_rank = LatexHighlighter(
+                    (data, i, j) -> (i in min_rows) && (data[i,j] == minimum(df_ranks[i, 2:end])),
+                    ["color{red}","textbf"])
+
+    hl_best_dif = LatexHighlighter(
+                    (data, i, j) -> (i in max_rows) && (data[i,j] == maximum(df_ranks[i, 2:end])),
+                    ["color{blue}","textbf"])
+
+    file = "$(projectdir())/paper/tables/$(prefix)_metric_comp$(suffix).tex"
+    open(file, "w") do io
+        pretty_table(
+            io, df_ranks,
+            backend=:latex,
+            formatters=ft_printf("%.1f"),
+            highlighters=(hl_best_rank, hl_best_dif),
+            nosubheader=true,
+            tf=latex_booktabs)
+    end
+end
+
+metric_sensitivity(filter(x->x.modelname != "ocsvm_rbf", df_tabular), suffix="", downsample=DOWNSAMPLE)
+metric_sensitivity(filter(x->x.modelname != "ocsvm", df_tabular), suffix="_orbf", downsample=DOWNSAMPLE)
+@info "metric_sensitivity"
+
 
 ######################################################################################
 #######################               IMAGES                ##########################
