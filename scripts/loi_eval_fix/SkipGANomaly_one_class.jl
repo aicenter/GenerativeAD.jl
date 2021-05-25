@@ -54,7 +54,7 @@ main_savepath = datadir("experiments/images_leave-one-in/$(modelname)/$(dataset)
 mkpath(main_savepath)
 
 # this loop unfortunately cannot be in a function, since loading of bson is only safe ot top level
-data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=method, 
+global data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=method, 
 	contamination=contamination)
 in_ch = size(data[1][1],3)
 isize = maximum([size(data[1][1],1),size(data[1][1],2)])
@@ -81,7 +81,7 @@ for mf in mfs
 	end
 	parameters = merge(parameters, (isize=isize, in_ch = in_ch, out_ch = 1))
 	# update parameter
-	data = GenerativeAD.Models.preprocess_images(data, parameters)
+	global data = GenerativeAD.Models.preprocess_images(data, parameters)
 
 	try
 		training_info, results = evaluate(model_data, data, parameters) # this produces parameters, encodings, score funs
