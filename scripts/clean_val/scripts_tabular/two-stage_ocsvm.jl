@@ -39,7 +39,7 @@ parsed_args = parse_args(ARGS, s)
 
 # we select the encoding of the model with lowest loss
 tab_name = "vae_LOSS_tabular"
-mi = 1
+mi = 2
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
