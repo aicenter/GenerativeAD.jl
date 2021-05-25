@@ -11,4 +11,4 @@ CLASS=$2
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-julia ./vae_one_class.jl $DATASET $CLASS
+julia ./fAnoGAN_one_class.jl $DATASET $CLASS
