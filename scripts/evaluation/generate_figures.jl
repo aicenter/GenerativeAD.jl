@@ -776,9 +776,9 @@ function plot_knowledge_combined(df_tab, df_img_stat, df_img_sem; grouptype=true
 
     # tabulars are single class anomaly datasets
     df_tab[:anomaly_class] = -1
-    # not include anomaly_class in datadir to avoid a wall of warnings
-    df_img_stat_clean = select(df_img_stat_clean, Not(:anomaly_class))
-    df_img_sem_clean = select(df_img_sem_clean, Not(:anomaly_class))
+    # not include anomaly_class in DataFrame to avoid a wall of warnings about missing anomaly_class from maxmean agg
+    # df_img_stat_clean = select(df_img_stat_clean, Not(:anomaly_class))
+    # df_img_sem_clean = select(df_img_sem_clean, Not(:anomaly_class))
 
     # rename models to their corresponding type
     if grouptype
@@ -790,10 +790,6 @@ function plot_knowledge_combined(df_tab, df_img_stat, df_img_sem; grouptype=true
     for (mn, metric) in [collect(zip(["AUC", "TPR@5"],[:auc, :tpr_5]))[1]]
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)
-
-        # ctype = "patn"
-        cnames = PATN_METRICS_NAMES
-        criterions = _prefix_symbol.("val", PATN_METRICS)
 
         function _incremental_rank(df, criterions, agg)
             ranks, metric_means = [], []
@@ -812,7 +808,7 @@ function plot_knowledge_combined(df_tab, df_img_stat, df_img_sem; grouptype=true
             end
             vcat(ranks...), vcat(metric_means...)
         end
-
+        
         function _plot(df_ranks, metric_mean, cnames, models, title)
             a = PGFPlots.Axis([PGFPlots.Plots.Linear(
                         1:length(cnames), 
@@ -836,54 +832,60 @@ function plot_knowledge_combined(df_tab, df_img_stat, df_img_sem; grouptype=true
             a, b
         end
         
-        extended_criterions = vcat(criterions, [val_metric])
-        extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
-        titles = ["(tab)", "(stat)", "(semantic)"]
+        for (ctype, cnames, criterions) in zip(
+            ["pat", "pac", "patn"],
+            [PAT_METRICS_NAMES, PAC_METRICS_NAMES, PATN_METRICS_NAMES],
+            [_prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("val", PAC_METRICS), _prefix_symbol.("val", PATN_METRICS)])
         
-        ab_plots = map(enumerate([(df_tab, df_tab_clean), (df_img_stat, df_img_stat_clean), (df_img_sem, df_img_sem_clean)])) do (i, (df, df_clean))
-            ranks_clean, metric_means_clean = _incremental_rank(df_clean, [val_metric], aggregate_stats_max_mean)
-            ranks_inc, metric_means_inc = _incremental_rank(df, extended_criterions, aggregate_stats_auto)
+            extended_criterions = vcat(criterions, [val_metric])
+            extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
+            titles = ["(tab)", "(stat)", "(semantic)"]
             
-            ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc), vcat(metric_means_clean, metric_means_inc) # add union here?
-            # @info("", ranks_clean, ranks_inc)
-            # @info("", metric_means_clean, metric_means_inc)
+            ab_plots = map(enumerate([(df_tab, df_tab_clean), (df_img_stat, df_img_stat_clean), (df_img_sem, df_img_sem_clean)])) do (i, (df, df_clean))
+                ranks_clean, metric_means_clean = _incremental_rank(df_clean, [val_metric], aggregate_stats_max_mean)
+                ranks_inc, metric_means_inc = _incremental_rank(df, extended_criterions, aggregate_stats_auto)
+                
+                ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), vcat(metric_means_clean, metric_means_inc; cols=:intersect)
+                # @info("", ranks_clean, ranks_inc)
+                # @info("", metric_means_clean, metric_means_inc)
 
-            # reorder table on tabular data as there is additional class of models (flows)
-            # one can do this manually at the end
-            if i == 1 && grouptype
-                p = [1,2,4,5,3] # make sure that flows are last
-                models = names(ranks_all)[p]
-                select!(ranks_all, p)
-                select!(metric_means_all, p)
-                a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
-            else
-                models = names(ranks_all)
-                a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
+                # reorder table on tabular data as there is additional class of models (flows)
+                # one can do this manually at the end
+                if i == 1 && grouptype
+                    p = [1,2,4,5,3] # make sure that flows are last
+                    models = names(ranks_all)[p]
+                    select!(ranks_all, p)
+                    select!(metric_means_all, p)
+                    a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
+                else
+                    models = names(ranks_all)
+                    a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
+                end
+                a, b
             end
-            a, b
-        end
-        
-        a_tab, b_tab = ab_plots[1]
-        a_img_stat, b_img_stat = ab_plots[2]
-        a_img_sem, b_img_sem = ab_plots[3]
-        
-        a_img_stat.ylabel = ""
-        b_img_stat.ylabel = ""
-        a_img_sem.ylabel = ""
-        b_img_sem.ylabel = ""
-        if grouptype
-            for (bst, bsm) in zip(b_img_stat.plots, b_img_sem.plots)
-                bst.legendentry=nothing
-                bsm.legendentry=nothing
+            
+            a_tab, b_tab = ab_plots[1]
+            a_img_stat, b_img_stat = ab_plots[2]
+            a_img_sem, b_img_sem = ab_plots[3]
+            
+            a_img_stat.ylabel = ""
+            b_img_stat.ylabel = ""
+            a_img_sem.ylabel = ""
+            b_img_sem.ylabel = ""
+            if grouptype
+                for (bst, bsm) in zip(b_img_stat.plots, b_img_sem.plots)
+                    bst.legendentry=nothing
+                    bsm.legendentry=nothing
+                end
             end
+
+            g = PGFPlots.GroupPlot(3, 2, groupStyle = "vertical sep = 0.5cm, horizontal sep = 1.0cm")
+            push!(g, b_tab); push!(g, b_img_stat); push!(g, b_img_sem);
+            push!(g, a_tab); push!(g, a_img_stat); push!(g, a_img_sem);
+
+            file = "$(projectdir())/paper/figures/combined_knowledge_rank_$(ctype)_$(metric)$(suffix).$(format)"
+            PGFPlots.save(file, g; include_preamble=false)
         end
-
-        g = PGFPlots.GroupPlot(3, 2, groupStyle = "vertical sep = 0.5cm, horizontal sep = 1.0cm")
-        push!(g, b_tab); push!(g, b_img_stat); push!(g, b_img_sem);
-        push!(g, a_tab); push!(g, a_img_stat); push!(g, a_img_sem);
-
-        file = "$(projectdir())/paper/figures/combined_knowledge_rank_$(metric)$(suffix).$(format)"
-        PGFPlots.save(file, g; include_preamble=false)
     end
 end
 
