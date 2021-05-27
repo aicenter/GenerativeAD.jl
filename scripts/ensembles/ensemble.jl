@@ -49,7 +49,7 @@ function ensemble_experiment(eval_directory, exp_directory, out_directory)
     # select best based on criterion
     for criterion in [:val_auc, :val_tpr_5, :val_pat_10]
         best = sortperm(df, order(criterion, rev=true))
-        for select_top in [5, 10] # 0 ... automatic ensemble size
+        for select_top in [2, 5, 10] # 0 ... automatic ensemble size
             if (select_top > 0) && (length(best) > select_top)
                 top = best[1:select_top]
             elseif (length(best) <= select_top)
