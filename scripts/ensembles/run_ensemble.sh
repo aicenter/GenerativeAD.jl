@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --time=4:00:00
+#SBATCH --time=1:00:00
 #SBATCH --partition cpufast
-#SBATCH --nodes=1 --ntasks-per-node=4 --cpus-per-task=1
-#SBATCH --mem=16G
+#SBATCH --nodes=1 --cpus-per-task=1
+#SBATCH --mem=8G
 
 MODEL=$1 		# which model to run
 DATASET=$2      # which dataset to run
