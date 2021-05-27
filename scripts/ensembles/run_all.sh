@@ -8,7 +8,7 @@ if [ "$DATASET_TYPE" == "tabular" ]; then
     do
         ./run_ensemble_parallel.sh ${m} tabular ../experiments_tabular/datasets_tabular.txt
     done
-elif  [ "$DATASET_TYPE" == "images_leave-one-out" ] || [ "$DATASETS" == "images_leave-one-in" ] ; then
+elif  [ "$DATASET_TYPE" == "images_leave-one-out" ] || [ "$DATASET_TYPE" == "images_leave-one-in" ] ; then
     models=("aae" "Conv-GANomaly" "Conv-SkipGANomaly" "vae" "wae" "knn" "ocsvm" "fAnoGAN" "fmgan" "DeepSVDD" "vae_ocsvm" "vae_knn")
 
     for m in ${models[*]}
