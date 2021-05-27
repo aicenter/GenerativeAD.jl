@@ -25,7 +25,7 @@ s = ArgParseSettings()
     "dataset_type"
 		arg_type = String
 		default = "tabular"
-        help = "images | tabular"
+        help = "images_mnistc | images_mvtec | images_leave-one-in/out | tabular"
     "max_seed"
         arg_type = Int
         default = 5
@@ -108,7 +108,8 @@ function _init_ensemble(results)
     ensemble = Dict{Symbol, Any}()      # new ensemble experiment dictionary
     r = first(results)                  # reference dictionary
 
-    for key in vcat([:dataset, :modelname, :seed, :model], _prefix_symbol.(SPLITS, :labels))
+    ensemble[:dataset] = Symbol("dataset") in keys(r) ? r[:dataset] : "MVTec-AD_" * r[:category] # until the files are fixed
+    for key in vcat([:modelname, :seed, :model], _prefix_symbol.(SPLITS, :labels))  
         ensemble[key] = r[key]
     end
     # add anomaly class if present
@@ -156,25 +157,34 @@ function aggregate_score!(ensemble, scores, weights=nothing;
     ensemble
 end
 
-function main(args)
-    @unpack modelname, dataset, dataset_type, max_seed, anomaly_classes = args
+function main(modelname, dataset, dataset_type, max_seed, anomaly_classes) 
     if dataset_type == "tabular"
         for s in 1:max_seed
             eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/seed=$(s)/")
             exp_directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/seed=$(s)/")
-            # for now the ensemble outputs are kept in separate directory
             out_directory = datadir("experiments_ensembles/$(dataset_type)/$(modelname)/$(dataset)/seed=$(s)/")
             
             # run experiment
             @info "Generating ensemble scores of $(modelname) on $(dataset):$(s)"
             ensemble_experiment(eval_directory, exp_directory, out_directory)
         end
-    elseif dataset_type == "images"
-        for s in 1:max_seed
+    elseif dataset_type == "images_leave-one-in" || dataset_type == "images_leave-one-out"
+        for s in 1:1
             for ac in 1:anomaly_classes
                 eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(s)/")
                 exp_directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(s)/")
-                # for now the ensemble outputs are kept in separate directory
+                out_directory = datadir("experiments_ensembles/$(dataset_type)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(s)/")
+                
+                # run experiment
+                @info "Generating ensemble scores of $(modelname) on $(dataset):$(ac):$(s)"
+                ensemble_experiment(eval_directory, exp_directory, out_directory)
+            end
+        end
+    elseif dataset_type == "images_mnistc" || dataset_type == "images_mvtec"
+        for s in 1:max_seed
+            for ac in 1:1
+                eval_directory = datadir("evaluation/$(dataset_type)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(s)/")
+                exp_directory = datadir("experiments/$(dataset_type)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(s)/")
                 out_directory = datadir("experiments_ensembles/$(dataset_type)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(s)/")
                 
                 # run experiment
@@ -187,4 +197,6 @@ function main(args)
     end
 end
 
-main(parse_args(ARGS, s))
+args = parse_args(ARGS, s)
+@unpack modelname, dataset, dataset_type, max_seed, anomaly_classes = args
+main(modelname, dataset, dataset_type, max_seed, anomaly_classes)
