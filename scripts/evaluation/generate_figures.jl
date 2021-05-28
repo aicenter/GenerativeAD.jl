@@ -56,7 +56,7 @@ df_tabular_bayes_innerjoin = filter(x -> x.modelname in bayes_models, df_tabular
 
 
 df_tabular_ens = load(datadir("evaluation_ensembles/tabular_eval.bson"))[:df];
-_filter_ensembles!(df_tabular_ens)
+_filter_ensembles!(df_tabular_ens);
 
 @info "Loaded results from tabular evaluation."
 
@@ -191,8 +191,7 @@ function ensemble_sensitivity(df, df_ensemble; prefix="tabular", suffix="", down
 
         ranks = []
         # computing baseline
-        _, rt = sorted_rank(df, aggregate_stats_max_mean, val_metric, tst_metric, downsample)
-        models = names(rt)[2:end]
+        models, rt = sorted_rank(df, aggregate_stats_max_mean, val_metric, tst_metric, downsample)
         rt["criterion-size"] = "baseline"
         select!(rt, vcat(["criterion-size"], models))
         push!(ranks, rt[end:end, :])
@@ -201,16 +200,14 @@ function ensemble_sensitivity(df, df_ensemble; prefix="tabular", suffix="", down
         for (cn, c) in zip(["AUC", "TPR@5"], [:val_auc, :val_tpr_5])
             for s in [5, 10]
                 dff = filter(x -> startswith(x.parameters, "criterion=$(c)") && endswith(x.parameters, "_size=$(s)"), df_ensemble)
-                _, rt_ensemble = sorted_rank(dff, aggregate_stats_max_mean, val_metric, tst_metric, downsample)
-                models = names(rt_ensemble)[2:end]
+                models, rt_ensemble = sorted_rank(dff, aggregate_stats_max_mean, val_metric, tst_metric, downsample; verbose=false)
                 rt_ensemble["criterion-size"] = "$(cn)-$(s)"
                 select!(rt_ensemble, vcat(["criterion-size"], models))
-                
-                dif = Matrix(rt_ensemble[1:end-3, 2:end]) - Matrix(rt[1:end-3, 2:end])
-                mean_dif = round.(mean(dif, dims=1), digits=2)
+                mean_dif = DataFrame([Symbol(model) => round.(mean(rt_ensemble[1:end-3, model] .- rt[1:end-3, model]), digits=2) for model in models])
+                mean_dif["criterion-size"] = "$(cn)-$(s)"
 
-                push!(rt_ensemble, ["avg. change", mean_dif...])
-                push!(ranks, rt_ensemble[end-1:end, :])
+                push!(ranks, rt_ensemble[end:end, :])
+                push!(ranks, mean_dif)
             end
         end
 
@@ -238,7 +235,7 @@ function ensemble_sensitivity(df, df_ensemble; prefix="tabular", suffix="", down
     end
 end
 
-ensemble_sensitivity(df_tabular, df_tabular_ens; prefix="tabular", downsample=DOWNSAMPLE)
+ensemble_sensitivity(filter(x->x.modelname != "ocsvm_rbf", df_tabular), df_tabular_ens; prefix="tabular", downsample=DOWNSAMPLE)
 @info "ensemble_sensitivity_tabular"
 
 # only meanmax as we don't have bayes for images
@@ -579,23 +576,40 @@ metric_sensitivity(filter(x->x.modelname != "ocsvm", df_tabular), suffix="_orbf"
 ######################################################################################
 #######################               IMAGES                ##########################
 ######################################################################################
-df_images_loo = load(datadir("evaluation/images_leave-one-out_eval.bson"))[:df];
+# df_images_loo = load(datadir("evaluation/images_leave-one-out_eval.bson"))[:df];
+# df_images_loo_clean = load(datadir("evaluation/images_leave-one-out_clean_val_final_eval.bson"))[:df];
 df_images_loi = load(datadir("evaluation/images_leave-one-in_eval.bson"))[:df];
-df_images_loo_clean = load(datadir("evaluation/images_leave-one-out_clean_val_final_eval.bson"))[:df];
 df_images_loi_clean = load(datadir("evaluation/images_leave-one-in_clean_val_final_eval.bson"))[:df];
-# df_images_ens_loo = load(datadir("evaluation_ensembles/images_eval.bson"))[:df];
+df_images_loi_clean[df_images_loi_clean.fit_t .=== nothing, :fit_t] .= 1.0; # ConvSkipGANomaly is missing the fit_t
 
 df_images_mnistc = load(datadir("evaluation/images_mnistc_eval.bson"))[:df];
+filter!(x -> x.dataset != "MNIST-C_zigzag", df_images_mnistc); # filter out MNISTC-C_zigzag which we forgot and could not compute in time
 df_images_mvtec = load(datadir("evaluation/images_mvtec_eval.bson"))[:df];
 select!(df_images_mnistc, Not(:anomaly_class)); # mnistc contains anomaly_class but mvtec does not
 df_images_single = vcat(df_images_mnistc, df_images_mvtec);
 df_images_single[:anomaly_class] = -1; # add dummy anomaly_class to indicate that we have single class anomaly dataset
 
-# there will be also the clean versions
 df_images_mnistc_clean = load(datadir("evaluation/images_mnistc_clean_val_final_eval.bson"))[:df];
+filter!(x -> x.dataset != "MNIST-C_zigzag", df_images_mnistc_clean); # filter out MNISTC-C_zigzag which we forgot and could not compute in time
 df_images_mvtec_clean = load(datadir("evaluation/images_mvtec_clean_val_final_eval.bson"))[:df];
 
-### do we have all that we need ?
+select!(df_images_mnistc_clean, Not(:anomaly_class));
+df_images_single_clean = vcat(df_images_mnistc_clean, df_images_mvtec_clean);
+# df_images_single_clean[:anomaly_class] = -1; # this is needed when concatenating with multiclass datasets
+df_images_single_clean[:anomaly_class] = 1; # this is needed when concatenating with multiclass datasets
+@info "Loaded image results"
+
+df_images_loi_ens = load(datadir("evaluation_ensembles/images_leave-one-in_eval.bson"))[:df];
+df_images_mnistc_ens = load(datadir("evaluation_ensembles/images_mnistc_eval.bson"))[:df];
+df_images_mvtec_ens = load(datadir("evaluation_ensembles/images_mvtec_eval.bson"))[:df];
+df_images_mvtec_ens[:anomaly_class] = -1;
+_filter_ensembles!(df_images_loi_ens);
+_filter_ensembles!(df_images_mnistc_ens);
+_filter_ensembles!(df_images_mvtec_ens);
+df_images_ens = vcat(df_images_loi_ens, df_images_mnistc_ens, df_images_mvtec_ens)
+
+@info "Loaded ensemble image results"
+#= do we have all that we need ?
 df_images_loi_clean.modelname |> countmap
 df_images_mnistc_clean.modelname |> countmap
 df_images_mvtec_clean.modelname |> countmap
