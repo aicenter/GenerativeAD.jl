@@ -1,12 +1,5 @@
 using OrderedCollections
-
-### this serves as a placeholder until bayesian optimization is merged into master
-BAYES_CACHE = "bayes_cache.bson"
-function load_bayes_cache(folder)
-    file = joinpath(folder, BAYES_CACHE)
-	isfile(file) ? BSON.load(file) : OrderedDict{UInt64, Any}()
-end
-###
+using GenerativeAD: load_bayes_cache
 
 """
      combine_bayes(df, df_bayes; outer=true)
