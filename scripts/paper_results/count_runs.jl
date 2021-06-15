@@ -10,7 +10,10 @@ using CSV
 # just count models, score files and training time
 # number of models
 data_folders = [datadir("experiments/tabular"), datadir("experiments/images"), 
-	datadir("experiments/images_leave-one-in")]
+	datadir("experiments/images_leave-one-in"), datadir("experiments/images_mvtec"), 
+	datadir("experiments/images_mnistc"), datadir("experimens/images_leave-one-in_clean_val_default"),
+	datadir("experimens/images_mvtec_clean_val_default"),
+	datadir("experimens/images_mnistc_clean_val_default")]
 #allfiles = vcat(map(f->GenerativeAD.Evaluation.collect_files(f), data_folders)...)
 
 # tabular data
@@ -350,7 +353,7 @@ end
 fit_t_images = fit_t_images/3600/24
 pred_t_images = (sum(df.tr_eval_t) + sum(df.tst_eval_t) + sum(df.val_eval_t))/3600/24
 
-#images LOI
+# images LOI
 df = load(datadir("evaluation/images_leave-one-in_eval.bson"))[:df];
 nexp_images_loi = round(Int,sum(Array(CSV.read("model_count_df_images_loi.csv")[1:end,2:end]))*10)
 nscore_images_loi = round(Int,sum(Array(CSV.read("score_count_df_images_loi.csv")[1:end,2:end]))*10)

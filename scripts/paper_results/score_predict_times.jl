@@ -1,4 +1,4 @@
-# runb on the RCI cluster
+# run on the RCI cluster
 using DrWatson
 @quickactivate
 using PrettyTables

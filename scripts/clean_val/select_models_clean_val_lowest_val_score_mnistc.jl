@@ -11,8 +11,8 @@ using EvalMetrics
 # all the models will use the lowest anomaly score on normal validation data
 master_path = datadir("experiments/images_mnistc")
 outpath = datadir("experiments/images_mnistc_clean_val_score")
-#master_path = datadir("experiments/images_mvtec")
-#outpath = datadir("experiments/images_mvtec_clean_val_score")
+master_path = datadir("experiments/images_mvtec")
+outpath = datadir("experiments/images_mvtec_clean_val_score")
 
 mkpath(outpath)
 models = readdir(master_path)
