@@ -1,11 +1,5 @@
 using DataFrames
 
-const MODEL_MERGE = Dict{String, String}(
-	"aae_vamp" 	=> "aae",
-	"wae_vamp" 	=> "wae",
-	"vae+ocsvm" => "vae_ocsvm"
-)
-
 const MODEL_TYPE = Dict{String, String}(
 	"MAF" 				=> "flows",
 	"RealNVP"			=> "flows",
@@ -20,11 +14,12 @@ const MODEL_TYPE = Dict{String, String}(
 	"if" 				=> "classical",
 	"knn" 				=> "classical",
 	"loda" 				=> "classical",
+	"loda_opt"			=> "classical",
 	"lof" 				=> "classical", 
 	"ocsvm" 			=> "classical",
 	"ocsvm_rbf"			=> "classical",
 	"ocsvm_nu"			=> "classical",
-	"pidforest" 		=> "classical", 
+	"pidforest" 		=> "classical",
 	"GANomaly" 			=> "autoencoders",
 	"aae" 				=> "autoencoders",
 	"aae_vamp" 			=> "autoencoders",
@@ -39,9 +34,11 @@ const MODEL_TYPE = Dict{String, String}(
 	"Conv-GANomaly" 	=> "autoencoders",
 	"Conv-SkipGANomaly" => "autoencoders",
 	"aae_ocsvm"			=> "two-stage",
+	"dagmm"				=> "two-stage",
 	"vae_ocsvm" 		=> "two-stage",
 	"vae_knn"	 		=> "two-stage",
-	"DeepSVDD" 			=> "two-stage"
+	"DeepSVDD" 			=> "two-stage",
+	"repen" 			=> "two-stage"
 )
 
 const MODEL_ALIAS = Dict{String, String}(
@@ -58,11 +55,12 @@ const MODEL_ALIAS = Dict{String, String}(
 	"if" 				=> "if",
 	"knn" 				=> "knn",
 	"loda" 				=> "loda",
+	"loda_opt"			=> "loda",
 	"lof" 				=> "lof", 
 	"ocsvm" 			=> "osvm",
 	"ocsvm_rbf"			=> "orbf",
 	"ocsvm_nu"			=> "osnu",
-	"pidforest" 		=> "pidf", 
+	"pidforest" 		=> "pidf",
 	"GANomaly" 			=> "gano",
 	"aae" 				=> "aae",
 	"aae_vamp" 			=> "aaev",
@@ -75,11 +73,13 @@ const MODEL_ALIAS = Dict{String, String}(
 	"wae_full"			=> "waef",
 	"Conv-GANomaly" 	=> "gano",
 	"Conv-SkipGANomaly" => "skip",
+	"dagmm"				=> "dagm",
 	"vae_simple" 		=> "vaes",
 	"vae_full"			=> "vaef",
 	"vae_ocsvm" 		=> "vaeo",
 	"vae_knn"			=> "vaek",
-	"DeepSVDD"			=> "dsvd"
+	"DeepSVDD"			=> "dsvd",
+	"repen" 			=> "rpn"
 )
 
 const DATASET_ALIAS = Dict{String, String}(
@@ -126,7 +126,25 @@ const DATASET_ALIAS = Dict{String, String}(
 	"MNIST" 					=> "mnist",
 	"FashionMNIST" 				=> "fmnist",
 	"CIFAR10" 					=> "cifar10",
-	"SVHN2" 					=> "svhn2"
+	"SVHN2" 					=> "svhn2",
+	"MNIST-C_brightness" 		=> "bright",
+	"MNIST-C_canny_edges" 		=> "cannye",
+	"MNIST-C_dotted_line" 		=> "dottedl",
+	"MNIST-C_fog" 				=> "fog",
+	"MNIST-C_glass_blur" 		=> "glassb",
+	"MNIST-C_impulse_noise" 	=> "impulsn",
+	"MNIST-C_motion_blur" 		=> "motionb",
+	"MNIST-C_rotate" 			=> "rotate",
+	"MNIST-C_scale" 			=> "scale",
+	"MNIST-C_shear" 			=> "shear",
+	"MNIST-C_shot_noise" 		=> "shotn",
+	"MNIST-C_spatter" 			=> "spatter",
+	"MNIST-C_stripe" 			=> "stripe",
+	"MNIST-C_translate" 		=> "translt",
+	"MNIST-C_zigzag" 			=> "zigzag",
+	"MVTec-AD_grid"         	=> "grid",
+	"MVTec-AD_transistor"   	=> "transistor",
+	"MVTec-AD_wood"         	=> "wood"
 )
 
 const AC_CONVERSION = Dict(

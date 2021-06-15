@@ -9,6 +9,55 @@ function compute_ranks(rt)
 	reduce(hcat, rs)
 end
 
+const MODEL_RENAME = Dict(
+    "aae_full" => "aae",
+    "wae_full" => "wae", 
+    "vae_full" => "vae")
+
+"""
+	sorted_rank(d, agg; val_metric=:val_auc, tst_metric=:tst_auc, downsample=Dict{String, Int}())
+
+Computes rank table from `d` and aggregation `agg`. Applies model and dataset aliases. 
+Sorts models based on model_type. Returns the rank table and also the aggregated dataframe.
+"""
+function sorted_rank(d, agg, val_metric=:val_auc, tst_metric=:tst_auc, downsample=Dict{String, Int}(); verbose=true)
+	df_agg = agg(d, val_metric; downsample=downsample, verbose=verbose)
+	
+	df_agg["model_type"] = copy(df_agg["modelname"])
+	apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
+	apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+	apply_aliases!(df_agg, col="dataset", d=DATASET_ALIAS)
+	apply_aliases!(df_agg, col="model_type", d=MODEL_TYPE)
+	
+	sort!(df_agg, (:dataset, :model_type, :modelname))
+	rt = rank_table(df_agg, tst_metric)
+	names(rt)[2:end], rt
+end
+
+"""
+automatic aggregation of combined dataframes for single/multi class datasets
+
+single class datasets are marked with anomaly_class = -1 and will be aggregated usin aggregate_stats_mean_max
+multi class datasets are marked with anomaly_class > 0 and will be aggregated usin aggregate_stats_max_mean
+
+
+"""
+function aggregate_stats_auto(df::DataFrame, criterion_col=:val_auc; kwargs...)
+	df_single = select(filter(x -> x.anomaly_class == -1, df), Not(:anomaly_class))
+	df_multi = filter(x -> x.anomaly_class > 0, df)
+
+	if nrow(df_single) > 0 && nrow(df_multi) > 0
+		df_agg_single = aggregate_stats_mean_max(df_single, criterion_col; kwargs...)
+		df_agg_multi = aggregate_stats_max_mean(df_multi, criterion_col; kwargs...)
+		return	vcat(df_agg_single, df_agg_multi, cols=:intersect)
+	elseif nrow(df_single) > 0
+		return aggregate_stats_mean_max(df_single, criterion_col; kwargs...)
+	else
+		return aggregate_stats_max_mean(df_multi, criterion_col; kwargs...)
+	end
+end
+
+
 # top 10 mean-max
 function aggregate_stats_mean_max_top_10(df::DataFrame, 
 										criterion_col=:val_auc; 

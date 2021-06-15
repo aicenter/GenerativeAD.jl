@@ -191,7 +191,7 @@ end
 
 """
 	aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc; 
-								min_samples=("anomaly_class" in names(df)) ? 10 : 3, 
+					min_samples=("anomaly_class" in names(df) && maximum(df[:anomaly_class]) > 0) ? 10 : 3,
 								downsample=Dict(), add_col=nothing)
 
 Agregates eval metrics by seed/anomaly class over a given hyperparameter and then chooses best
@@ -212,7 +212,7 @@ in order for the hyperparameter's results be considered statistically significan
 Optionally with argument `add_col` one can specify additional column to average values over.
 """
 function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc; 
-							min_samples=("anomaly_class" in names(df)) ? 10 : 3, 
+							min_samples=("anomaly_class" in names(df) && maximum(df[:anomaly_class]) > 0) ? 10 : 3,
 							downsample=Dict(), add_col=nothing, verbose=true)
 	agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 	agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
@@ -302,7 +302,8 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc;
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
 			partial_results = []
 
-			if ("anomaly_class" in names(df))
+			# if there is only the dummy class don't print the warnings for missing anomaly class
+			if ("anomaly_class" in names(df)) && maximum(mg[:anomaly_class]) > 0
 				classes = unique(mg.anomaly_class)
 				dif = setdiff(collect(1:10), classes)
 				if (length(classes) < 10) && verbose
