@@ -15,3 +15,5 @@ module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
 julia ./two-stage_maf.jl ${MAX_SEED} $DATASET $TAB_NAME ${ANOMALY_CLASSES} ${MI_ONLY} $METHOD $CONTAMINATION
+
+# ./two-stage_maf_run.sh 1 MNIST 10 1 vae_LOSS_images_leave-one-in leave-one-in
