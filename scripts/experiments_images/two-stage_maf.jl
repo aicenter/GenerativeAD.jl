@@ -60,7 +60,7 @@ criterion = lowercase(sp[2])
 modelname = "$(enc)_maf"
 
 function sample_params()
-	parameter_rng = (
+	parameters_rng = (
 		nflows 		= 2 .^ (1:3),
 		hdim 		= 2 .^(4:10),
 		nlayers 	= 2:3,
@@ -82,8 +82,8 @@ function fit(data, parameters, aux_info)
 	model = GenerativeAD.Models.MAF(;idim=size(data[1][1], 1), parameters...)
 
 	try
-		global info, fit_t, _, _, _ = @timed fit!(model, data; max_train_time=82800/max_seed, 
-						patience=200, check_interval=10, parameters...)
+		global info, fit_t, _, _, _ = @timed fit!(model, data; max_train_time=82800/max_seed/anomaly_classes/2, 
+					patience=10, check_interval=50, parameters...)
 	catch e
 		@info "Failed training due to \n$e"
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), []
@@ -99,7 +99,6 @@ function fit(data, parameters, aux_info)
 
 	training_info, [(x -> predict(info.model, x), parameters)]
 end
-
 
 ####################################################################
 ################ THIS PART IS COMMON FOR ALL MODELS ################
@@ -128,7 +127,7 @@ while try_counter < max_tries
 				# here, check if a model with the same parameters was already tested
 				@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
 				if GenerativeAD.check_params(savepath, merge(edited_parameters, aux_info))
-					training_info, results = fit(data, edited_parameters, aux_info)
+					training_info, results = fit(data, edited_parameters, aux_info);
 					# here define what additional info should be saved together with parameters, scores, labels and predict times
 					if training_info.model !== nothing
 						tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
@@ -163,4 +162,3 @@ while try_counter < max_tries
 	end
 end
 (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
-
