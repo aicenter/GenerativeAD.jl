@@ -4,7 +4,7 @@
 #SBATCH --mem=80G
 
 MAX_SEED=$1
-DATASET=$2
+CATEGORY=$2
 TAB_NAME=$3
 MI_ONLY=$4
 CONTAMINATION=$5
@@ -12,4 +12,4 @@ CONTAMINATION=$5
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-julia ./two-stage_maf.jl ${MAX_SEED} $DATASET ${TAB_NAME} ${MI_ONLY} $CONTAMINATION
+julia ./two-stage_maf.jl ${MAX_SEED} $CATEGORY ${TAB_NAME} ${MI_ONLY} $CONTAMINATION
