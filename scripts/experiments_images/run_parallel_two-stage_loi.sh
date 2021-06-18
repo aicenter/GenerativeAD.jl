@@ -28,3 +28,5 @@ while read d; do
     # for local testing    
     # ./${MODEL}_run.sh $MAX_SEED $d 10
 done < ${DATASET_FILE}
+
+# ./run_parallel_two-stage_loi.sh two-stage_maf 30 1 30 datasets_images.txt vae_LOSS_images_leave-one-in 1
