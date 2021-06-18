@@ -75,7 +75,7 @@ function fit(data, parameters, aux_info)
 
 	try
 		global info, fit_t, _, _, _ = @timed fit!(model, data; 
-			max_train_time=82800/max_seed/anomaly_classes/2/length(mi_only), 
+			max_train_time=82800/max_seed/2/length(mi_only), 
 					patience=10, check_interval=50, parameters...)
 	catch e
 		@info "Failed training due to \n$e"
