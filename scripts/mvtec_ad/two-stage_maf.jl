@@ -103,55 +103,54 @@ while try_counter < max_tries
 	parameters = sample_params()
 
 	for seed in 1:max_seed
-			savepath = datadir("experiments/images_mvtec$cont_string/$(modelname)/$(category)/ac=1/seed=$(seed)")
-			mkpath(savepath)
+		savepath = datadir("experiments/images_mvtec$cont_string/$(modelname)/$(category)/ac=1/seed=$(seed)")
+		mkpath(savepath)
 
-			mi_indexes = (mi_only == -1) ? [1:10...] : [mi_only] 
-			for mi = mi_indexes
-				aux_info = (model_index=mi, criterion=criterion)
+		mi_indexes = (mi_only == -1) ? [1:10...] : [mi_only] 
+		for mi = mi_indexes
+			aux_info = (model_index=mi, criterion=criterion)
 
-				data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
-					contamination=contamination, img_size=128)
-				data, encoding_name, encoder_params = GenerativeAD.Models.load_encoding(tab_name, data, 1, dataset=category, seed=seed, model_index=mi)
-				edited_parameters = GenerativeAD.edit_params(data, parameters)
+			data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
+				contamination=contamination, img_size=128)
+			data, encoding_name, encoder_params = GenerativeAD.Models.load_encoding(tab_name, data, 1, dataset=category, seed=seed, model_index=mi)
+			edited_parameters = GenerativeAD.edit_params(data, parameters)
 
-				@info "Started training $(modelname)$(edited_parameters) on $(category):$(seed)"
-				@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[2][1], 2))"
-				@info "Number of features: $(size(data[1][1], 1))"
-			
-				# here, check if a model with the same parameters was already tested
-				if GenerativeAD.check_params(savepath, merge(edited_parameters, aux_info))
-					training_info, results = fit(data, edited_parameters, aux_info);
-					# here define what additional info should be saved together with parameters, scores, labels and predict times
-					if training_info.model !== nothing
-						tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
-								Dict("model"=>training_info.model,
-									"fit_t"=>training_info.fit_t,
-									"history"=>training_info.history,
-									"parameters"=>edited_parameters
-									), safe = true)
-						training_info = merge(training_info, (model = nothing,))
-					end
-					save_entries = merge(training_info, (
-						modelname = modelname, 
-						seed = seed, 
-						category = category, 
-						dataset = "MVTec-AD_$category",						
-						anomaly_class = 1, 
-						encoder=encoding_name,
-						encoder_params=encoder_params,
-						model_index=mi,
-						criterion=criterion,
-						contamination=contamination))
-					# now loop over all anomaly score funs
-					for result in results
-						GenerativeAD.experiment(result..., data, savepath; save_entries...)
-					end
-					global try_counter = max_tries + 1
-				else
-					@info "Model already present, sampling new hyperparameters..."
-					global try_counter += 1
+			@info "Started training $(modelname)$(edited_parameters) on $(category):$(seed)"
+			@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[2][1], 2))"
+			@info "Number of features: $(size(data[1][1], 1))"
+		
+			# here, check if a model with the same parameters was already tested
+			if GenerativeAD.check_params(savepath, merge(edited_parameters, aux_info))
+				training_info, results = fit(data, edited_parameters, aux_info);
+				# here define what additional info should be saved together with parameters, scores, labels and predict times
+				if training_info.model !== nothing
+					tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
+							Dict("model"=>training_info.model,
+								"fit_t"=>training_info.fit_t,
+								"history"=>training_info.history,
+								"parameters"=>edited_parameters
+								), safe = true)
+					training_info = merge(training_info, (model = nothing,))
 				end
+				save_entries = merge(training_info, (
+					modelname = modelname, 
+					seed = seed, 
+					category = category, 
+					dataset = "MVTec-AD_$category",						
+					anomaly_class = 1, 
+					encoder=encoding_name,
+					encoder_params=encoder_params,
+					model_index=mi,
+					criterion=criterion,
+					contamination=contamination))
+				# now loop over all anomaly score funs
+				for result in results
+					GenerativeAD.experiment(result..., data, savepath; save_entries...)
+				end
+				global try_counter = max_tries + 1
+			else
+				@info "Model already present, sampling new hyperparameters..."
+				global try_counter += 1
 			end
 		end
 	end
