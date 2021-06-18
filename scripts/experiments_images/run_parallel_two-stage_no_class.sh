@@ -1,7 +1,7 @@
 #!/bin/bash
 # This runs parallel experiments over all datasets.
 # USAGE EXAMPLE
-#       ./run_parallel_two-stage_no_class.sh two-stage_maf 10 5 10 datasets_mnistc.txt vae_LOSS_images_mnistc 1
+#       ./run_parallel_two-stage_no_class.sh maf 10 5 10 datasets_mnistc.txt vae_LOSS_images_mnistc 1
 # Run from this folder only.
 MODEL=$1                # which model to run
 NUM_SAMPLES=$2  # how many repetitions
