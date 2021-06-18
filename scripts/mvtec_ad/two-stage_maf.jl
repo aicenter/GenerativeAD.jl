@@ -115,12 +115,11 @@ while try_counter < max_tries
 				data, encoding_name, encoder_params = GenerativeAD.Models.load_encoding(tab_name, data, 1, dataset=category, seed=seed, model_index=mi)
 				edited_parameters = GenerativeAD.edit_params(data, parameters)
 
-				@info "Started training $(modelname)$(edited_parameters) on $(dataset):$(seed)"
+				@info "Started training $(modelname)$(edited_parameters) on $(category):$(seed)"
 				@info "Train/valdiation/test splits: $(size(data[1][1], 2)) | $(size(data[2][1], 2)) | $(size(data[2][1], 2))"
 				@info "Number of features: $(size(data[1][1], 1))"
 			
 				# here, check if a model with the same parameters was already tested
-				@info "Trying to fit $modelname on $dataset with parameters $(parameters)..."
 				if GenerativeAD.check_params(savepath, merge(edited_parameters, aux_info))
 					training_info, results = fit(data, edited_parameters, aux_info);
 					# here define what additional info should be saved together with parameters, scores, labels and predict times
