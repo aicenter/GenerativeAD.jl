@@ -139,11 +139,13 @@ while try_counter < max_tries
 									), safe = true)
 						training_info = merge(training_info, (model = nothing,))
 					end
+					# do this for mnistc stuff
+					ac = occursin("MNIST-C", dataset) ? -1 : i
 					save_entries = merge(training_info, (
 						modelname = modelname, 
 						seed = seed, 
 						dataset = dataset, 
-						anomaly_class = i, 
+						anomaly_class = ac, 
 						encoder=encoding_name,
 						encoder_params=encoder_params,
 						model_index=mi,
