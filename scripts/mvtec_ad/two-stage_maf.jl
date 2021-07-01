@@ -137,7 +137,6 @@ while try_counter < max_tries
 					seed = seed, 
 					category = category, 
 					dataset = "MVTec-AD_$category",						
-					anomaly_class = 1, 
 					encoder=encoding_name,
 					encoder_params=encoder_params,
 					model_index=mi,

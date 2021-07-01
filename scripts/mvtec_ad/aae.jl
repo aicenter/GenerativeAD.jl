@@ -161,9 +161,13 @@ if abspath(PROGRAM_FILE) == @__FILE__
 				end
 
 				# here define what additional info should be saved together with parameters, scores, labels and predict times
-				save_entries = merge(training_info, (modelname = modelname, seed = seed, 
-					category = category, dataset = "MVTec-AD_$category",
-					contamination=contamination))
+				save_entries = merge(training_info, (
+					modelname = modelname, 
+					seed = seed, 
+					category = category, 
+					dataset = "MVTec-AD_$category",
+					contamination=contamination
+					))
 
 				# now loop over all anomaly score funs
 				for result in results
