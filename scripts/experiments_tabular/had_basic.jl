@@ -38,7 +38,7 @@ function linear_hdims(zdim, n_latents)
 	hdim_bounds = 2 .^(4:9)
 	hdim_min = sample(hdim_bounds[hdim_bounds .> zdim])
     hdim_max = sample(hdim_bounds[hdim_bounds .>= hdim_min])
-	hdims = floor.(Int, collect(range(hdim_max, hdim_min, length=n_latents)))
+	hdims = floor.(Int, collect(range(hdim_max, hdim_min, length=n_latents))./2).*2
 end
 """
 	sample_params()
