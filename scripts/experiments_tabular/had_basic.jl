@@ -137,8 +137,7 @@ function fit(data, parameters)
 	catch e
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
-		rethrow(e)
-		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
+		return (fit_t = NaN, npars=nothing, model=nothing), [] 
 	end
 
 	# construct return information - put e.g. the model structure here for generative models
