@@ -103,24 +103,6 @@ function GenerativeAD.edit_params(data, parameters)
 	parameters[1], autoencoder_parameters, detector_parameters, parameters[4]
 end
 
-
-#############š#DELETE THIS##########šš
-max_seed = 5
-dataset = "iris"
-contamination = 0f0
-seed = 1
-try_counter = 0
-max_tries = 10*max_seed
-cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
-parameters = sample_params()
-savepath = datadir("experiments/tabular$cont_string/$(modelname)/$(dataset)/seed=$(seed)")
-mkpath(savepath)
-# get data
-data = GenerativeAD.load_data(dataset, seed=seed, contamination=contamination)
-# edit parameters
-parameters = GenerativeAD.edit_params(data, parameters)
-
-
 """
 	fit(data, parameters)
 
@@ -155,6 +137,7 @@ function fit(data, parameters)
 	catch e
 		# return an empty array if fit fails so nothing is computed
 		@info "Failed training due to \n$e"
+		rethrow(e)
 		return (fit_t = NaN, history=nothing, npars=nothing, model=nothing), [] 
 	end
 
