@@ -255,10 +255,10 @@ function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc;
 				best = hcat(best, best_10_std)
 				
 				# add grouping keys
-				best[!,:dataset] = dkey.dataset
-				best[!,:modelname] = mkey.modelname
-				best[!,:dsamples] = n
-				best[!,:dsamples_valid] = nrow(pg_agg)
+				best[!,:dataset] .= dkey.dataset
+				best[!,:modelname] .= mkey.modelname
+				best[!,:dsamples] .= n
+				best[!,:dsamples_valid] .= nrow(pg_agg)
 
 				push!(results, best)
 			end
@@ -345,8 +345,8 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc;
 						agg_cols .=> std) 
 			
 			# add grouping keys
-			best[!,:dataset] = dkey.dataset
-			best[!,:modelname] = mkey.modelname
+			best[!,:dataset] .= dkey.dataset
+			best[!,:modelname] .= mkey.modelname
 		
 			push!(results, best)
 		end
