@@ -35,6 +35,7 @@ include("sptn.jl")
 include("loda.jl")
 include("dagmm.jl")
 include("repen.jl")
+include("sgad.jl")
 
 # this contains dependencies from vae and aae
 include("utils/vae_utils.jl")
