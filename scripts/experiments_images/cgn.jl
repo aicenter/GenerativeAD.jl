@@ -74,7 +74,7 @@ function fit(data, parameters)
 
     # fit train data
     try
-        global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; n_epochs = 3, 
+        global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; n_epochs = 50, 
             save_iter = 2000, save_results = true, save_path = res_save_path)
     catch e
         # return an empty array if fit fails so nothing is computed

@@ -14,8 +14,8 @@ CONTAMINATION=$5
 module load Julia/1.5.1-linux-x86_64
 module load Python/3.8.2-GCCcore-9.3.0
 
-source /home/skvarvit/sgad-env/bin/activate
-export PYTHON="/home/skvarvit/sgad-env/bin/python"
+source ${HOME}/sgad-env/bin/activate
+export PYTHON="${HOME}/sgad-env/bin/python"
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
 julia ./cgn.jl ${MAX_SEED} $DATASET ${ANOMALY_CLASSES} $METHOD $CONTAMINATION
