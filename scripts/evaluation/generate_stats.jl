@@ -30,6 +30,7 @@ s = ArgParseSettings()
 		arg_type= String
 		action = :store_true
 		help = "Load files from all levels of source."
+		dest_name = "load_all"
 end
 
 """
