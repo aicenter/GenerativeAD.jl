@@ -33,16 +33,15 @@ from the lowest level of the dir system.
 function collect_files_th(target::String; ignore_higher=true)
     files = readdir(target, join=true)
     if all(isfile.(files))
-        println(target)
         return files
     end
     results = Vector{Vector{String}}(undef, length(files))
     @threads for i in 1:length(files)
         if !isfile(files[i])
-            results[i] = collect_files_th(files[i])
+            results[i] = collect_files_th(files[i]; ignore_higher=ignore_higher)
         else
             # ignore any file that lives alongside a folder
-            results[i] = ignore_higher ? String[] : files[i]
+            results[i] = ignore_higher ? String[] : [files[i]]
         end
     end
     reduce(vcat, results)
