@@ -170,32 +170,3 @@ if abspath(PROGRAM_FILE) == @__FILE__
     end
     (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
 end
-
-# add this to the constructor args according to the data
-# img_dim=32,
-"""
-try_counter = 0
-max_tries = 10*max_seed
-cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
-parameters = sample_params()
-seed = 1
-i = 1
-dataset = "CIFAR10"
-dataset = "SVHN2"
-dataset = "MNIST"
-dataset = "FashionMNIST"
-data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method, contamination=contamination)
-edited_parameters = GenerativeAD.edit_params(data, parameters)
-res_save_path = datadir("sgad_models/$(modelname)/model_id=$(parameters.init_seed)")
-mkpath(res_save_path)
-
-model = GenerativeAD.Models.CGNAnomaly(;edited_parameters...)
-global losses, fit_t, _, _, _ = @timed fit!(model, data[1][1]; n_epochs = 100, 
-            save_iter = 2000, save_results = true, save_path = res_save_path)
-"""
-"""
-using ImageInTerminal, Images
-colorview(Gray,  permutedims(data[1][1][:,:,1,1], [2,1]))
-img = colorview(RGB, permutedims(data[1][1][:,:,:,3], [3,2,1]))
-save("sample.png", img)
-"""

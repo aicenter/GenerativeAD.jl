@@ -44,6 +44,8 @@ function generate_stats(source_prefix::String, target_prefix::String; force=true
 	files = GenerativeAD.Evaluation.collect_files_th(source)
 	# filter out model files
 	filter!(x -> !startswith(basename(x), "model"), files)
+	filter!(x -> !occursin(".pth", basename(x)), files)
+	
 	@info "Collected $(length(files)) files from $source folder."
 	# it might happen that when appending results some of the cores just go over already computed files
 	files = files[randperm(length(files))]
