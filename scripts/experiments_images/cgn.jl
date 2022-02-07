@@ -70,13 +70,13 @@ function fit(data, parameters, ac, seed)
     model = GenerativeAD.Models.CGNAnomaly(;parameters...)
 
     # save intermediate results here
-    res_save_path = datadir("sgad_models/images_$(method)$cont_string/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+    res_save_path = datadir("sgad_models/images_$(method)$cont_string/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)/model_id=$(parameters.init_seed)")
     mkpath(res_save_path)
 
     # fit train data
     n_epochs = 50
-    epoch_iters = ceil(Int, length(data[1][1])/parameters.batch_size)
-    save_iter = epoch_iter*10
+    epoch_iters = ceil(Int, length(data[1][2])/parameters.batch_size)
+    save_iter = epoch_iters*10
     try
          global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
             n_epochs = n_epochs, save_iter = save_iter, save_results = true, save_path = res_save_path)
@@ -99,9 +99,10 @@ function fit(data, parameters, ac, seed)
         )
 
     # save the final model
+    max_iters = Int(n_epochs*epoch_iters)
     training_info.model.model.save_weights(
-        joinpath(joinpath(res_save_path, "weights"), "final_cgn.pth"),
-        joinpath(joinpath(res_save_path, "weights"), "final_discriminator.pth")
+        joinpath(joinpath(res_save_path, "weights"), "cgn_$(max_iters).pth"),
+        joinpath(joinpath(res_save_path, "weights"), "discriminator_$(max_iters).pth")
         )
 
     # now return the different scoring functions
