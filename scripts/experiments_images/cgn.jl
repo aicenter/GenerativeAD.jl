@@ -33,6 +33,7 @@ s = ArgParseSettings()
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes, method, contamination = parsed_args
+cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -64,18 +65,21 @@ This is the most important function - returns `training_info` and a tuple or a v
 Each element of the return vector contains a specific anomaly score function - there can be multiple for each trained model.
 Final parameters is a named tuple of names and parameter values that are used for creation of the savefile name.
 """
-function fit(data, parameters)
+function fit(data, parameters, ac, seed)
     # construct model - constructor should only accept kwargs
     model = GenerativeAD.Models.CGNAnomaly(;parameters...)
 
     # save intermediate results here
-    res_save_path = datadir("sgad_models/$(modelname)/model_id=$(parameters.init_seed)")
+    res_save_path = datadir("sgad_models/images_$(method)$cont_string/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
     mkpath(res_save_path)
 
     # fit train data
+    n_epochs = 50
+    epoch_iters = ceil(Int, length(data[1][1])/parameters.batch_size)
+    save_iter = epoch_iter*10
     try
-        global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; n_epochs = 50, 
-            save_iter = 2000, save_results = true, save_path = res_save_path)
+         global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
+            n_epochs = n_epochs, save_iter = save_iter, save_results = true, save_path = res_save_path)
     catch e
         # return an empty array if fit fails so nothing is computed
         @info "Failed training due to \n$e"
@@ -88,9 +92,16 @@ function fit(data, parameters)
         history = info.history,
         npars = info.npars,
         model = model,
+        best_epoch = info.best_epoch,
         tr_encodings = nothing,
         val_encodings = nothing,
         tst_encodings = nothing
+        )
+
+    # save the final model
+    training_info.model.model.save_weights(
+        joinpath(joinpath(res_save_path, "weights"), "final_cgn.pth"),
+        joinpath(joinpath(res_save_path, "weights"), "final_discriminator.pth")
         )
 
     # now return the different scoring functions
@@ -107,7 +118,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
     # set a maximum for parameter sampling retries
     try_counter = 0
     max_tries = 10*max_seed
-    cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
     while try_counter < max_tries
         parameters = sample_params()
 
@@ -129,16 +139,10 @@ if abspath(PROGRAM_FILE) == @__FILE__
                 # check if a combination of parameters and seed alread exists
                 if GenerativeAD.check_params(savepath, edited_parameters)
                     # fit
-                    training_info, results = fit(data, edited_parameters)
+                    training_info, results = fit(data, edited_parameters, i, seed)
 
                     # save the model separately         
                     if training_info.model !== nothing
-                        modelpath = joinpath(savepath, savename("model", edited_parameters, digits=5))
-                        mkpath(modelpath)
-                        training_info.model.model.save_weights(
-                            joinpath(modelpath, "cgn.pth"),
-                            joinpath(modelpath, "discriminator.pth")
-                            )
                         tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
                             Dict("fit_t"=>training_info.fit_t,
                                  "history"=>training_info.history,
