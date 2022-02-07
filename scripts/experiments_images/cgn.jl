@@ -6,7 +6,6 @@ import StatsBase: fit!, predict
 using StatsBase
 using BSON
 using Flux
-using GenerativeModels
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -79,6 +78,7 @@ function fit(data, parameters, ac, seed)
     save_iter = epoch_iters*10
     try
          global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
+            max_train_time=20*3600/max_seed/anomaly_classes, 
             n_epochs = n_epochs, save_iter = save_iter, save_results = true, save_path = res_save_path)
     catch e
         # return an empty array if fit fails so nothing is computed
@@ -158,8 +158,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
                     end
 
                     # here define what additional info should be saved together with parameters, scores, labels and predict times
-                    save_entries = merge(training_info, (modelname = modelname, seed = seed, dataset = dataset, anomaly_class = i,
-                    contamination=contamination))
+                    save_entries = merge(training_info, (modelname = modelname, seed = seed, 
+                        dataset = dataset, anomaly_class = i,
+                        contamination=contamination))
 
                     # now loop over all anomaly score funs
                     for result in results
