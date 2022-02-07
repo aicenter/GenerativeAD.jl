@@ -28,7 +28,7 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "vae"
+modelname = "cgn"
 # sample parameters, should return a Dict of model kwargs 
 """
     sample_params()
