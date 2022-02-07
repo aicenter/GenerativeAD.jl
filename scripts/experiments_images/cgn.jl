@@ -99,7 +99,7 @@ function fit(data, parameters, ac, seed)
         )
 
     # save the final model
-    max_iters = Int(n_epochs*epoch_iters)
+    max_iters = length(info.history["iter"])
     training_info.model.model.save_weights(
         joinpath(joinpath(res_save_path, "weights"), "cgn_$(max_iters).pth"),
         joinpath(joinpath(res_save_path, "weights"), "discriminator_$(max_iters).pth")
