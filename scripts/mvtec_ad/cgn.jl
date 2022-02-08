@@ -67,7 +67,7 @@ function fit(data, parameters, seed)
     # fit train data
     n_epochs = 1000
     epoch_iters = ceil(Int, length(data[1][2])/parameters.batch_size)
-    save_iter = epoch_iters*10
+    save_iter = epoch_iters*Int(n_epochs/5)
     try
          global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
             max_train_time=20*3600/max_seed,
