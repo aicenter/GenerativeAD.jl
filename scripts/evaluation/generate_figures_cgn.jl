@@ -11,7 +11,7 @@ using GenerativeAD.Evaluation: PAT_METRICS, PATN_METRICS, PAC_METRICS, BASE_METR
 using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, convert_anomaly_class
 
 include("./utils/ranks.jl")
-outdir = "images_leave-one-in_eval"
+outdir = "images_leave-one-in_tables"
 df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
 
 SEMANTIC_IMAGE_ANOMALIES = Set(["CIFAR10", "SVHN2"])
