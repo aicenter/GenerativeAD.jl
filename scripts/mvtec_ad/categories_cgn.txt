@@ -1,0 +1,4 @@
+bottle
+metal_nut
+pill
+capsule
