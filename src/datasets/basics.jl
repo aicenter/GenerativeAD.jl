@@ -75,19 +75,20 @@ end
 
 """
 	load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
-	method="leave-one-out", contamination::Real=0.0, category)
+	method="leave-one-out", contamination::Real=0.0, category, kwargs...)
 
 Returns 3 tuples of (data, labels) representing train/validation/test part. Arguments are the splitting
 ratios for normal data, seed and training data contamination.
 
 For a list of available datasets, check `GenerativeAD.Datasets.uci_datasets`, `GenerativeAD.Datasets.other_datasets`,
 `GenerativeAD.Datasets.mldatasets`. For MNIST-C and MVTec-AD datasets, the categories can be obtained by
- `GenerativeAD.Datasets.mnist_c_categories()` and `GenerativeAD.Datasets.mvtec_ad_categories()`.
+ `GenerativeAD.Datasets.mnist_c_categories()` and `GenerativeAD.Datasets.mvtec_ad_categories()`. It can also
+ be used to load the fixed `wildlife_MNIST` dataset.
 """
 function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
 	method="leave-one-out", contamination::Real=0.0, kwargs...)
 	any(method .== ["leave-one-out","leave-one-in"]) ? nothing : error("unknown method, choose one of `leave-one-in`, `leave-one-out`")
-	(method ==  "leave-one-in" && !(dataset in mldatasets)) ? error("`leave-one-in` only implemented for image datasets") : nothing
+	(method ==  "leave-one-in" && !(dataset in mldatasets)) ? error("`leave-one-in` only implemented for MNIST, FMNIST, SVHN2, CIFAR10") : nothing
 
 	# extract data and labels
 	if dataset in uci_datasets # UCI Loda data, standardized
@@ -96,6 +97,8 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
 		data_normal, data_anomalous = load_mldatasets_data(dataset; kwargs...)
 	elseif dataset in other_datasets # other tabular datasets
 		data_normal, data_anomalous = load_other_data(dataset; standardize=true, kwargs...)
+	elseif dataset == "wildlife_MNIST"
+		(data_normal, y_normal), (data_anomalous, y_anomalous) = load_wildlife_mnist_data(;kwargs...)
 	elseif dataset =="MNIST-C"
 		data_normal, data_anomalous = load_mnist_c_data(; kwargs...)
 	elseif dataset == "MVTec-AD"

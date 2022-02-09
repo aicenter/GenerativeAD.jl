@@ -36,6 +36,113 @@
 	test_img_data("MNIST", (28, 28, 1, 70000), 0.2, "leave-one-in")
 	test_img_data("FashionMNIST", (28, 28, 1, 70000), 0.2, "leave-one-in")
 
+	# wildlife MNIST
+	nci = 2
+	(xn, yn), (xa, ya)=GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=nci, denormalize=true)
+	@test all(yn .== nci)
+	@test ndims(yn) == 1
+	@test length(yn) == size(xn, 4)
+	@test all(ya .!= nci)
+	@test length(unique(ya)) == 9
+	@test ndims(ya) == 1
+	@test length(ya) == size(xa, 4)
+
+	nci = 2
+	aci = 3
+	(xn, yn), (xa, ya)=GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=nci, 
+		anomaly_class_ind = aci, denormalize=true)
+	@test all(yn .== nci)
+	@test ndims(yn) == 1
+	@test length(yn) == size(xn, 4)
+	@test all(ya .== aci)
+	@test length(unique(ya)) == 1
+	@test ndims(ya) == 1
+	@test length(ya) == size(xa, 4)
+
+	nci = [2, 4, 8]
+	(xn, yn), (xa, ya)=GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=nci, denormalize=true)
+	@test all(map(x->x in nci, yn))
+	@test length(unique(yn)) == length(nci)
+	@test ndims(yn) == 1
+	@test length(yn) == size(xn, 4)
+	@test all(map(x -> !(x in nci), ya))
+	@test length(unique(ya)) == 10 - length(nci)
+	@test ndims(ya) == 1
+	@test length(ya) == size(xa, 4)
+
+	nci = [2, 4, 8]
+	aci = [1, 5, 9]
+	(xn, yn), (xa, ya)=GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=nci, 
+		anomaly_class_ind = aci, denormalize=true)
+	@test all(map(x->x in nci, yn))
+	@test length(unique(yn)) == length(nci)
+	@test ndims(yn) == 1
+	@test length(yn) == size(xn, 4)
+	@test all(map(x -> (x in aci), ya))
+	@test length(unique(ya)) == length(aci)
+	@test ndims(ya) == 1
+	@test length(ya) == size(xa, 4)
+
+	nci = (1, -1, -1)
+	(xn, yn), (xa, ya)=GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=nci, denormalize=true)
+	@test all(yn[1,:] .== nci[1]) 
+	@test length(unique(yn[2,:])) == 10
+	@test length(unique(yn[3,:])) == 10
+	@test size(yn,2) == size(xn, 4)
+	@test all(ya[1,:] .!= nci[1]) 
+	@test length(unique(ya[1,:])) == 9
+	@test length(unique(ya[2,:])) == 10
+	@test length(unique(ya[3,:])) == 10
+	@test size(ya,2) == size(xa, 4)
+
+	nci = (1, 1, -1)
+	(xn, yn), (xa, ya)=GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=nci, denormalize=true)
+	@test all(yn[1,:] .== nci[1]) 
+	@test all(yn[2,:] .== nci[2]) 
+	@test length(unique(yn[3,:])) == 10
+	@test size(yn,2) == size(xn, 4)
+	@test all((ya[1,:] .!= nci[1]) .| (ya[2,:] .!= nci[2]))
+	@test length(unique(ya[1,:])) == 10
+	@test length(unique(ya[2,:])) == 10
+	@test length(unique(ya[3,:])) == 10
+	@test size(ya,2) == size(xa, 4)
+
+	nci = (1, 1, 1)
+	(xn, yn), (xa, ya)=GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=nci, denormalize=true)
+	@test all(yn[1,:] .== nci[1]) 
+	@test all(yn[2,:] .== nci[2]) 
+	@test all(yn[3,:] .== nci[3]) 
+	@test size(yn,2) == size(xn, 4)
+	@test all((ya[1,:] .!= nci[1]) .| (ya[2,:] .!= nci[2]) .| (ya[3,:] .!= nci[3]))
+	@test length(unique(ya[1,:])) == 10
+	@test length(unique(ya[2,:])) == 10
+	@test length(unique(ya[3,:])) == 10
+	@test size(ya,2) == size(xa, 4)
+
+	nci = (1, 1, 1)
+	aci = (2, 3, 5)
+	(xn, yn), (xa, ya)=GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=nci, 
+		anomaly_class_ind=aci, denormalize=true)
+	@test all(yn[1,:] .== nci[1]) 
+	@test all(yn[2,:] .== nci[2]) 
+	@test all(yn[3,:] .== nci[3]) 
+	@test size(yn,2) == size(xn, 4)
+	@test all(ya[1,:] .== aci[1]) 
+	@test all(ya[2,:] .== aci[2]) 
+	@test all(ya[3,:] .== aci[3]) 
+	@test size(ya,2) == size(xa, 4)
+
+	nci = 1
+	aci = (2, 3, 5)
+	(xn, yn), (xa, ya)=GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=nci, 
+		anomaly_class_ind=aci, denormalize=true)
+	@test all(yn .== nci) 
+	@test length(yn) == size(xn, 4)
+	@test all(ya[1,:] .== aci[1]) 
+	@test all(ya[2,:] .== aci[2]) 
+	@test all(ya[3,:] .== aci[3]) 
+	@test size(ya,2) == size(xa, 4)
+
 	# this takes a lot of time...
 	if !complete
 		@info "Skipping tests on CIFAR10 and SVHN2..."

@@ -43,6 +43,8 @@ Loads the corrupted MNIST dataset for given category. Returns normal (non-corrup
 a list of available corruption categories, run `GenerativeAD.Datasets.mnist_c_categories()`.
 """
 function load_mnist_c_data(;category::String="brightness", kwargs...)
+	# TODO the flip here should be (3,2,4,1) so its is the same as the colored datasets
+	# or not? check with the rest of the bw datasets
 	dp = joinpath(datadep"MNIST-C", "mnist_c")
 	available_categories = mnist_c_categories()
 	!(category in available_categories) ? error("Requested category $category not found, $(available_categories) available.") : nothing
@@ -94,6 +96,104 @@ function load_mvtec_ad_data_downscaled(;img_size = 256, category::String="bottle
 	!ispath(inpath) ? error("downscaled data not available at $inpath") : nothing
 	data = load(joinpath(inpath, "$(category)_$(img_size).bson"))
 	return data[:normal], data[:anomalous]
+end
+
+"""
+	load_wildlife_mnist_data(;
+	normal_class_ind::Union{Int,Tuple,Vector}=1,
+	anomaly_class_ind::Union{Int,Tuple,Vector}=-1,
+	denormalize = false,
+	kwargs...)
+
+Returns (x_normal, y_normal), (x_anomalous, y_anomalous).
+
+If the class index is an integer, then we draw samples with all fixed factors equal to the index.
+If it is a vector (with values in range [1,10]), then the samples have fixed factors in the given values.
+If it is a tuple of length 3, then the factors are mixed as given. You can input -1 in the place
+of the factor that is not fixed. Factor 1 = digit, factor 2 = background, factor 3 = texture.
+If no anomalous indices are given, then the rest that is left after normal data is constructed is used.
+
+The data are normalized in [-1,1] range by default, but can be denormalized to [0,1].
+"""
+function load_wildlife_mnist_data(; 
+	normal_class_ind::Union{Int,Tuple,Vector}=1,
+	anomaly_class_ind::Union{Int,Tuple,Vector}=-1,
+	denormalize = false,
+	kwargs...)
+	inpath = datadir("wildlife_MNIST")
+	x_tr = permutedims(npzread(joinpath(inpath, "data.npy")), (4,3,2,1))
+	x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
+	y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
+	y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
+	
+	# denormalize
+	if denormalize
+		x_tr = x_tr .* 0.5 .+ 0.5
+		x_tst = x_tst .* 0.5 .+ 0.5
+	end
+
+	# now get the normal and anomalous data
+	function compare_inds(y::Vector, ind::Int)
+		if ind == -1
+			return BitArray{1}(ones(length(y)))
+		else
+			return y .== ind
+		end
+	end
+
+	# normal class
+	# specified by a scalar
+	if typeof(normal_class_ind) <: Number
+		nc_inds = y_tr .== normal_class_ind
+		xn = x_tr
+		yn = y_tr[nc_inds]
+	# specified by a vector - multiple digits 
+	elseif typeof(normal_class_ind) <: Vector
+		nc_inds = map(x->x in normal_class_ind, y_tr)
+		xn = x_tr
+		yn = y_tr[nc_inds]
+	# specified by a tuple - we draw from the mixed dataset, -1 in the tuple means the factor
+	# is not fixed
+	else
+		length(normal_class_ind) == 3 ? nothing : error("Normal class tuple has to be of length 3.")
+		nc_inds = map(i->compare_inds(y_tst[i,:], normal_class_ind[i]), 1:3)
+		nc_inds = nc_inds[1] .& (nc_inds[2] .& nc_inds[3])
+		xn = x_tst
+		yn = y_tst[:,nc_inds]
+	end
+
+	# anomaly data
+	# default
+	if anomaly_class_ind == -1
+		ac_inds = .!nc_inds
+		if ndims(yn) == 1
+			xa = x_tr
+			ya = y_tr[ac_inds]
+		else
+			xa = x_tst
+			ya = y_tst[:, ac_inds]
+		end
+	# non-default integer - only one anomaly class that has the same factors
+	elseif typeof(anomaly_class_ind) <: Number
+		ac_inds = y_tr .== anomaly_class_ind
+		xa = x_tr
+		ya = y_tr[ac_inds]
+	# specified by a vector - multiple digits
+	elseif typeof(anomaly_class_ind) <: Vector
+		ac_inds = map(x->x in anomaly_class_ind, y_tr)
+		xa = x_tr
+		ya = y_tr[ac_inds]
+	# specified by a tuple - we draw from the mixed dataset, -1 in the tuple means the factor
+	# is not fixed
+	else
+		length(anomaly_class_ind) == 3 ? nothing : error("Anomaly class tuple has to be of length 3.")
+		ac_inds = map(i->compare_inds(y_tst[i,:], anomaly_class_ind[i]), 1:3)
+		ac_inds = ac_inds[1] .& (ac_inds[2] .& ac_inds[3])
+		xa = x_tst
+		ya = y_tst[:,ac_inds]
+	end
+
+	return (xn[:,:,:,nc_inds], yn), (xa[:,:,:,ac_inds], ya)
 end
 
 """

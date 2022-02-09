@@ -4,6 +4,7 @@ using Test
 using GenerativeAD
 using UCI
 using ArgParse
+using StatsBase
 
 s = ArgParseSettings()
 @add_arg_table! s begin
