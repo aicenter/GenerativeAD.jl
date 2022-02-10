@@ -88,7 +88,8 @@ For a list of available datasets, check `GenerativeAD.Datasets.uci_datasets`, `G
 function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing, 
 	method="leave-one-out", contamination::Real=0.0, kwargs...)
 	any(method .== ["leave-one-out","leave-one-in"]) ? nothing : error("unknown method, choose one of `leave-one-in`, `leave-one-out`")
-	(method ==  "leave-one-in" && !(dataset in mldatasets)) ? error("`leave-one-in` only implemented for MNIST, FMNIST, SVHN2, CIFAR10") : nothing
+	(method ==  "leave-one-in" && (!(dataset in mldatasets) & (dataset!="wildlife_MNIST"))) ? 
+		error("`leave-one-in` only implemented for MNIST, FMNIST, SVHN2, CIFAR10 and wildlife_MNIST") : nothing
 
 	# extract data and labels
 	if dataset in uci_datasets # UCI Loda data, standardized
@@ -98,6 +99,10 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
 	elseif dataset in other_datasets # other tabular datasets
 		data_normal, data_anomalous = load_other_data(dataset; standardize=true, kwargs...)
 	elseif dataset == "wildlife_MNIST"
+		method == "leave-one-out" ? error("leave-one-out not implemented for wildlife_MNIST") : nothing
+		if haskey(kwargs, :anomaly_class_ind)
+			kwargs = merge(values(kwargs), (normal_class_ind=values(kwargs).anomaly_class_ind, anomaly_class_ind=-1))
+		end
 		(data_normal, y_normal), (data_anomalous, y_anomalous) = load_wildlife_mnist_data(;kwargs...)
 	elseif dataset =="MNIST-C"
 		data_normal, data_anomalous = load_mnist_c_data(; kwargs...)
@@ -114,7 +119,9 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
 	end
 
 	# now do the train/validation/test split
-	if method=="leave-one-in" # in this case, we swap the anomalous nad normal data
+	if dataset == "wildlife_MNIST"
+		return train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
+	elseif method == "leave-one-in" # in this case, we swap the anomalous nad normal data
 		return train_val_test_split(data_anomalous, data_normal, ratios; seed=seed, contamination=contamination)
 	else
 		return train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)

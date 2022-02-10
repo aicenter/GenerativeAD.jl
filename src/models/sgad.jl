@@ -23,9 +23,6 @@ function StatsBase.fit!(model::CGNAnomaly, X::Array{T, 4}; kwargs...) where T<:R
     X = Array(permutedims(X, [4,3,2,1]))
     model.model.train()
     history, _ = model.model.fit(X; kwargs...)
-    for k in keys(history)
-        history[k] = vcat(history[k]...)
-    end
     best_model = nothing
     best_epoch = nothing
     return (history=history, npars=model.model.num_params(), best_model=best_model, best_epoch=best_epoch)
