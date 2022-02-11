@@ -11,7 +11,12 @@ ANOMALY_CLASSES=$3
 METHOD=$4
 CONTAMINATION=$5
 
-module load Julia/1.5.1-linux-x86_64
-module load Python/3.8.2-GCCcore-9.3.0
+module load Julia/1.5.3-linux-x86_64
+module load Python/3.9.6-GCCcore-11.2.0
+
+source ${HOME}/sgad-env/bin/activate
+export PYTHON="${HOME}/sgad-env/bin/python"
+julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
+
 
 julia ./fAnoGAN.jl ${MAX_SEED} $DATASET ${ANOMALY_CLASSES} $METHOD $CONTAMINATION
