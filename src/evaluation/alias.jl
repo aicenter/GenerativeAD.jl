@@ -9,6 +9,7 @@ const MODEL_TYPE = Dict{String, String}(
 	"gan" 				=> "gans",
 	"fAnoGAN" 			=> "gans",
 	"fAnoGAN-GP" 		=> "gans",
+	"cgn"				=> "gans",
 	"abod" 				=> "classical",
 	"hbos" 				=> "classical",
 	"if" 				=> "classical",
@@ -79,7 +80,8 @@ const MODEL_ALIAS = Dict{String, String}(
 	"vae_ocsvm" 		=> "vaeo",
 	"vae_knn"			=> "vaek",
 	"DeepSVDD"			=> "dsvd",
-	"repen" 			=> "rpn"
+	"repen" 			=> "rpn",
+	"cgn"				=> "cgn"
 )
 
 const DATASET_ALIAS = Dict{String, String}(
@@ -127,6 +129,7 @@ const DATASET_ALIAS = Dict{String, String}(
 	"FashionMNIST" 				=> "fmnist",
 	"CIFAR10" 					=> "cifar10",
 	"SVHN2" 					=> "svhn2",
+	"wildlife_MNIST"			=> "wmnist",
 	"MNIST-C_brightness" 		=> "bright",
 	"MNIST-C_canny_edges" 		=> "cannye",
 	"MNIST-C_dotted_line" 		=> "dottedl",
@@ -144,14 +147,19 @@ const DATASET_ALIAS = Dict{String, String}(
 	"MNIST-C_zigzag" 			=> "zigzag",
 	"MVTec-AD_grid"         	=> "grid",
 	"MVTec-AD_transistor"   	=> "transistor",
-	"MVTec-AD_wood"         	=> "wood"
+	"MVTec-AD_wood"         	=> "wood",
+	"MVTec-AD_bottle"         	=> "bottle",
+	"MVTec-AD_metal_nut"        => "nut",
+	"MVTec-AD_pill"         	=> "pill",
+	"MVTec-AD_capsule"         	=> "capsule"
 )
 
 const AC_CONVERSION = Dict(
 	"mnist" 			=> ["5", "0", "4", "1", "9", "2", "3", "6", "7", "8"],
 	"svhn2"				=> ["1", "9", "2", "3", "5", "8", "7", "4", "6", "0"],
 	"fmnist" 			=> ["Ankle boot", "T-Shirt", "Dress", "Pullover", "Sneaker", "Sandal", "Trouser", "Shirt", "Coat", "Bag"],
-	"cifar10"			=> ["frog", "truck", "deer", "automobile", "bird", "horse", "ship", "cat", "dog", "airplane"]
+	"cifar10"			=> ["frog", "truck", "deer", "automobile", "bird", "horse", "ship", "cat", "dog", "airplane"],
+	"wmnist"			=> ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 )
 
 

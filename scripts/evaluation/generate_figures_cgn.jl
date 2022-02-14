@@ -13,13 +13,19 @@ using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, con
 include("./utils/ranks.jl")
 outdir = "images_leave-one-in_tables"
 df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
+apply_aliases!(df, col="dataset", d=DATASET_ALIAS)
 
 SEMANTIC_IMAGE_ANOMALIES = Set(["CIFAR10", "SVHN2"])
+TARGET_DATASETS = Set(["CIFAR10", "SVHN2", "wildlife_MNIST"])
 
 # splits single and multi class image datasets into "statistic" and "semantic" anomalies
 _split_image_datasets(df) = (
             filter(x -> x.dataset in SEMANTIC_IMAGE_ANOMALIES, df), 
             filter(x -> ~(x.dataset in SEMANTIC_IMAGE_ANOMALIES), df)
+        )
+_split_image_datasets(df, dt) = (
+            filter(x -> x.dataset in dt, df), 
+            filter(x -> ~(x.dataset in dt), df)
         )
 
 function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{String, Int}())
@@ -48,12 +54,15 @@ function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{Stri
 end
 
 df_images_semantic, df_images_stat = _split_image_datasets(df_images);
+df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
 # this generates the overall tables (aggregated by datasets)
-rts = basic_summary_table(df_images_semantic, outdir, prefix="images_semantic", suffix="")
+#rts = basic_summary_table(df_images_semantic, outdir, prefix="images_semantic", suffix="")
+rts = basic_summary_table(df_images_target, outdir, prefix="images_target", suffix="")
 
 # this should generate the above tables split by anomaly classes
-df = df_images_semantic
-apply_aliases!(df, col="dataset", d=DATASET_ALIAS)
+#df = df_images_semantic
+df = df_images_target
+
 for d in Set(["cifar10", "svhn2"])
     mask = (df.dataset .== d)
     df[mask, :dataset] .= df[mask, :dataset] .* ":" .* convert_anomaly_class.(df[mask, :anomaly_class], d)
