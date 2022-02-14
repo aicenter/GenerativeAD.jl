@@ -11,29 +11,24 @@ using GenerativeAD.Evaluation: PAT_METRICS, PATN_METRICS, PAC_METRICS, BASE_METR
 using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, convert_anomaly_class
 
 include("./utils/ranks.jl")
-outdir = "images_leave-one-in_tables"
+outdir = "result_tables"
 df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
-apply_aliases!(df, col="dataset", d=DATASET_ALIAS)
+apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS)
 
-SEMANTIC_IMAGE_ANOMALIES = Set(["CIFAR10", "SVHN2"])
-TARGET_DATASETS = Set(["CIFAR10", "SVHN2", "wildlife_MNIST"])
+TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
 
 # splits single and multi class image datasets into "statistic" and "semantic" anomalies
-_split_image_datasets(df) = (
-            filter(x -> x.dataset in SEMANTIC_IMAGE_ANOMALIES, df), 
-            filter(x -> ~(x.dataset in SEMANTIC_IMAGE_ANOMALIES), df)
-        )
 _split_image_datasets(df, dt) = (
             filter(x -> x.dataset in dt, df), 
             filter(x -> ~(x.dataset in dt), df)
         )
 
 function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{String, Int}())
-    agg_names = ["maxmean", "meanmax"]
-    agg_funct = [aggregate_stats_max_mean, aggregate_stats_mean_max]
+    agg_names = ["maxmean"]
+    agg_funct = [aggregate_stats_max_mean]
     rts = []
     for (name, agg) in zip(agg_names, agg_funct)
-        for metric in [:auc, :tpr_5]
+        for metric in [:auc]
             val_metric = _prefix_symbol("val", metric)
             tst_metric = _prefix_symbol("tst", metric)    
             
@@ -47,31 +42,27 @@ function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{Stri
             open(file, "w") do io
                 print_rank_table(io, rt; backend=:txt) # or :tex
             end
+            @info "saved to $file"
             push!(rts, rt)
         end
     end
     rts
 end
 
-df_images_semantic, df_images_stat = _split_image_datasets(df_images);
 df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
 # this generates the overall tables (aggregated by datasets)
-#rts = basic_summary_table(df_images_semantic, outdir, prefix="images_semantic", suffix="")
-rts = basic_summary_table(df_images_target, outdir, prefix="images_target", suffix="")
+rts = basic_summary_table(df_images_target, outdir, prefix="images_loi", suffix="")
 
 # this should generate the above tables split by anomaly classes
-#df = df_images_semantic
-df = df_images_target
-
-for d in Set(["cifar10", "svhn2"])
-    mask = (df.dataset .== d)
-    df[mask, :dataset] .= df[mask, :dataset] .* ":" .* convert_anomaly_class.(df[mask, :anomaly_class], d)
-    df[mask, :anomaly_class] .= 1 # it has to be > 0, because otherwise we get too many warnings from the aggregate_stats_max_mean
+for d in Set(["cifar10", "svhn2", "wmnist"])
+    mask = (df_images_target.dataset .== d)
+    df_images_target[mask, :dataset] .= df_images_target[mask, :dataset] .* ":" .* convert_anomaly_class.(df_images_target[mask, :anomaly_class], d)
+    df_images_target[mask, :anomaly_class] .= 1 # it has to be > 0, because otherwise we get too many warnings from the aggregate_stats_max_mean
 end
 
 function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Dict{String, Int}())
     rts = []   
-    for metric in [:auc, :tpr_5]
+    for metric in [:auc]
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)    
 
@@ -85,9 +76,15 @@ function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Di
         open(file, "w") do io
             print_rank_table(io, rt; backend=:txt)
         end
+        @info "saved to $file"
         push!(rts, rt)
     end
     rts
 end
 
-rts = basic_summary_table_per_ac(df, outdir, prefix="images_semantic", suffix="_per_ac")
+rts = basic_summary_table_per_ac(df_images_target, outdir, prefix="images_loi", suffix="_per_ac")
+
+# now let's do the same for mvtec results
+df_mvtec = load(datadir("evaluation/images_mvtec_eval_all.bson"))[:df];
+apply_aliases!(df_mvtec, col="dataset", d=DATASET_ALIAS)
+rts = basic_summary_table(df_mvtec, outdir, prefix="images_mvtec", suffix="")
