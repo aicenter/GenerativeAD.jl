@@ -9,7 +9,7 @@ s = ArgParseSettings()
         help = "the new eval bson"
     "fold"
         help = "the old eval bson"
-    "fold"
+    "ftarget"
         help = "the target eval bson"   
 end
 parsed_args = parse_args(ARGS, s)
