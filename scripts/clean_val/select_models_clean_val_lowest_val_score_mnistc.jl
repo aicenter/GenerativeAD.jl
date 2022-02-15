@@ -7,18 +7,24 @@ using GenerativeModels
 using DrWatson
 using StatsBase
 using EvalMetrics
+using ArgParse
+
+s = ArgParseSettings()
+@add_arg_table s begin
+    "indir"
+        help = "dir where data is stored and where it should be saved"
+        default = "images_mvtec" # or images_mnistc
+end
+parsed_args = parse_args(ARGS, s)
+indir = parsed_args["indir"]
 
 # all the models will use the lowest anomaly score on normal validation data
-master_path = datadir("experiments/images_mnistc")
-outpath = datadir("experiments/images_mnistc_clean_val_score")
-master_path = datadir("experiments/images_mvtec")
-outpath = datadir("experiments/images_mvtec_clean_val_score")
-
+master_path = datadir("experiments/$(indir)")
+outpath = datadir("experiments/$(indir)_clean_val_score")
 mkpath(outpath)
+
 models = readdir(master_path)
 seeds = 1:5
-
-# do vae_knn and vae_ocsvm
 
 function val_score(f)
 	try

@@ -1,3 +1,4 @@
+# this script is meant to be run interactively
 using GenerativeAD
 using FileIO, BSON
 using ValueHistories, DistributionsAD
@@ -8,12 +9,20 @@ using DrWatson
 using StatsBase
 using EvalMetrics
 using LinearAlgebra
+using ArgParse
+
+s = ArgParseSettings()
+@add_arg_table s begin
+    "indir"
+        help = "dir where data is stored and where it should be saved"
+        default = "images_leave-one-in"
+end
+parsed_args = parse_args(ARGS, s)
+indir = parsed_args["indir"]
 
 # all the models will use the lowest anomaly score on normal validation data
-master_path = datadir("experiments/images_leave-one-out")
-outpath = datadir("experiments/images_leave-one-out_clean_val_score")
-master_path = datadir("experiments/images_leave-one-in")
-outpath = datadir("experiments/images_leave-one-in_clean_val_score")
+master_path = datadir("experiments/$(indir)")
+outpath = datadir("experiments/$(indir)_clean_val_score")
 mkpath(outpath)
 
 models = readdir(master_path)
@@ -40,7 +49,6 @@ function collect_scores(path)
 		return []
 	end
 end
-
 
 function test_auc(f)
 	try
