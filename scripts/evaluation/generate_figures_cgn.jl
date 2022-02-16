@@ -92,7 +92,8 @@ rts = basic_summary_table(df_mvtec, outdir, prefix="images_mvtec", suffix="")
 
 # now let's load the clean dataframes and put together some knowledge plots
 orig_path = "/home/skvarvit/generativead/GenerativeAD.jl/data"
-df_images_loi_clean = load(joinpath(orig_path, "evaluation/images_leave-one-in_clean_val_final_eval.bson"))[:df];
+df_images_loi_clean = load(datadir("evaluation/images_leave-one-in_clean_val_final_eval_all.bson"))[:df];
+#load(joinpath(orig_path, "evaluation/images_leave-one-in_clean_val_final_eval.bson"))[:df];
 df_images_loi_clean[df_images_loi_clean.fit_t .=== nothing, :fit_t] .= 1.0; # ConvSkipGANomaly is missing the fit_t
 apply_aliases!(df_images_loi_clean, col="dataset", d=DATASET_ALIAS)
 for d in Set(["cifar10", "svhn2", "wmnist"])
@@ -101,7 +102,8 @@ for d in Set(["cifar10", "svhn2", "wmnist"])
     df_images_loi_clean[mask, :anomaly_class] .= 1 # it has to be > 0, because otherwise we get too many warnings from the aggregate_stats_max_mean
 end
 
-df_images_mvtec_clean = load(joinpath(orig_path, "evaluation/images_mvtec_clean_val_final_eval.bson"))[:df];
+df_images_mvtec_clean = load(datadir("evaluation/images_mvtec_clean_val_final_eval_all.bson"))[:df];
+#load(joinpath(orig_path, "evaluation/images_mvtec_clean_val_final_eval.bson"))[:df];
 df_mvtec[:anomaly_class] = 1
 df_images_mvtec_clean[:anomaly_class] = 1
 apply_aliases!(df_images_mvtec_clean, col="dataset", d=DATASET_ALIAS)
