@@ -22,9 +22,8 @@ function StatsBase.fit!(model::CGNAnomaly, X::Array{T, 4}; kwargs...) where T<:R
     # transposition since Python models are row major
     X = Array(permutedims(X, [4,3,2,1]))
     model.model.train()
-    history, _ = model.model.fit(X; kwargs...)
+    history, _, best_epoch = model.model.fit(X; kwargs...)
     best_model = nothing
-    best_epoch = nothing
     return (history=history, npars=model.model.num_params(), best_model=best_model, best_epoch=best_epoch)
 end
 

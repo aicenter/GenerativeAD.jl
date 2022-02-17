@@ -29,7 +29,7 @@ parsed_args = parse_args(ARGS, s)
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
-modelname = "cgn"
+modelname = "vae"
 # sample parameters, should return a Dict of model kwargs 
 """
 	sample_params()
