@@ -37,4 +37,5 @@ function downscale_data(category, factor)
 	@info "saved to $fname"
 end
 
-map(f->map(c->downscale_data(c,f), ["wood", "transistor", "grid"]), [4, 8, 16, 32])
+map(f->map(c->downscale_data(c,f), ["wood", "transistor", "grid", "bottle", "metal_nut", "pill", 
+	"capsule"]), [4, 8, 16, 32])
