@@ -45,11 +45,11 @@ modelname = "sgvae"
 Should return a named tuple that contains a sample of model parameters.
 """
 function sample_params()
-    weights_texture = [0.01, 0.05, 0.0, 0.01]
+    weights_texture = (0.01, 0.05, 0.0, 0.01)
     par_vec = (
         2 .^(3:8), 
         2 .^(3:6), 
-        map(x->x*weights_texture, [0, 1, 10, 100]),
+        map(x->x .* weights_texture, [0, 1, 10, 100]),
         vcat([0.0], 10 .^(-1.0:3.0)),
         vcat([0.0], 10 .^(-1.0:3.0)),
         0.1:0.1:0.3,
