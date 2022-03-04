@@ -2,6 +2,22 @@ using PyCall
 
 abstract type SGADModel end
 
+function StatsBase.fit!(model::SGADModel, X::Array{T, 4}; kwargs...) where T<:Real
+    # transposition since Python models are row major
+    X = Array(permutedims(X, [4,3,2,1]))
+    model.model.train()
+    history, _ = model.model.fit(X; kwargs...)
+    best_model = nothing
+    best_epoch = nothing
+    return (history=history, npars=model.model.num_params(), best_model=best_model, best_epoch=best_epoch)
+end
+
+function StatsBase.predict(model::SGADModel, X::Array{T, 4}; kwargs...) where T<:Real
+    model.model.eval()
+    X = Array(permutedims(X, [4,3,2,1]))
+    return Array(model.model.predict(X; kwargs...))
+end
+
 mutable struct CGNAnomaly <: SGADModel
     model
 end
@@ -18,18 +34,18 @@ def CGNAnomaly_constructor(kwargs):
     return CGNAnomaly(py"CGNAnomaly_constructor"(kwargs))
 end
 
-function StatsBase.fit!(model::CGNAnomaly, X::Array{T, 4}; kwargs...) where T<:Real
-    # transposition since Python models are row major
-    X = Array(permutedims(X, [4,3,2,1]))
-    model.model.train()
-    history, _ = model.model.fit(X; kwargs...)
-    best_model = nothing
-    best_epoch = nothing
-    return (history=history, npars=model.model.num_params(), best_model=best_model, best_epoch=best_epoch)
+mutable struct SGVAE <: SGADModel
+    model
 end
 
-function StatsBase.predict(model::CGNAnomaly, X::Array{T, 4}; kwargs...) where T<:Real
-    model.model.eval()
-    X = Array(permutedims(X, [4,3,2,1]))
-    return Array(model.model.predict(X; kwargs...))
+function SGVAE(; kwargs...)
+    py"""
+import sgad
+from sgad.sgvae.models import SGVAE
+
+def SGVAE_constructor(kwargs):
+    return SGVAE(**kwargs)
+    """
+
+    return SGVAE(py"SGVAE_constructor"(kwargs))
 end
