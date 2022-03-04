@@ -40,7 +40,7 @@ end
 function SGVAE(; kwargs...)
     py"""
 import sgad
-from sgad.sgvae.models import SGVAE
+from sgad.sgvae import SGVAE
 
 def SGVAE_constructor(kwargs):
     return SGVAE(**kwargs)
