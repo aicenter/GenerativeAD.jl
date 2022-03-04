@@ -55,7 +55,7 @@ function sample_params()
         0.1:0.1:0.3,
         ["independent", "mask_dependent"],
         0:3,
-        [[false, false], [true, false]]
+        [[false, false], [true, false]],
         2 .^(4:7), 
         ["orthogonal", "normal"], 
         0.01:0.01:0.1, 
