@@ -60,7 +60,6 @@ function sample_params()
         ["orthogonal", "normal"], 
         0.01:0.01:0.1, 
         1:Int(1e8), 
-        0.1:0.2:1,  
         10f0 .^(-4:0.1:-3)
         )
     argnames = (
@@ -77,7 +76,6 @@ function sample_params()
         :init_type, 
         :init_gain, 
         :init_seed, 
-        :lambda_mask, 
         :lr,
         )
     parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
