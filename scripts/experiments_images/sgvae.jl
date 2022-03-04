@@ -108,7 +108,7 @@ function fit(data, parameters, ac, seed)
     try
          global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
             max_train_time=20*3600/max_seed/anomaly_classes, workers=4,
-            n_epochs = n_epochs, save_iter = save_iter, save_results = true, save_path = res_save_path)
+            n_epochs = n_epochs, save_iter = save_iter, save_weights = false, save_path = res_save_path)
     catch e
         # return an empty array if fit fails so nothing is computed
         @info "Failed training due to \n$e"
@@ -129,6 +129,7 @@ function fit(data, parameters, ac, seed)
 
     # save the final model
     max_iters = length(info.history["iter"])
+    mkpath(joinpath(res_save_path, "weights"))  
     training_info.model.model.save_weights(
         joinpath(res_save_path, "weights", "$(max_iters).pth")
         )
