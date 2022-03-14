@@ -16,6 +16,8 @@ outdir = "result_tables"
 df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
 apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS)
 
+plot_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae"]
+
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
 
 # splits single and multi class image datasets into "statistic" and "semantic" anomalies
@@ -24,7 +26,7 @@ _split_image_datasets(df, dt) = (
             filter(x -> ~(x.dataset in dt), df)
         )
 
-function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{String, Int}())
+function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{String, Int}(), )
     agg_names = ["maxmean"]
     agg_funct = [aggregate_stats_max_mean]
     rts = []
@@ -50,9 +52,30 @@ function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{Stri
     rts
 end
 
-df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
+function save_selection(f, rt, plot_models)
+    try
+        model_cols = vcat([:dataset], Symbol.(plot_models))
+        CSV.write(f, rt[model_cols])
+    catch e
+        if typeof(e) == ArgumentError
+            @info "One of the models is not present in the DataFrame to be saved into $f"
+        else
+            rethrow(e)
+        end
+    end
+    f
+end
+
+
+
+##### LOI images 
 # this generates the overall tables (aggregated by datasets)
-rts = basic_summary_table(df_images_target, outdir, prefix="images_loi", suffix="")
+df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
+prefix="images_loi"
+suffix=""
+rts = basic_summary_table(df_images_target, outdir, prefix=prefix, suffix=suffix)
+save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
+    rts[1], plot_models)
 
 # this should generate the above tables split by anomaly classes
 for d in Set(["cifar10", "svhn2", "wmnist"])
@@ -83,12 +106,27 @@ function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Di
     rts
 end
 
-rts = basic_summary_table_per_ac(df_images_target, outdir, prefix="images_loi", suffix="_per_ac")
 
+
+##### LOI images per AC
+prefix="images_loi"
+suffix="_per_ac"
+rts = basic_summary_table_per_ac(df_images_target, outdir, prefix=prefix, suffix=suffix)
+save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
+    rts[1], plot_models)
+
+
+
+
+##### MVTEC
 # now let's do the same for mvtec results
 df_mvtec = load(datadir("evaluation/images_mvtec_eval_all.bson"))[:df];
 apply_aliases!(df_mvtec, col="dataset", d=DATASET_ALIAS)
-rts = basic_summary_table(df_mvtec, outdir, prefix="images_mvtec", suffix="")
+prefix="images_mvtec"
+suffix=""
+rts = basic_summary_table(df_mvtec, outdir, prefix=prefix, suffix=suffix)
+save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
+    rts[1], plot_models)
 
 # now let's load the clean dataframes and put together some knowledge plots
 orig_path = "/home/skvarvit/generativead/GenerativeAD.jl/data"
@@ -173,8 +211,6 @@ criterions = _prefix_symbol.("val", PAT_METRICS)
 extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 titles = ["semantic", "wmnist", "mvtec"]
-
-plot_models = ["aae", "dsvd", "fano", "fmgn", "gano", "vae", "cgn", "sgvae"]
 
 ranks_clean, metric_means_clean = _incremental_rank(df_semantic_clean, [val_metric], aggregate_stats_max_mean)
 ranks_inc, metric_means_inc = _incremental_rank(df_semantic, extended_criterions, aggregate_stats_auto)
