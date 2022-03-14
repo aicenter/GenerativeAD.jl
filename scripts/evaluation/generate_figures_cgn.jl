@@ -174,7 +174,7 @@ extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 titles = ["semantic", "wmnist", "mvtec"]
 
-plot_models = ["aae", "dsvd", "fano", "fmgn", "gano", "vae", "cgn"]
+plot_models = ["aae", "dsvd", "fano", "fmgn", "gano", "vae", "cgn", "sgvae"]
 
 ranks_clean, metric_means_clean = _incremental_rank(df_semantic_clean, [val_metric], aggregate_stats_max_mean)
 ranks_inc, metric_means_inc = _incremental_rank(df_semantic, extended_criterions, aggregate_stats_auto)
@@ -211,103 +211,3 @@ ranks_dfs = map(enumerate(
 #    a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
 #    a, b
 end
-
-# save it
-"""
-a, b = ab_plots[1]
-suffix = "semantic"
-g = PGFPlots.GroupPlot(1, 2, groupStyle = "vertical sep = 0.5cm, horizontal sep = 1.0cm")
-push!(g, a); 
-push!(g, b); 
-file = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_$(suffix).$(format)")
-PGFPlots.save(file, g; include_preamble=false)
-
-
-
-
-a_tab, b_tab = ab_plots[1]
-            a_img_stat, b_img_stat = ab_plots[2]
-            a_img_sem, b_img_sem = ab_plots[3]
-            
-            a_img_stat.ylabel = ""
-            b_img_stat.ylabel = ""
-            a_img_sem.ylabel = ""
-            b_img_sem.ylabel = ""
-            if grouptype
-                for (bst, bsm) in zip(b_img_stat.plots, b_img_sem.plots)
-                    bst.legendentry=nothing
-                    bsm.legendentry=nothing
-                end
-            end
-
-            g = PGFPlots.GroupPlot(3, 2, groupStyle = "vertical sep = 0.5cm, horizontal sep = 1.0cm")
-            push!(g, b_tab); push!(g, b_img_stat); push!(g, b_img_sem);
-            push!(g, a_tab); push!(g, a_img_stat); push!(g, a_img_sem);
-
-            file = "$(projectdir())/paper/figures/combined_knowledge_rank_$(ctype)_$(metric)$(suffix).$(format)"
-            PGFPlots.save(file, g; include_preamble=false)
-
-function plot_knowledge_combined(df_tab, df_img_stat, df_img_sem; grouptype=true, format="pdf", suffix="")
-        for (ctype, cnames, criterions) in collect(zip(
-            ["pat", "pac", "patn"],
-            [PAT_METRICS_NAMES, PAC_METRICS_NAMES, PATN_METRICS_NAMES],
-            [_prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("val", PAC_METRICS), _prefix_symbol.("val", PATN_METRICS)]))[1:1]
-        
-            extended_criterions = vcat(criterions, [val_metric])
-            extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
-            titles = ["(tab)", "(stat)", "(semantic)"]
-            
-            ab_plots = map(enumerate([(df_tab, df_tab_clean), (df_img_stat, df_img_stat_clean), (df_img_sem, df_img_sem_clean)])) do (i, (df, df_clean))
-                ranks_clean, metric_means_clean = _incremental_rank(df_clean, [val_metric], aggregate_stats_max_mean)
-                ranks_inc, metric_means_inc = _incremental_rank(df, extended_criterions, aggregate_stats_auto)
-                
-                ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), vcat(metric_means_clean, metric_means_inc; cols=:intersect)
-                # @info("", ranks_clean, ranks_inc)
-                # @info("", metric_means_clean, metric_means_inc)
-
-                # reorder table on tabular data as there is additional class of models (flows)
-                # one can do this manually at the end
-                if i == 1 && grouptype
-                    p = [1,2,4,5,3] # make sure that flows are last
-                    models = names(ranks_all)[p]
-                    select!(ranks_all, p)
-                    select!(metric_means_all, p)
-                    a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
-                else
-                    models = names(ranks_all)
-                    a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
-                end
-                a, b
-            end
-            
-            a_tab, b_tab = ab_plots[1]
-            a_img_stat, b_img_stat = ab_plots[2]
-            a_img_sem, b_img_sem = ab_plots[3]
-            
-            a_img_stat.ylabel = ""
-            b_img_stat.ylabel = ""
-            a_img_sem.ylabel = ""
-            b_img_sem.ylabel = ""
-            if grouptype
-                for (bst, bsm) in zip(b_img_stat.plots, b_img_sem.plots)
-                    bst.legendentry=nothing
-                    bsm.legendentry=nothing
-                end
-            end
-
-            g = PGFPlots.GroupPlot(3, 2, groupStyle = "vertical sep = 0.5cm, horizontal sep = 1.0cm")
-            push!(g, b_tab); push!(g, b_img_stat); push!(g, b_img_sem);
-            push!(g, a_tab); push!(g, a_img_stat); push!(g, a_img_sem);
-
-            file = "$(projectdir())/paper/figures/combined_knowledge_rank_$(ctype)_$(metric)$(suffix).$(format)"
-            PGFPlots.save(file, g; include_preamble=false)
-        end
-    end
-end
-
-plot_knowledge_combined(
-    (df_tabular, df_tabular_clean), 
-    (df_images_stat, df_images_stat_clean), 
-    (df_images_semantic, df_images_semantic_clean); format="tex", suffix="_grouptype")
-
-"""
