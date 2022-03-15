@@ -99,8 +99,8 @@ function fit(data, parameters, seed)
 
     # now return the different scoring functions
     training_info, [
-        (x-> predict(model, x, score_type="discriminator"), merge(parameters, (score = "discriminator",))),
-        (x-> predict(model, x, score_type="perceptual"), merge(parameters, (score = "perceptual",)))
+        (x-> predict(model, x, score_type="discriminator", workers=4), merge(parameters, (score = "discriminator",))),
+        (x-> predict(model, x, score_type="perceptual", workers=4), merge(parameters, (score = "perceptual",)))
         ]
 end
 
