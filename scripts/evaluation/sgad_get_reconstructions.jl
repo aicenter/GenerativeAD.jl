@@ -1,3 +1,4 @@
+# use this to collect the images of reconstructed data for the lastest iterations of the sgvae model
 using DrWatson
 @quickactivate
 using GenerativeAD
@@ -32,4 +33,4 @@ end
 copy_latest_reconstructions("sgvae", "leave-one-in", "wildlife_MNIST")
 copy_latest_reconstructions("sgvae", "leave-one-in", "CIFAR10")
 copy_latest_reconstructions("sgvae", "leave-one-in", "SVHN2")
-#copy_latest_reconstructions("sgvae", "mvtec", "SVHN2")
+copy_latest_reconstructions("sgvae", "mvtec", "SVHN2")
