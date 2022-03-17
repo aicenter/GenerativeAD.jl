@@ -2,7 +2,7 @@ using DrWatson
 @quickactivate
 using GenerativeAD
 
-function find_copy_latest_reconstruction(dir)
+function find_copy_latest_reconstruction(dir, outpath)
     # construct outdir
     modelid = split(dir, "/")[end-1]
     seed = split(dir, "/")[end-2]
@@ -25,11 +25,11 @@ function copy_latest_reconstructions(model, datatype, dataset)
     superfs = unique(dirname.(samples))
 
     for dir in superfs
-        find_copy_latest_reconstruction(dir)
+        find_copy_latest_reconstruction(dir, outpath)
     end
 end
 
 copy_latest_reconstructions("sgvae", "leave-one-in", "wildlife_MNIST")
 copy_latest_reconstructions("sgvae", "leave-one-in", "CIFAR10")
 copy_latest_reconstructions("sgvae", "leave-one-in", "SVHN2")
-copy_latest_reconstructions("sgvae", "mvtec", "SVHN2")
+#copy_latest_reconstructions("sgvae", "mvtec", "SVHN2")
