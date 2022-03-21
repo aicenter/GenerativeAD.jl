@@ -128,6 +128,7 @@ function fit(data, parameters, ac, seed)
         )
 
     # save the final model
+    model.model.eval()
     max_iters = length(info.history["iter"])
     mkpath(joinpath(res_save_path, "weights"))
     training_info.model.model.save_weights(
@@ -136,7 +137,7 @@ function fit(data, parameters, ac, seed)
 
     # now return the different scoring functions
     training_info, [
-        (x-> predict(model, x, score_type="logpx", workers=4), merge(parameters, (score = "logpx",))),
+        (x-> predict(model, x, score_type="logpx", n=10, workers=4), merge(parameters, (score = "logpx",))),
         ]
 end
 
