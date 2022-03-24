@@ -66,8 +66,6 @@ function save_selection(f, rt, plot_models)
     f
 end
 
-
-
 ##### LOI images 
 # this generates the overall tables (aggregated by datasets)
 df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
@@ -77,6 +75,26 @@ rts = basic_summary_table(df_images_target, outdir, prefix=prefix, suffix=suffix
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
     rts[1], plot_models)
 
+# this is to be used for further distinguishing performance based on some hyperparam values
+perf_plot_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae", "sgvae_d", "sgvae_i"]
+
+suffix = "_sgvae_latent_structure"
+subdf = filter(r->r.modelname=="sgvae", df_images_target)
+params = map(x->get(parse_savename(x)[2], "latent_structure", ""), subdf.parameters)
+subdf.modelname[params .== "mask"] .= "sgvae_d"
+subdf.modelname[params .!= "mask"] .= "sgvae_i"
+perf_df_images_target = vcat(subdf, df_images_target)
+rts = basic_summary_table(perf_df_images_target, outdir, prefix=prefix, suffix=suffix)
+save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
+    rts[1], perf_plot_models)
+
+
+
+
+
+
+
+##### LOI images per AC
 # this should generate the above tables split by anomaly classes
 for d in Set(["cifar10", "svhn2", "wmnist"])
     mask = (df_images_target.dataset .== d)
@@ -106,14 +124,27 @@ function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Di
     rts
 end
 
-
-
-##### LOI images per AC
 prefix="images_loi"
 suffix="_per_ac"
 rts = basic_summary_table_per_ac(df_images_target, outdir, prefix=prefix, suffix=suffix)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
     rts[1], plot_models)
+
+
+# this is to be used for further distinguishing performance based on some hyperparam values
+for d in Set(["cifar10", "svhn2", "wmnist"])
+    mask = (perf_df_images_target.dataset .== d)
+    perf_df_images_target[mask, :dataset] .= perf_df_images_target[mask, :dataset] .* ":" .* convert_anomaly_class.(perf_df_images_target[mask, :anomaly_class], d)
+    perf_df_images_target[mask, :anomaly_class] .= 1 # it has to be > 0, because otherwise we get too many warnings from the aggregate_stats_max_mean
+end
+
+prefix="images_loi"
+suffix = "_sgvae_latent_structure_per_ac"
+rts = basic_summary_table_per_ac(perf_df_images_target, outdir, prefix=prefix, suffix=suffix)
+save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
+    rts[1], perf_plot_models)
+
+
 
 
 
@@ -128,6 +159,25 @@ rts = basic_summary_table(df_mvtec, outdir, prefix=prefix, suffix=suffix)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
     rts[1], plot_models)
 
+# do this for the different sgvae params
+prefix="images_mvtec"
+suffix = "_sgvae_latent_structure"
+
+subdf = filter(r->r.modelname=="sgvae", df_mvtec)
+params = map(x->get(parse_savename(x)[2], "latent_structure", ""), subdf.parameters)
+subdf.modelname[params .== "mask"] .= "sgvae_d"
+subdf.modelname[params .!= "mask"] .= "sgvae_i"
+perf_df_mvtec = vcat(subdf, df_mvtec)
+rts = basic_summary_table(perf_df_mvtec, outdir, prefix=prefix, suffix=suffix)
+save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
+    rts[1], perf_plot_models)
+
+
+
+
+
+
+##### KNOWLEDGE PLOTS
 # now let's load the clean dataframes and put together some knowledge plots
 orig_path = "/home/skvarvit/generativead/GenerativeAD.jl/data"
 df_images_loi_clean = load(datadir("evaluation/images_leave-one-in_clean_val_final_eval_all.bson"))[:df];
@@ -140,12 +190,15 @@ for d in Set(["cifar10", "svhn2", "wmnist"])
     df_images_loi_clean[mask, :anomaly_class] .= 1 # it has to be > 0, because otherwise we get too many warnings from the aggregate_stats_max_mean
 end
 
+# mvtec
 df_images_mvtec_clean = load(datadir("evaluation/images_mvtec_clean_val_final_eval_all.bson"))[:df];
 #load(joinpath(orig_path, "evaluation/images_mvtec_clean_val_final_eval.bson"))[:df];
 df_mvtec[:anomaly_class] = 1
 df_images_mvtec_clean[:anomaly_class] = 1
 apply_aliases!(df_images_mvtec_clean, col="dataset", d=DATASET_ALIAS)
 
+
+# now differentiate them
 df_semantic = filter(r->!(occursin("wmnist", r[:dataset])),df_images_target)
 df_semantic_clean = filter(r->!(occursin("mnist", r[:dataset])),df_images_loi_clean)
 
@@ -217,7 +270,6 @@ ranks_inc, metric_means_inc = _incremental_rank(df_semantic, extended_criterions
 ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), vcat(metric_means_clean, metric_means_inc; cols=:intersect)
 models = names(ranks_all)
 
-
 #ab_plots = map(enumerate([(df_semantic, df_semantic_clean), (df_wmnist, df_wmnist_clean), (df_mvtec, df_mvtec_clean)])) do (i, (df, df_clean))
 ranks_dfs = map(enumerate(
     zip(titles,
@@ -247,3 +299,4 @@ ranks_dfs = map(enumerate(
 #    a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
 #    a, b
 end
+
