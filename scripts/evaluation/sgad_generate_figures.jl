@@ -12,6 +12,9 @@ using GenerativeAD.Evaluation: _prefix_symbol, aggregate_stats_mean_max, aggrega
 using GenerativeAD.Evaluation: PAT_METRICS, PATN_METRICS, PAC_METRICS, BASE_METRICS, TRAIN_EVAL_TIMES
 using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, convert_anomaly_class
 
+const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@\\%5\$","\$PR@\\%10\$","\$PR@\\%20\$"]
+
+# this is to suppress warnings
 @suppress_err begin
 
 include("./utils/ranks.jl")
@@ -260,7 +263,6 @@ tst_metric = _prefix_symbol("tst", metric)
 format = "pdf"
 
 ctype = "pat"
-const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@\\%5\$","\$PR@\\%10\$","\$PR@\\%20\$"]
 cnames = PAT_METRICS_NAMES
 criterions = _prefix_symbol.("val", PAT_METRICS)
 
