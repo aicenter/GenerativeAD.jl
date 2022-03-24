@@ -5,11 +5,14 @@ using Statistics
 using StatsBase
 import PGFPlots
 using CSV
+using Suppressor
 
 using GenerativeAD.Evaluation: MODEL_ALIAS, DATASET_ALIAS, MODEL_TYPE, apply_aliases!
 using GenerativeAD.Evaluation: _prefix_symbol, aggregate_stats_mean_max, aggregate_stats_max_mean
 using GenerativeAD.Evaluation: PAT_METRICS, PATN_METRICS, PAC_METRICS, BASE_METRICS, TRAIN_EVAL_TIMES
 using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, convert_anomaly_class
+
+@suppress_err begin
 
 include("./utils/ranks.jl")
 outdir = "result_tables"
@@ -300,3 +303,4 @@ ranks_dfs = map(enumerate(
 #    a, b
 end
 
+end

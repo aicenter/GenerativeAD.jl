@@ -33,4 +33,11 @@ end
 copy_latest_reconstructions("sgvae", "leave-one-in", "wildlife_MNIST")
 copy_latest_reconstructions("sgvae", "leave-one-in", "CIFAR10")
 copy_latest_reconstructions("sgvae", "leave-one-in", "SVHN2")
-copy_latest_reconstructions("sgvae", "mvtec", "SVHN2")
+
+copy_latest_reconstructions("sgvae", "mvtec", "wood")
+copy_latest_reconstructions("sgvae", "mvtec", "bottle")
+copy_latest_reconstructions("sgvae", "mvtec", "pill")
+copy_latest_reconstructions("sgvae", "mvtec", "grid")
+copy_latest_reconstructions("sgvae", "mvtec", "metal_nut")
+copy_latest_reconstructions("sgvae", "mvtec", "capsule")
+copy_latest_reconstructions("sgvae", "mvtec", "transistor")
