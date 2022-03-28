@@ -40,18 +40,18 @@ function sample_params()
     par_vec = (
         2 .^(3:8), 
         2 .^(3:6), 
-        map(x->x .* weights_texture, [0, 1, 10, 100]),
-        vcat([0.0], 10 .^(-1.0:3.0)),
-        vcat([0.0], 10 .^(-1.0:3.0)),
+        map(x->x .* weights_texture, [1, 5, 10, 50, 100]),
+        vcat(10 .^(-1.0:3.0), 0.5 .* 10 .^(-1.0:3.0)),
+        vcat(10 .^(-1.0:3.0), 0.5 .* 10 .^(-1.0:3.0)),
         0.1:0.1:0.3,
         ["independent", "mask_dependent"],
         0:3,
-        [(false, false), (true, false)],
         2 .^(4:7), 
         ["orthogonal", "normal"], 
         0.01:0.01:0.1, 
         1:Int(1e8), 
-        10f0 .^(-4:0.1:-3)
+        10f0 .^(-4:0.1:-3),
+        ["conv_net", "global"]
         )
     argnames = (
         :z_dim, 
@@ -62,12 +62,12 @@ function sample_params()
         :tau_mask,
         :latent_structure,
         :fixed_mask_epochs,
-        :detach_mask,
         :batch_size, 
         :init_type, 
         :init_gain, 
         :init_seed, 
         :lr,
+        :log_var_x_estimate_top
         )
     parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
@@ -128,7 +128,7 @@ function fit(data, parameters, seed)
 
     # now return the different scoring functions
     training_info, [
-        (x-> predict(model, x, score_type="logpx", workers=4), merge(parameters, (score = "logpx",))),
+        (x-> predict(model, x, score_type="logpx", n=10, workers=4), merge(parameters, (score = "logpx",))),
         ]
 end
 
@@ -172,6 +172,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
             if GenerativeAD.check_params(savepath, edited_parameters)
                 # fit
                 training_info, results = fit(data, edited_parameters, seed)
+
+                # add a version
+                edited_parameters = merge(edited_parameters, (version="0.2",))
 
                 # save the model separately         
                 if training_info.model !== nothing
