@@ -55,7 +55,6 @@ function sample_params()
         0.1:0.1:0.3,
         ["independent", "mask_dependent"],
         0:3,
-        [(false, false), (true, false)],
         2 .^(4:7), 
         ["orthogonal", "normal"], 
         0.01:0.01:0.1, 
@@ -71,7 +70,6 @@ function sample_params()
         :tau_mask,
         :latent_structure,
         :fixed_mask_epochs,
-        :detach_mask,
         :batch_size, 
         :init_type, 
         :init_gain, 
@@ -141,6 +139,16 @@ function fit(data, parameters, ac, seed)
         ]
 end
 
+function normalize_data(data)
+    if minimum(data[1][1]) == 0 && maximum(data[1][1]) == 1
+        return ((data[1][1] .- 0.5) ./0.5, data[1][2]), 
+            ((data[2][1] .- 0.5) ./0.5, data[2][2]),
+            ((data[3][1] .- 0.5) ./0.5, data[3][2])
+    else
+        return data
+    end
+end
+
 ####################################################################
 ################ THIS PART IS COMMON FOR ALL MODELS ################
 # only execute this if run directly - so it can be included in other files
@@ -158,7 +166,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
                 # get data
                 data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method, contamination=contamination)
-                
+                data = normalize_data(data)
+
                 # edit parameters
                 edited_parameters = GenerativeAD.edit_params(data, parameters)
 

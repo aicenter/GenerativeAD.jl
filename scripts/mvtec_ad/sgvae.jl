@@ -132,6 +132,16 @@ function fit(data, parameters, seed)
         ]
 end
 
+function normalize_data(data)
+    if minimum(data[1][1]) == 0 && maximum(data[1][1]) == 1
+        return ((data[1][1] .- 0.5) ./0.5, data[1][2]), 
+            ((data[2][1] .- 0.5) ./0.5, data[2][2]),
+            ((data[3][1] .- 0.5) ./0.5, data[3][2])
+    else
+        return data
+    end
+end
+
 ####################################################################
 ################ THIS PART IS COMMON FOR ALL MODELS ################
 # only execute this if run directly - so it can be included in other files
@@ -149,6 +159,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
             # get data
             data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
                 contamination=contamination, img_size=128)
+            data = normalize_data(data)
             
             # edit parameters
             edited_parameters = GenerativeAD.edit_params(data, parameters)
