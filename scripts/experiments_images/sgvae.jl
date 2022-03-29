@@ -37,6 +37,7 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "sgvae"
+version = 0.2
 
 # sample parameters, should return a Dict of model kwargs 
 """
@@ -93,7 +94,7 @@ This is the most important function - returns `training_info` and a tuple or a v
 Each element of the return vector contains a specific anomaly score function - there can be multiple for each trained model.
 Final parameters is a named tuple of names and parameter values that are used for creation of the savefile name.
 """
-function fit(data, parameters, ac, seed)
+function fit(data, parameters, save_parameters, ac, seed)
     # construct model - constructor should only accept kwargs
     model = GenerativeAD.Models.SGVAE(;parameters...)
 
@@ -136,8 +137,9 @@ function fit(data, parameters, ac, seed)
         )
 
     # now return the different scoring functions
+    parameters = 
     training_info, [
-        (x-> predict(model, x, score_type="logpx", n=10, workers=4), merge(parameters, (score = "logpx",))),
+        (x-> predict(model, x, score_type="logpx", n=10, workers=4), merge(save_parameters, (score = "logpx",))),
         ]
 end
 
@@ -149,6 +151,11 @@ function normalize_data(data)
     else
         return data
     end
+end
+
+function dropnames(namedtuple::NamedTuple, names::Tuple{Vararg{Symbol}}) 
+    keepnames = Base.diff_names(Base._nt_names(namedtuple), names)
+    return NamedTuple{keepnames}(namedtuple)
 end
 
 ####################################################################
@@ -180,20 +187,23 @@ if abspath(PROGRAM_FILE) == @__FILE__
                 # check if a combination of parameters and seed alread exists
                 if GenerativeAD.check_params(savepath, edited_parameters)
                     # fit
-                    training_info, results = fit(data, edited_parameters, i, seed)
-
-                    # add a version
-                    edited_parameters = merge(edited_parameters, (version="0.2",))
+                    save_parameters = merge(edited_parameters, (version=version,))
+                    save_parameters = dropnames(save_parameters, (
+                        :log_var_x_estimate_top, 
+                        :latent_structure
+                        ))
+                    training_info, results = fit(data, edited_parameters, save_parameters, i, seed)
 
                     # save the model separately         
                     if training_info.model !== nothing
-                        tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
+                        tagsave(joinpath(savepath, savename("model", save_parameters, "bson", digits=5)), 
                             Dict("fit_t"=>training_info.fit_t,
                                  "history"=>training_info.history,
                                  "parameters"=>edited_parameters,
                                  "tr_encodings"=>training_info.tr_encodings,
                                  "val_encodings"=>training_info.val_encodings,
                                  "tst_encodings"=>training_info.tst_encodings,
+                                 "version"=>version
                                  ), 
                             safe = true)
                         training_info = merge(training_info, 
