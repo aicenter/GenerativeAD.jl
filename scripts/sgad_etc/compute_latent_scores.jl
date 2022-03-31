@@ -125,7 +125,7 @@ for ac in 1:max_ac
 
         for model_id in model_ids
             compute_save_scores(model_id, model_dir, device, tr_X, val_X, tst_X, res_fs, res_dir, 
-                out_dir, , latent_score_type, seed, ac, dataset, modelname)
+                out_dir, latent_score_type, seed, ac, dataset, modelname)
         end
     end
 end
