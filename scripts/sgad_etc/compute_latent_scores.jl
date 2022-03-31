@@ -123,7 +123,7 @@ for ac in 1:max_ac
         res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
         res_fs = readdir(res_dir)
 
-        for model_id in model_ids[2:end]
+        for model_id in model_ids
             compute_save_scores(model_id, model_dir, device, tr_X, val_X, tst_X, res_fs, res_dir, 
                 out_dir, latent_score_type)
         end
