@@ -92,9 +92,7 @@ function compute_save_scores(model_id, model_dir, device, tr_X, val_X, tst_X, re
         :val_eval_t => ts[2],
         :tst_eval_t => ts[3],    
         )
-
-    outf = split(res_f, "model_")[2] 
-    outf = joinpath(out_dir, "score=$(latent_score_type)_" * outf)
+    outf = joinpath(out_dir, "score=$(latent_score_type)_" * res_f)
     save(joinpath(out_dir, outf), output)
     @info "Results writen to $outf."
 end
