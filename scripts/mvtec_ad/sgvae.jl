@@ -166,7 +166,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
             # get data
             data = GenerativeAD.load_data("MVTec-AD", seed=seed, category=category, 
                 contamination=contamination, img_size=128)
-            data = normalize_data(data)
+            data = GenerativeAD.Datasets.normalize_data(data)
             
             # edit parameters
             edited_parameters = GenerativeAD.edit_params(data, parameters)
