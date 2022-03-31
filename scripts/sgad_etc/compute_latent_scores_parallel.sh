@@ -1,9 +1,8 @@
 #!/bin/bash
 
-DATASET=$1
+DATASET_FILE=$1
 DATATYPE=$2
 LATENT_SCORE=$3
-DATASET_FILE=$4
 
 LOG_DIR="${HOME}/logs/sgvae_latent_scores"
 
