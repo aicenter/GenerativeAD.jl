@@ -27,9 +27,12 @@ s = ArgParseSettings()
         arg_type = String
         help = "cpu or cuda"
         default = "cpu"
+    "--force", "-f"
+        action = :store_true
+        help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype, latent_score_type, device = parsed_args
+@unpack modelname, dataset, datatype, latent_score_type, device, force = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 
@@ -53,8 +56,14 @@ function get_latent_scores(model, x)
 end
 
 function compute_save_scores(model_id, model_dir, device, tr_X, val_X, tst_X, res_fs, res_dir, 
-    out_dir, latent_score_type, seed, ac, dataset, modelname)
-        # load the model
+    out_dir, latent_score_type, seed, ac, dataset, modelname, force=false)
+    # first check whether the scores were not already computed
+    outf = joinpath(out_dir, "model_id=$(model_id)_score=$(latent_score_type).bson")
+    if isfile(outf) && !force
+        @info "Skipping computation of $outf as it already exists."
+    end
+
+    # load the model
     md = joinpath(model_dir, "model_id=$(model_id)")
     if !("weights" in readdir(md))
         @info "Model weights not found in $md."
@@ -125,7 +134,7 @@ for ac in 1:max_ac
 
         for model_id in model_ids
             compute_save_scores(model_id, model_dir, device, tr_X, val_X, tst_X, res_fs, res_dir, 
-                out_dir, latent_score_type, seed, ac, dataset, modelname)
+                out_dir, latent_score_type, seed, ac, dataset, modelname, force=force)
         end
     end
 end
