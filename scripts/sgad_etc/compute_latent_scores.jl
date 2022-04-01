@@ -55,7 +55,7 @@ function get_latent_scores(model, x)
     return  scores[2:end,:], t
 end
 
-function compute_save_scores(model_id, model_dir, device, tr_X, val_X, tst_X, res_fs, res_dir, 
+function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir, 
     out_dir, latent_score_type, seed, ac, dataset, modelname; force=false)
     # first check whether the scores were not already computed
     outf = joinpath(out_dir, "model_id=$(model_id)_score=$(latent_score_type).bson")
@@ -83,6 +83,7 @@ function compute_save_scores(model_id, model_dir, device, tr_X, val_X, tst_X, re
     res_d = load(joinpath(res_dir, res_f))
 
     # compute the results
+    (tr_X, tr_y), (val_X, val_y), (tst_X, tst_y) = data
     results = map(x->get_latent_scores(model, x), (tr_X, val_X, tst_X));
     latent_scores = [x[1] for x in results];
     ts = [x[2] for x in results];
@@ -93,9 +94,14 @@ function compute_save_scores(model_id, model_dir, device, tr_X, val_X, tst_X, re
         :latent_score_type => latent_score_type,
         :modelname => modelname,
         :dataset => dataset,
-        :anomly_class => ac,
+        :anomaly_class => ac,
         :seed => seed,
         :tr_scores => latent_scores[1],
+        :val_scores => latent_scores[2],
+        :tst_scores => latent_scores[3],
+        :tr_labels => tr_y,
+        :val_labels => val_y,
+        :tst_labels => tst_y,
         :val_scores => latent_scores[2],
         :tst_scores => latent_scores[3],
         :tr_eval_t => ts[1],
@@ -122,6 +128,7 @@ for ac in 1:max_ac
         tr_X = Array(permutedims(tr_x, [4,3,2,1]));
         val_X = Array(permutedims(val_x, [4,3,2,1]));
         tst_X = Array(permutedims(tst_x, [4,3,2,1]));
+        data = (tr_X, tr_y), (val_X, val_y), (tst_X, tst_y);
 
         # outputs
         out_dir = datadir("sgad_latent_scores/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
@@ -134,7 +141,7 @@ for ac in 1:max_ac
         res_fs = readdir(res_dir)
 
         for model_id in model_ids
-            compute_save_scores(model_id, model_dir, device, tr_X, val_X, tst_X, res_fs, res_dir, 
+            compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir, 
                 out_dir, latent_score_type, seed, ac, dataset, modelname, force=force)
         end
     end

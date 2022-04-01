@@ -3,6 +3,7 @@
 DATASET_FILE=$1
 DATATYPE=$2
 LATENT_SCORE=$3
+FORCE=$4
 
 LOG_DIR="${HOME}/logs/sgvae_latent_scores"
 
@@ -14,5 +15,5 @@ while read d; do
     # submit to slurm
     sbatch \
     --output="${LOG_DIR}/${d}_${LATENT_SCORE}_%A.out" \
-     ./compute_latent_scores.sh $d $DATATYPE ${LATENT_SCORE}
+     ./compute_latent_scores.sh $d $DATATYPE ${LATENT_SCORE} $FORCE
 done < ${DATASET_FILE}
