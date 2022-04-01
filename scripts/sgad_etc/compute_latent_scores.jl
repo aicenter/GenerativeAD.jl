@@ -56,7 +56,7 @@ function get_latent_scores(model, x)
 end
 
 function compute_save_scores(model_id, model_dir, device, tr_X, val_X, tst_X, res_fs, res_dir, 
-    out_dir, latent_score_type, seed, ac, dataset, modelname, force=false)
+    out_dir, latent_score_type, seed, ac, dataset, modelname; force=false)
     # first check whether the scores were not already computed
     outf = joinpath(out_dir, "model_id=$(model_id)_score=$(latent_score_type).bson")
     if isfile(outf) && !force
