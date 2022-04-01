@@ -129,69 +129,6 @@ def predict(X, alpha):
 	return py"predict"(X, lr.alpha)
 end
 
-function compute_alpha_scores(model_id, lf) 
-	# load the saved scores
-	ldata = load(joinpath(latent_dir, lf))
-	rf = filter(x->occursin("$(model_id)", x), rfs)
-	if length(rf) < 1
-		@info "Something is wrong, original score file for $lf not found"
-		return
-	end
-	rf = rf[1]
-	rdata = load(joinpath(res_dir, rf))
-
-	# prepare the data
-	tr_scores = cat(rdata[:tr_scores], transpose(ldata[:tr_scores]), dims=2);
-	val_scores = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
-	tst_scores = cat(rdata[:tst_scores], transpose(ldata[:tst_scores]), dims=2);
-	tr_y = ldata[:tr_labels];
-	val_y = ldata[:val_labels];
-	tst_y = ldata[:tst_labels];
-
-	# prepare the result dataframe
-	res_df = OrderedDict()
-	res_df["modelname"] = modelname
-	res_df["dataset"] = dataset
-	res_df["phash"] = GenerativeAD.Evaluation.hash(rdata[:parameters])
-	res_df["parameters"] = "latent_score_type=$(latent_score_type)_"* split(rf, ".bson")[1]
-	res_df["fit_t"] = rdata[:fit_t]
-	res_df["tr_eval_t"] = ldata[:tr_eval_t] + rdata[:tr_eval_t]
-	res_df["val_eval_t"] = ldata[:val_eval_t] + rdata[:val_eval_t]
-	res_df["tst_eval_t"] = ldata[:tst_eval_t] + rdata[:tst_eval_t]
-	res_df["seed"] = seed
-	res_df["npars"] = rdata[:npars]
-	res_df["anomaly_class"] = ac
-	res_df["method"] = method
-	res_df["score_type"] = score_type
-	res_df["latent_score_type"] = latent_score_type
-
-	# fit the logistic regression - first on all the validation data
-	lr = LogReg()
-	fit!(lr, val_scores, val_y)
-	val_probs = predict(lr, val_scores)
-	tst_probs = predict(lr, tst_scores)
-
-	# now fill in the values
-	res_df["val_auc"], res_df["val_auprc"], res_df["val_tpr_5"], res_df["val_f1_5"] = 
-		basic_stats(val_y, val_probs)
-	res_df["tst_auc"], res_df["tst_auprc"], res_df["tst_tpr_5"], res_df["tst_f1_5"] = 
-		basic_stats(tst_y, tst_probs)
-
-	# then do the same on a small section of the data
-	for p in [0.0001, 0.001, 0.01, 0.05, 0.1, 0.2]
-		ip = p >= 0.01 ? 1 : 2
-		sp = split("$(p*100)", ".")[ip]
-		res_df["val_pat_$(sp)"], res_df["val_auc_$(sp)"], res_df["tst_auc_$(sp)"] = 
-			perf_at_p_original(p, val_scores, val_y, tst_scores, tst_y)
-	end
-
-	# then save it
-	res_df = DataFrame(res_df)
-	outf = joinpath(save_dir, "model_id=$(model_id)_score=$(latent_score_type)_method=$(method).bson")
-	save(outf, Dict(:df => res_df))
-	@info "Saved $outf."
-end
-
 for ac in 1:max_ac
 	for seed in 1:max_seed
 		# we will go over the models that have the latent scores computed - for them we can be sure that 
@@ -214,7 +151,66 @@ for ac in 1:max_ac
 		rfs = filter(x->occursin(score_type, x), rfs)
 
 		for (model_id, lf) in zip(model_ids, lfs)
-			compute_alpha_scores(model_id, lf)
+			# load the saved scores
+			ldata = load(joinpath(latent_dir, lf))
+			rf = filter(x->occursin("$(model_id)", x), rfs)
+			if length(rf) < 1
+				@info "Something is wrong, original score file for $lf not found"
+				return
+			end
+			rf = rf[1]
+			rdata = load(joinpath(res_dir, rf))
+
+			# prepare the data
+			tr_scores = cat(rdata[:tr_scores], transpose(ldata[:tr_scores]), dims=2);
+			val_scores = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
+			tst_scores = cat(rdata[:tst_scores], transpose(ldata[:tst_scores]), dims=2);
+			tr_y = ldata[:tr_labels];
+			val_y = ldata[:val_labels];
+			tst_y = ldata[:tst_labels];
+
+			# prepare the result dataframe
+			res_df = OrderedDict()
+			res_df["modelname"] = modelname
+			res_df["dataset"] = dataset
+			res_df["phash"] = GenerativeAD.Evaluation.hash(rdata[:parameters])
+			res_df["parameters"] = "latent_score_type=$(latent_score_type)_"* split(rf, ".bson")[1]
+			res_df["fit_t"] = rdata[:fit_t]
+			res_df["tr_eval_t"] = ldata[:tr_eval_t] + rdata[:tr_eval_t]
+			res_df["val_eval_t"] = ldata[:val_eval_t] + rdata[:val_eval_t]
+			res_df["tst_eval_t"] = ldata[:tst_eval_t] + rdata[:tst_eval_t]
+			res_df["seed"] = seed
+			res_df["npars"] = rdata[:npars]
+			res_df["anomaly_class"] = ac
+			res_df["method"] = method
+			res_df["score_type"] = score_type
+			res_df["latent_score_type"] = latent_score_type
+
+			# fit the logistic regression - first on all the validation data
+			lr = LogReg()
+			fit!(lr, val_scores, val_y)
+			val_probs = predict(lr, val_scores)
+			tst_probs = predict(lr, tst_scores)
+
+			# now fill in the values
+			res_df["val_auc"], res_df["val_auprc"], res_df["val_tpr_5"], res_df["val_f1_5"] = 
+				basic_stats(val_y, val_probs)
+			res_df["tst_auc"], res_df["tst_auprc"], res_df["tst_tpr_5"], res_df["tst_f1_5"] = 
+				basic_stats(tst_y, tst_probs)
+
+			# then do the same on a small section of the data
+			for p in [0.0001, 0.001, 0.01, 0.05, 0.1, 0.2]
+				ip = p >= 0.01 ? 1 : 2
+				sp = split("$(p*100)", ".")[ip]
+				res_df["val_pat_$(sp)"], res_df["val_auc_$(sp)"], res_df["tst_auc_$(sp)"] = 
+					perf_at_p_original(p, val_scores, val_y, tst_scores, tst_y)
+			end
+
+			# then save it
+			res_df = DataFrame(res_df)
+			outf = joinpath(save_dir, "model_id=$(model_id)_score=$(latent_score_type)_method=$(method).bson")
+			save(outf, Dict(:df => res_df))
+			@info "Saved $outf."
 		end
 	end
 end
