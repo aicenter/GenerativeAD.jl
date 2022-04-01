@@ -191,8 +191,8 @@ function compute_alpha_scores(model_id, lf)
 	@info "Saved $outf."
 end
 
-for ac in 1:10
-	for seed in 1:1
+for ac in 1:max_ac
+	for seed in 1:max_seed
 		# we will go over the models that have the latent scores computed - for them we can be sure that 
 		# we have all we need
 		# we actually don't even need to load the models themselves, just the original (logpx) scores
