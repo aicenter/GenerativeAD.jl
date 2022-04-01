@@ -13,6 +13,6 @@ fi
 while read d; do
     # submit to slurm
     sbatch \
-    --output="${LOG_DIR}/${d}.out" \
+    --output="${LOG_DIR}/${d}_${LATENT_SCORE}_%A.out" \
      ./compute_latent_scores.sh $d $DATATYPE ${LATENT_SCORE}
 done < ${DATASET_FILE}
