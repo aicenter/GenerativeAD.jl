@@ -61,6 +61,7 @@ function compute_save_scores(model_id, model_dir, device, tr_X, val_X, tst_X, re
     outf = joinpath(out_dir, "model_id=$(model_id)_score=$(latent_score_type).bson")
     if isfile(outf) && !force
         @info "Skipping computation of $outf as it already exists."
+        return
     end
 
     # load the model
