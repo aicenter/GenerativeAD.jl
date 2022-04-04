@@ -86,7 +86,7 @@ function create_save_scores(model_id, af, out_model_name, alpha_dir, pdata, data
 
 		# save it
 		save(joinpath(save_dir, outf), Dict(:df=>res_df))
-		@info "Saved $(joinpath(save_dir, outf))."
+		#@info "Saved $(joinpath(save_dir, outf))."
 	end
 end
 
@@ -115,10 +115,12 @@ for ac in 1:max_ac
 			# save path
 			save_dir = datadir("evaluation/images_$(datatype)/$(modelname)_$(aggreg_type)/$(dataset)/ac=$(ac)/seed=$(seed)")
 			mkpath(save_dir)
+			@info "Saving data to $(save_dir)..."
 
 			for (model_id, af) in zip(model_ids, afs)
 				create_save_scores(model_id, af, out_model_name, alpha_dir, pdata, dataset, seed, ac, save_dir, st)
 			end
+			@info "Done."
 		end
 	end
 end

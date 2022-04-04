@@ -162,6 +162,7 @@ for ac in 1:max_ac
 		# make the save dir
 		save_dir = datadir("sgad_alpha_evaluation/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
 		mkpath(save_dir)
+		@info "Saving data to $(save_dir)..."
 
 		# top score files
 		res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
@@ -205,6 +206,14 @@ for ac in 1:max_ac
 			res_df["latent_score_type"] = latent_score_type
 
 			# fit the logistic regression - first on all the validation data
+			# first, filter out NaNs and Infs
+			inds = vec(mapslices(r->!any(r.==Inf), val_scores, dims=2))
+			val_scores = val_scores[inds, :]
+			val_y = val_y[inds]
+			inds = vec(mapslices(r->!any(isnan.(r)), val_scores, dims=2))
+			val_scores = val_scores[inds, :]
+			val_y = val_y[inds]
+
 			lr = LogReg()
 			fit!(lr, val_scores, val_y)
 			val_probs = predict(lr, val_scores)
@@ -228,19 +237,8 @@ for ac in 1:max_ac
 			res_df = DataFrame(res_df)
 			outf = joinpath(save_dir, "model_id=$(model_id)_score=$(latent_score_type)_method=$(method).bson")
 			save(outf, Dict(:df => res_df))
-			@info "Saved $outf."
+			#@info "Saved $outf."
 		end
+		@info "Done."
 	end
 end
-
-
-[ Info: Saved /home/skvarvit/generativead-sgad/GenerativeAD.jl/data/sgad_alpha_evaluation/images_mvtec/sgvae/capsule/ac=1/seed=2/model_id=33029087_score=kld_method=original.bson.
-ERROR: LoadError: PyError ($(Expr(:escape, :(ccall(#= /home/skvarvit/.julia/packages/PyCall/zqDXB/src/pyfncall.jl:43 =# @pysym(:PyObject_Call), PyPtr, (PyPtr, PyPtr, PyPtr), o, pyargsptr, kw))))) <class 'ValueError'>
-ValueError("Input contains NaN, infinity or a value too large for dtype('float64').")
-  File "/home/skvarvit/.julia/packages/PyCall/zqDXB/src/pyeval.jl", line 4, in fit
-  File "/home/skvarvit/sgad-env/lib/python3.9/site-packages/sgad/sgvae/utils.py", line 14, in logreg_fit
-    clf = LogisticRegression(fit_intercept=False).fit(X, y)
-  File "/home/skvarvit/sgad-env/lib/python3.9/site-packages/sklearn/linear_model/_logistic.py", line 1508, in fit
-    X, y = self._validate_data(
-  File "/home/skvarvit/sgad-env/lib/python3.9/site-packages/sklearn/base.py", line 581, in _validate_data
-    X

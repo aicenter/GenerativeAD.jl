@@ -1,3 +1,4 @@
+#!/bin/bash
 julia --project compute_alpha_scores.jl sgvae wildlife_MNIST leave-one-in normal 
 julia --project compute_alpha_scores.jl sgvae wildlife_MNIST leave-one-in kld 
 julia --project compute_alpha_scores.jl sgvae wildlife_MNIST leave-one-in normal_logpx 
