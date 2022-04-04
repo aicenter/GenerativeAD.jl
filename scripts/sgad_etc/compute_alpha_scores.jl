@@ -170,6 +170,11 @@ for ac in 1:max_ac
 		rfs = filter(x->occursin(score_type, x), rfs)
 
 		for (model_id, lf) in zip(model_ids, lfs)
+			outf = joinpath(save_dir, "model_id=$(model_id)_score=$(latent_score_type)_method=$(method).bson")
+			if !force && isfile(outf)
+				continue
+			end	
+
 			# load the saved scores
 			ldata = load(joinpath(latent_dir, lf))
 			rf = filter(x->occursin("$(model_id)", x), rfs)
@@ -235,7 +240,6 @@ for ac in 1:max_ac
 
 			# then save it
 			res_df = DataFrame(res_df)
-			outf = joinpath(save_dir, "model_id=$(model_id)_score=$(latent_score_type)_method=$(method).bson")
 			save(outf, Dict(:df => res_df))
 			#@info "Saved $outf."
 		end
