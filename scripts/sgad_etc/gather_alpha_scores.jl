@@ -45,7 +45,9 @@ function create_save_scores(model_id, af, out_model_name, alpha_dir, pdata, data
 	cres_df["tst_eval_t"] = adata["tst_eval_t"][1]
 	cres_df["seed"] = seed
 	cres_df["npars"] = adata["npars"][1]
-	cres_df["anomaly_class"] = ac
+	if datatype != "mvtec"
+		cres_df["anomaly_class"] = ac
+	end
 	cres_df["fs_fit_t"] = 0.0
 	cres_df["fs_eval_t"] = 0.0
 	for n in names(pdata)[14:end]
