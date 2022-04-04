@@ -124,6 +124,7 @@ function perf_at_p_original(p, val_scores, val_y, tst_scores, tst_y)
 			else
 				rethrow(e)
 			end
+		end
 	end
 	return val_prec, val_auc, tst_auc
 end	
