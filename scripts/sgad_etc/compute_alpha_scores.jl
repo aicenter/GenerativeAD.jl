@@ -62,17 +62,25 @@ function top_samples_at_p(p, scores, labels)
 end
 
 function basic_stats(labels, scores)
-	roc = EvalMetrics.roccurve(labels, scores)
-	auc = EvalMetrics.auc_trapezoidal(roc...)
-	prc = EvalMetrics.prcurve(labels, scores)
-	auprc = EvalMetrics.auc_trapezoidal(prc...)
+	try
+		roc = EvalMetrics.roccurve(labels, scores)
+		auc = EvalMetrics.auc_trapezoidal(roc...)
+		prc = EvalMetrics.prcurve(labels, scores)
+		auprc = EvalMetrics.auc_trapezoidal(prc...)
 
-	t5 = EvalMetrics.threshold_at_fpr(labels, scores, 0.05)
-	cm5 = ConfusionMatrix(labels, scores, t5)
-	tpr5 = EvalMetrics.true_positive_rate(cm5)
-	f5 = EvalMetrics.f1_score(cm5)
+		t5 = EvalMetrics.threshold_at_fpr(labels, scores, 0.05)
+		cm5 = ConfusionMatrix(labels, scores, t5)
+		tpr5 = EvalMetrics.true_positive_rate(cm5)
+		f5 = EvalMetrics.f1_score(cm5)
 
-	return auc, auprc, tpr5, f5
+		return auc, auprc, tpr5, f5
+	catch e
+		if isa(e, ArgumentError)
+			return NaN, NaN, NaN, NaN
+		else
+			rethrow(e)
+		end
+	end
 end
 
 auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
@@ -80,12 +88,22 @@ auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(label
 # TODO also change this method to something else, e.g.
 function perf_at_p_original(p, val_scores, val_y, tst_scores, tst_y)
 	scores, labels, _ = top_samples_at_p(p, val_scores, val_y)
+	# if there are no samples return NaNs
+	if length(labels) == 0
+		val_prec = NaN
+		val_auc = NaN
+		tst_auc = auc_val(tst_y, tst_scores[:,1])
 	# if top samples are only positive
 	# we cannot train alphas
 	# therefore we return the default val performance
-	if sum(labels) == length(labels) 
+	elseif sum(labels) == length(labels) 
 		val_prec = 1.0
 		val_auc = 1.0
+		tst_auc = auc_val(tst_y, tst_scores[:,1])
+	# else, if there are only zeros
+	elseif sum(labels) == 0
+		val_prec = 0.0
+		val_auc = 0.0
 		tst_auc = auc_val(tst_y, tst_scores[:,1])
 	# if tehy are not only positive, then we train alphas and use them to compute 
 	# new scores - auc vals on the partial validation and full test dataset
