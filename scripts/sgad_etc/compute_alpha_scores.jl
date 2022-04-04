@@ -117,7 +117,7 @@ function perf_at_p_original(p, val_scores, val_y, tst_scores, tst_y)
 			val_auc = auc_val(labels, val_probs)
 			tst_auc = auc_val(tst_y, tst_probs)
 		catch e
-			if isa(e, LoadError)
+			if isa(e, LoadError) || isa(e, ArgumentError)
 				val_prec = NaN
 				val_auc = NaN
 				tst_auc = auc_val(tst_y, tst_scores[:,1])
