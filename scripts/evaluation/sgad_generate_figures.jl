@@ -22,7 +22,7 @@ outdir = "result_tables"
 df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
 apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS)
 
-plot_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae"]
+plot_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae", "sgvae_alpha"]
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
 
