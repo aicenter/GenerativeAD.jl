@@ -108,13 +108,22 @@ function perf_at_p_original(p, val_scores, val_y, tst_scores, tst_y)
 	# if tehy are not only positive, then we train alphas and use them to compute 
 	# new scores - auc vals on the partial validation and full test dataset
 	else
-		lr = LogReg()
-		fit!(lr, scores, labels)
-		val_probs = predict(lr, scores)
-		tst_probs = predict(lr, tst_scores)
-		val_prec = sum(labels)/length(labels)
-		val_auc = auc_val(labels, val_probs)
-		tst_auc = auc_val(tst_y, tst_probs)
+		try
+			lr = LogReg()
+			fit!(lr, scores, labels)
+			val_probs = predict(lr, scores)
+			tst_probs = predict(lr, tst_scores)
+			val_prec = sum(labels)/length(labels)
+			val_auc = auc_val(labels, val_probs)
+			tst_auc = auc_val(tst_y, tst_probs)
+		catch e
+			if isa(a, LoadError)
+				val_prec = NaN
+				val_auc = NaN
+				tst_auc = auc_val(tst_y, tst_scores[:,1])
+			else
+				rethrow(e)
+			end
 	end
 	return val_prec, val_auc, tst_auc
 end	
