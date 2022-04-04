@@ -217,7 +217,7 @@ for ac in 1:max_ac
 				basic_stats(tst_y, tst_probs)
 
 			# then do the same on a small section of the data
-			for p in [0.0001, 0.001, 0.01, 0.05, 0.1, 0.2]
+			for p in [0.01, 0.05, 0.1, 0.2]
 				ip = p >= 0.01 ? 1 : 2
 				sp = split("$(p*100)", ".")[ip]
 				res_df["val_pat_$(sp)"], res_df["val_auc_$(sp)"], res_df["tst_auc_$(sp)"] = 
@@ -232,3 +232,15 @@ for ac in 1:max_ac
 		end
 	end
 end
+
+
+[ Info: Saved /home/skvarvit/generativead-sgad/GenerativeAD.jl/data/sgad_alpha_evaluation/images_mvtec/sgvae/capsule/ac=1/seed=2/model_id=33029087_score=kld_method=original.bson.
+ERROR: LoadError: PyError ($(Expr(:escape, :(ccall(#= /home/skvarvit/.julia/packages/PyCall/zqDXB/src/pyfncall.jl:43 =# @pysym(:PyObject_Call), PyPtr, (PyPtr, PyPtr, PyPtr), o, pyargsptr, kw))))) <class 'ValueError'>
+ValueError("Input contains NaN, infinity or a value too large for dtype('float64').")
+  File "/home/skvarvit/.julia/packages/PyCall/zqDXB/src/pyeval.jl", line 4, in fit
+  File "/home/skvarvit/sgad-env/lib/python3.9/site-packages/sgad/sgvae/utils.py", line 14, in logreg_fit
+    clf = LogisticRegression(fit_intercept=False).fit(X, y)
+  File "/home/skvarvit/sgad-env/lib/python3.9/site-packages/sklearn/linear_model/_logistic.py", line 1508, in fit
+    X, y = self._validate_data(
+  File "/home/skvarvit/sgad-env/lib/python3.9/site-packages/sklearn/base.py", line 581, in _validate_data
+    X

@@ -1,7 +1,7 @@
 julia --project compute_alpha_scores.jl sgvae wildlife_MNIST leave-one-in normal 
 julia --project compute_alpha_scores.jl sgvae wildlife_MNIST leave-one-in kld 
 julia --project compute_alpha_scores.jl sgvae wildlife_MNIST leave-one-in normal_logpx 
-
+ 
 julia --project compute_alpha_scores.jl sgvae CIFAR10 leave-one-in normal 
 julia --project compute_alpha_scores.jl sgvae CIFAR10 leave-one-in kld 
 julia --project compute_alpha_scores.jl sgvae CIFAR10 leave-one-in normal_logpx 
