@@ -40,7 +40,6 @@ function collect_stats(source_prefix::String)
 	frames = Vector{DataFrame}(undef, length(parts))
 	@info "Loading into $(length(parts)) partitions."
 	@threads for i in 1:length(parts)
-	println(i)
 		df = reduce(vcat, [load(f)[:df] for f in parts[i]])
 		frames[i] = df
 		print("-")
@@ -49,9 +48,6 @@ function collect_stats(source_prefix::String)
 	df = reduce(vcat, frames)
 end
 
-source_prefix = "evaluation/images_mvtec"
-f = datadir("evaluation/images_mvtec_eval.bson")
-df = collect_stats(pf)
 
 function main(args)
 	df = collect_stats(args["source_prefix"])
