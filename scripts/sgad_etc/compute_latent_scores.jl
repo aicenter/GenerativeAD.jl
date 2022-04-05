@@ -87,7 +87,7 @@ function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir,
     try
         results = map(x->get_latent_scores(model, x), (tr_X, val_X, tst_X));
     catch e
-        if isa(e, LoadError)
+        if isa(e, LoadError) || isa(e, PyError)
             @info "Python error during computation of $(res_f)."
             return
         else
