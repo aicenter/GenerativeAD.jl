@@ -36,7 +36,7 @@ function create_save_scores(model_id, af, out_model_name, alpha_dir, pdata, data
 	# this is gonna be used at all thresholds
 	cres_df = OrderedDict()
 	cres_df["modelname"] = out_model_name
-	cres_df["dataset"] = dataset
+	cres_df["dataset"] = dataset == "metal_nut" ? "nut" : dataset 
 	cres_df["phash"] = nothing
 	cres_df["parameters"] = nothing
 	cres_df["fit_t"] = adata["fit_t"][1]
