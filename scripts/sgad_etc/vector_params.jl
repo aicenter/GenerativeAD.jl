@@ -54,11 +54,22 @@ save(outf, Dict(:df => outdf))
 datatype = "mvtec"
 mainpath = datadir("experiments/images_$(datatype)/$(model)")
 
+function row(d)
+    ps = d[:parameters]
+    return  [
+        d[:modelname],
+        ps[:init_seed],
+        d[:dataset],
+        d[:seed],
+        ps[:weights_texture],
+        get(ps, :detach_mask, (true, false))
+        ]
+end
+
 outdf = DataFrame(
     :modelname => [],
     :init_seed => [],
     :dataset => [],
-    :anomaly_class => [],
     :seed => [],
     :weights_texture => [],
     :detach_mask => []
