@@ -46,7 +46,7 @@ for dataset in ["wildlife_MNIST", "CIFAR10", "SVHN2"]
 end
 
 outdir = datadir("sgad_outputs/vector_params")
-mkdir(outdir)
+mkpath(outdir)
 outf = joinpath(outdir, "images_$(datatype).bson")
 save(outf, Dict(:df => outdf))
 
@@ -80,6 +80,6 @@ for dataset in ["wood", "grid", "transistor", "pill", "metal_nut", "capsule", "b
 end
 
 outdir = datadir("sgad_outputs/vector_params")
-mkdir(outdir)
+mkpath(outdir)
 outf = joinpath(outdir, "images_$(datatype).bson")
 save(outf, Dict(:df => outdf))
