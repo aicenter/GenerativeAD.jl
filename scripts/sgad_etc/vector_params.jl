@@ -12,7 +12,7 @@ function row(d)
         d[:anomaly_class],
         d[:seed],
         ps[:weights_texture],
-        ps[:detach_mask]
+        get(ps, :detach_mask, (true, false))
         ]
 end
 
