@@ -51,7 +51,7 @@ outf = joinpath(outdir, "images_$(datatype).bson")
 save(outf, Dict(:df => outdf))
 
 # mvtec
-datatype = "leave-one-in"
+datatype = "mvtec"
 mainpath = datadir("experiments/images_$(datatype)/$(model)")
 
 outdf = DataFrame(
