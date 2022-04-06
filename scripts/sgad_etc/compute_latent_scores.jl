@@ -84,8 +84,8 @@ function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir,
 
     # compute the results
     (tr_X, tr_y), (val_X, val_y), (tst_X, tst_y) = data
-    try
-        results = map(x->get_latent_scores(model, x), (tr_X, val_X, tst_X));
+    results = try
+        map(x->get_latent_scores(model, x), (tr_X, val_X, tst_X));
     catch e
         if isa(e, PyCall.PyError)
             @info "Python error during computation of $(res_f)."
@@ -124,7 +124,36 @@ function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir,
     @info "Results writen to $outf."
 end
 
-           
+model_id = 86414357
+datatype = "leave-one-in"
+dataset = "CIFAR10"
+ac = 5
+seed = 1
+device = "cuda"
+
+data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=datatype);
+data = GenerativeAD.Datasets.normalize_data(data);
+
+(tr_x, tr_y), (val_x, val_y), (tst_x, tst_y) = data;
+tr_X = Array(permutedims(tr_x, [4,3,2,1]));
+val_X = Array(permutedims(val_x, [4,3,2,1]));
+tst_X = Array(permutedims(tst_x, [4,3,2,1]));
+data = (tr_X, tr_y), (val_X, val_y), (tst_X, tst_y);
+
+# outputs
+out_dir = datadir("sgad_latent_scores/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+mkpath(out_dir)
+
+# model dir
+model_dir = datadir("sgad_models/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+model_ids = map(x-> Meta.parse(split(x, "=")[2]), readdir(model_dir))
+res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+res_fs = readdir(res_dir)
+
+compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir, 
+                out_dir, latent_score_type, seed, ac, dataset, modelname, force=force)
+
+
 for ac in 1:max_ac
     for seed in 1:max_seed
         # load the appropriate data
