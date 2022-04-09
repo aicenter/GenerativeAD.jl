@@ -89,9 +89,13 @@ function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir,
     if mean(gx) < 0.2 && minimum(gx) < -0.5
         data = GenerativeAD.Datasets.normalize_data(data);
     end
-    
+
+
     # compute the results
     (tr_X, tr_y), (val_X, val_y), (tst_X, tst_y) = data
+    tr_X = Array(permutedims(tr_x, [4,3,2,1]));
+    val_X = Array(permutedims(val_x, [4,3,2,1]));
+    tst_X = Array(permutedims(tst_x, [4,3,2,1]));
     results = try
         map(x->get_latent_scores(model, x), (tr_X, val_X, tst_X));
     catch e
@@ -139,12 +143,6 @@ for ac in 1:max_ac
         else
             data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=datatype);
         end
-        
-        (tr_x, tr_y), (val_x, val_y), (tst_x, tst_y) = data;
-        tr_X = Array(permutedims(tr_x, [4,3,2,1]));
-        val_X = Array(permutedims(val_x, [4,3,2,1]));
-        tst_X = Array(permutedims(tst_x, [4,3,2,1]));
-        data = (tr_X, tr_y), (val_X, val_y), (tst_X, tst_y);
 
         # outputs
         out_dir = datadir("sgad_latent_scores/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
