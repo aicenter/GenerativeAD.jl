@@ -3,7 +3,7 @@ using DrWatson
 using GenerativeAD
 using PyCall
 using BSON, FileIO, DataFrames
-using ArgParse
+using ArgParse, StatsBase
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -71,6 +71,7 @@ function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir,
         return
     end    
     model = load_sgvae_model(md, device);
+    model.eval();
 
     # load the original result file for this model
     res_f = filter(x->occursin("$(model_id)", x), res_fs)
@@ -82,6 +83,13 @@ function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir,
     res_f = res_f[1]
     res_d = load(joinpath(res_dir, res_f))
 
+    # decide if we need to normalize the scores
+    gx = model.generate_mean(10); 
+    gx = gx.detach().to("cpu").numpy();
+    if mean(gx) < 0.2 && minimum(gx) < -0.5
+        data = GenerativeAD.Datasets.normalize_data(data);
+    end
+    
     # compute the results
     (tr_X, tr_y), (val_X, val_y), (tst_X, tst_y) = data
     results = try
@@ -113,8 +121,6 @@ function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir,
         :tr_labels => tr_y,
         :val_labels => val_y,
         :tst_labels => tst_y,
-        :val_scores => latent_scores[2],
-        :tst_scores => latent_scores[3],
         :tr_eval_t => ts[1],
         :val_eval_t => ts[2],
         :tst_eval_t => ts[3],    
@@ -122,6 +128,7 @@ function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir,
     outf = joinpath(out_dir, "model_id=$(model_id)_score=$(latent_score_type).bson")
     save(joinpath(out_dir, outf), output)
     @info "Results writen to $outf."
+    output
 end
 
 for ac in 1:max_ac
@@ -132,8 +139,7 @@ for ac in 1:max_ac
         else
             data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=datatype);
         end
-        data = GenerativeAD.Datasets.normalize_data(data);
-
+        
         (tr_x, tr_y), (val_x, val_y), (tst_x, tst_y) = data;
         tr_X = Array(permutedims(tr_x, [4,3,2,1]));
         val_X = Array(permutedims(val_x, [4,3,2,1]));

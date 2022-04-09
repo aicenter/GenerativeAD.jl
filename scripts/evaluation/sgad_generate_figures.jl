@@ -22,7 +22,8 @@ outdir = "result_tables"
 df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
 apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS)
 
-plot_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae", "sgvae_alpha"]
+plot_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae", "sgvae_alpha", "sgvae_alpha_normal",
+    "sgvae_alpha_kld", "sgvae_alpha_normal_logpx"]
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
 
@@ -75,9 +76,10 @@ end
 ##### LOI images 
 # this generates the overall tables (aggregated by datasets)
 df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
+df_images_target_nonnan = filter(r-> !isnan(r.val_auc), df_images_target)
 prefix="images_loi"
 suffix=""
-rts = basic_summary_table(df_images_target, outdir, prefix=prefix, suffix=suffix)
+rts = basic_summary_table(df_images_target_nonnan, outdir, prefix=prefix, suffix=suffix)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
     rts[1], plot_models)
 
@@ -85,19 +87,14 @@ save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suf
 perf_plot_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae", "sgvae_d", "sgvae_i"]
 
 suffix = "_sgvae_latent_structure"
-subdf = filter(r->r.modelname=="sgvae", df_images_target)
+subdf = filter(r->r.modelname=="sgvae", df_images_target_nonnan)
 params = map(x->get(parse_savename(x)[2], "latent_structure", ""), subdf.parameters)
 subdf.modelname[params .== "mask"] .= "sgvae_d"
 subdf.modelname[params .!= "mask"] .= "sgvae_i"
-perf_df_images_target = vcat(subdf, df_images_target)
+perf_df_images_target = vcat(subdf, df_images_target_nonnan)
 rts = basic_summary_table(perf_df_images_target, outdir, prefix=prefix, suffix=suffix)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
     rts[1], perf_plot_models)
-
-
-
-
-
 
 
 ##### LOI images per AC
@@ -107,6 +104,7 @@ for d in Set(["cifar10", "svhn2", "wmnist"])
     df_images_target[mask, :dataset] .= df_images_target[mask, :dataset] .* ":" .* convert_anomaly_class.(df_images_target[mask, :anomaly_class], d)
     df_images_target[mask, :anomaly_class] .= 1 # it has to be > 0, because otherwise we get too many warnings from the aggregate_stats_max_mean
 end
+df_images_target_nonnan = filter(r-> !isnan(r.val_auc), df_images_target)
 
 function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Dict{String, Int}())
     rts = []   
@@ -132,7 +130,7 @@ end
 
 prefix="images_loi"
 suffix="_per_ac"
-rts = basic_summary_table_per_ac(df_images_target, outdir, prefix=prefix, suffix=suffix)
+rts = basic_summary_table_per_ac(df_images_target_nonnan, outdir, prefix=prefix, suffix=suffix)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
     rts[1], plot_models)
 
