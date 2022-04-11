@@ -90,7 +90,7 @@ function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_d
     val_X = Array(permutedims(val_X, [4,3,2,1]));
     tst_X = Array(permutedims(tst_X, [4,3,2,1]));
     encodings = try
-        map(x->model.encode_mean_batched(x), (tr_X, val_X, tst_X));
+        map(x->model.encode_mean_batched(x, workers=2), (tr_X, val_X, tst_X));
     catch e
         rethrow(e)
         if isa(e, PyCall.PyError)
