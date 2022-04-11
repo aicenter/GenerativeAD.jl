@@ -92,7 +92,6 @@ function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_d
     encodings = try
         map(x->model.encode_mean_batched(x, workers=2), (tr_X, val_X, tst_X));
     catch e
-        rethrow(e)
         if isa(e, PyCall.PyError)
             @info "Python error during computation of $(res_f)."
             return
