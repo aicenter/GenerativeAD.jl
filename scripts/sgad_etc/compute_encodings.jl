@@ -19,10 +19,6 @@ s = ArgParseSettings()
         default = "leave-one-in"
         arg_type = String
         help = "leave-one-in or mvtec"
-    "latent_score_type"
-        arg_type = String
-        help = "normal, kld or normal_logpx"
-        default = "normal"
     "device"
         arg_type = String
         help = "cpu or cuda"
@@ -32,9 +28,13 @@ s = ArgParseSettings()
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype, latent_score_type, device, force = parsed_args
+@unpack modelname, dataset, datatype, device, force = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
+
+# so the we dont get the "too many open files" os error
+torch = pyimport("torch")
+torch.multiprocessing.set_sharing_strategy("file_system")
 
 function load_sgvae_model(dir, device)
     py"""
@@ -49,16 +49,22 @@ def model(dir, device):
     return py"model"(dir, device)
 end
 
-function get_latent_scores(model, x)
-    scores, t, _, _, _ = @timed model.all_scores(x, n=10, score_type="logpx", 
-        latent_score_type=latent_score_type, workers=4)
-    return  scores[2:end,:], t
+function compute_encodings(model, X)
+    loader = model._create_score_loader(X, workers=2)
+    encodings = []
+    for batch in loader
+        x = batch["ims"].to(device)
+        encs = model.encode(x)
+        encs = [Array(transpose(x[1].to("cpu").data.numpy())) for x in encs]
+        push!(encodings, encs) 
+    end
+    map(i->hcat([x[i] for x in encodings]...), 1:3)
 end
 
-function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir, 
-    out_dir, latent_score_type, seed, ac, dataset, modelname; force=false)
+function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_dir, 
+    out_dir, seed, ac, dataset, modelname; force=false)
     # first check whether the scores were not already computed
-    outf = joinpath(out_dir, "model_id=$(model_id)_score=$(latent_score_type).bson")
+    outf = joinpath(out_dir, "model_id=$(model_id).bson")
     if isfile(outf) && !force
         @info "Skipping computation of $outf as it already exists."
         return
@@ -90,15 +96,15 @@ function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir,
         data = GenerativeAD.Datasets.normalize_data(data);
     end
 
-
     # compute the results
     (tr_X, tr_y), (val_X, val_y), (tst_X, tst_y) = data
     tr_X = Array(permutedims(tr_X, [4,3,2,1]));
     val_X = Array(permutedims(val_X, [4,3,2,1]));
     tst_X = Array(permutedims(tst_X, [4,3,2,1]));
-    results = try
-        map(x->get_latent_scores(model, x), (tr_X, val_X, tst_X));
+    encodings = try
+        map(x->compute_encodings(model, x), (tr_X, val_X, tst_X));
     catch e
+        rethrow(e)
         if isa(e, PyCall.PyError)
             @info "Python error during computation of $(res_f)."
             return
@@ -108,26 +114,26 @@ function compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir,
         end
     end
 
-    latent_scores = [x[1] for x in results];
-    ts = [x[2] for x in results];
-
     # and save them
     output = Dict(
+        :model_id => model_id,
         :parameters => res_d[:parameters],
-        :latent_score_type => latent_score_type,
         :modelname => modelname,
         :dataset => dataset,
         :anomaly_class => ac,
         :seed => seed,
-        :tr_scores => latent_scores[1],
-        :val_scores => latent_scores[2],
-        :tst_scores => latent_scores[3],
+        :tr_encodings_shape => encodings[1][1],
+        :tr_encodings_background => encodings[1][2],
+        :tr_encodings_foreground => encodings[1][3],
+        :val_encodings_shape => encodings[2][1],
+        :val_encodings_background => encodings[2][2],
+        :val_encodings_foreground => encodings[2][3],
+        :tst_encodings_shape => encodings[3][1],
+        :tst_encodings_background => encodings[3][2],
+        :tst_encodings_foreground => encodings[3][3],
         :tr_labels => tr_y,
         :val_labels => val_y,
-        :tst_labels => tst_y,
-        :tr_eval_t => ts[1],
-        :val_eval_t => ts[2],
-        :tst_eval_t => ts[3],    
+        :tst_labels => tst_y    
         )
     save(joinpath(out_dir, outf), output)
     @info "Results writen to $outf."
@@ -144,7 +150,7 @@ for ac in 1:max_ac
         end
 
         # outputs
-        out_dir = datadir("sgad_latent_scores/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+        out_dir = datadir("sgad_encodings/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
         mkpath(out_dir)
 
         # model dir
@@ -154,8 +160,8 @@ for ac in 1:max_ac
         res_fs = readdir(res_dir)
 
         for model_id in model_ids
-            compute_save_scores(model_id, model_dir, device, data, res_fs, res_dir, 
-                out_dir, latent_score_type, seed, ac, dataset, modelname, force=force)
+            compute_save_encodings(model_id, model_dir, device, data, res_fs, res_dir, 
+                out_dir, seed, ac, dataset, modelname, force=force)
         end
     end
 end
