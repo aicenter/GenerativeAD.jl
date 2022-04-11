@@ -1,12 +1,17 @@
 #!/bin/bash
-julia --project compute_knn_scores.jl sgvae wildlife_MNIST leave-one-in
-julia --project compute_knn_scores.jl sgvae CIFAR10 leave-one-in
-julia --project compute_knn_scores.jl sgvae SVHN2 leave-one-in
+#SBATCH --time=24:00:00
+#SBATCH --nodes=1 --ntasks-per-node=2 --cpus-per-task=1
+#SBATCH --mem=20G
 
-julia --project compute_knn_scores.jl sgvae wood mvtec
-julia --project compute_knn_scores.jl sgvae grid mvtec
-julia --project compute_knn_scores.jl sgvae bottle mvtec
-julia --project compute_knn_scores.jl sgvae pill mvtec
-julia --project compute_knn_scores.jl sgvae capsule mvtec
-julia --project compute_knn_scores.jl sgvae metal_nut mvtec
-julia --project compute_knn_scores.jl sgvae transistor mvtec
+DATASET=$1
+DATATYPE=$2
+FORCE=$3
+
+module load Julia/1.5.3-linux-x86_64
+module load Python/3.9.6-GCCcore-11.2.0
+
+source ${HOME}/sgad-env/bin/activate
+export PYTHON="${HOME}/sgad-env/bin/python"
+julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
+
+julia ./compute_knn_scores.jl sgvae ${DATASET} ${DATATYPE} $FORCE
