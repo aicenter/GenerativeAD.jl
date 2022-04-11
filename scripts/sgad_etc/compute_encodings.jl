@@ -49,18 +49,6 @@ def model(dir, device):
     return py"model"(dir, device)
 end
 
-function compute_encodings(model, X)
-    loader = model._create_score_loader(X, workers=2)
-    encodings = []
-    for batch in loader
-        x = batch["ims"].to(device)
-        encs = model.encode(x)
-        encs = [Array(transpose(x[1].to("cpu").data.numpy())) for x in encs]
-        push!(encodings, encs) 
-    end
-    map(i->hcat([x[i] for x in encodings]...), 1:3)
-end
-
 function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_dir, 
     out_dir, seed, ac, dataset, modelname; force=false)
     # first check whether the scores were not already computed
@@ -102,7 +90,7 @@ function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_d
     val_X = Array(permutedims(val_X, [4,3,2,1]));
     tst_X = Array(permutedims(tst_X, [4,3,2,1]));
     encodings = try
-        map(x->compute_encodings(model, x), (tr_X, val_X, tst_X));
+        map(x->model.encode_mean_batched(x), (tr_X, val_X, tst_X));
     catch e
         rethrow(e)
         if isa(e, PyCall.PyError)
