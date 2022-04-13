@@ -24,14 +24,17 @@ julia --project compute_alpha_scores.jl sgvae metal_nut mvtec normal
 julia --project compute_alpha_scores.jl sgvae metal_nut mvtec kld 
 julia --project compute_alpha_scores.jl sgvae metal_nut mvtec normal_logpx 
 
+julia --project compute_alpha_scores.jl sgvae transistor mvtec knn
 julia --project compute_alpha_scores.jl sgvae transistor mvtec normal 
 julia --project compute_alpha_scores.jl sgvae transistor mvtec kld 
 julia --project compute_alpha_scores.jl sgvae transistor mvtec normal_logpx 
 
+julia --project compute_alpha_scores.jl sgvae pill mvtec knn
 julia --project compute_alpha_scores.jl sgvae pill mvtec normal 
 julia --project compute_alpha_scores.jl sgvae pill mvtec kld 
 julia --project compute_alpha_scores.jl sgvae pill mvtec normal_logpx 
 
+julia --project compute_alpha_scores.jl sgvae capsule mvtec knn
 julia --project compute_alpha_scores.jl sgvae capsule mvtec normal 
 julia --project compute_alpha_scores.jl sgvae capsule mvtec kld 
 julia --project compute_alpha_scores.jl sgvae capsule mvtec normal_logpx 
