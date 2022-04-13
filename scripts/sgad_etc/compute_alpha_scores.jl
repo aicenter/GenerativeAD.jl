@@ -180,7 +180,7 @@ for ac in 1:max_ac
 		rfs = filter(x->occursin(score_type, x), rfs)
 
 		for (model_id, lf) in zip(model_ids, lfs)
-			outf = joinpath(save_dir, "model_id=$(model_id)_score=$(latent_score_type)_method=$(method).bson")
+			outf = split(lf, ".")[1] * "_method=$(method).bson"
 			if !force && isfile(outf)
 				continue
 			end	
@@ -196,19 +196,23 @@ for ac in 1:max_ac
 			rdata = load(joinpath(res_dir, rf))
 
 			# prepare the data
-			tr_scores = cat(rdata[:tr_scores], transpose(ldata[:tr_scores]), dims=2);
 			val_scores = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
 			tst_scores = cat(rdata[:tst_scores], transpose(ldata[:tst_scores]), dims=2);
 			tr_y = ldata[:tr_labels];
 			val_y = ldata[:val_labels];
 			tst_y = ldata[:tst_labels];
 
+			# setup params
+			parameters = ldata[:parameters]
+			add_params = split(split(lf, "score")[1], "model_id=$(model_id)")[2]
+			param_string = "latent_score_type=$(latent_score_type)" * add_params * split(rf, ".bson")[1]
+
 			# prepare the result dataframe
 			res_df = OrderedDict()
 			res_df["modelname"] = modelname
 			res_df["dataset"] = dataset
-			res_df["phash"] = GenerativeAD.Evaluation.hash(rdata[:parameters])
-			res_df["parameters"] = "latent_score_type=$(latent_score_type)_"* split(rf, ".bson")[1]
+			res_df["phash"] = GenerativeAD.Evaluation.hash(parameters)
+			res_df["parameters"] = param_string
 			res_df["fit_t"] = rdata[:fit_t]
 			res_df["tr_eval_t"] = ldata[:tr_eval_t] + rdata[:tr_eval_t]
 			res_df["val_eval_t"] = ldata[:val_eval_t] + rdata[:val_eval_t]

@@ -13,6 +13,6 @@ fi
 while read d; do
     # submit to slurm
     sbatch \
-    --output="${LOG_DIR}/${d}_${LATENT_SCORE}_%A.out" \
+    --output="${LOG_DIR}/${d}_%A.out" \
      ./compute_knn_scores.sh $d $DATATYPE $FORCE
 done < ${DATASET_FILE}
