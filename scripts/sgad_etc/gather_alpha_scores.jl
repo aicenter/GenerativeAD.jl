@@ -99,7 +99,7 @@ pdata = load(pf)[:df]
 for ac in 1:max_ac
 	for seed in 1:max_seed
 		# first do the one for full validation dataset
-		for sub_type in ["", "_normal", "_kld", "_normal_logpx"]
+		for sub_type in ["", "_normal", "_kld", "_normal_logpx", "_knn"]
 			aggreg_type = "alpha"*sub_type
 			out_model_name = modelname*"_"*aggreg_type
 

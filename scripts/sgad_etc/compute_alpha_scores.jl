@@ -180,7 +180,7 @@ for ac in 1:max_ac
 		rfs = filter(x->occursin(score_type, x), rfs)
 
 		for (model_id, lf) in zip(model_ids, lfs)
-			outf = split(lf, ".")[1] * "_method=$(method).bson"
+			outf = joinpath(save_dir, split(lf, ".")[1] * "_method=$(method).bson")
 			if !force && isfile(outf)
 				continue
 			end	
@@ -190,12 +190,15 @@ for ac in 1:max_ac
 			rf = filter(x->occursin("$(model_id)", x), rfs)
 			if length(rf) < 1
 				@info "Something is wrong, original score file for $lf not found"
-				return
+				continue
 			end
 			rf = rf[1]
 			rdata = load(joinpath(res_dir, rf))
 
 			# prepare the data
+			if isnan(ldata[:val_scores][1])
+				continue
+			end
 			val_scores = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
 			tst_scores = cat(rdata[:tst_scores], transpose(ldata[:tst_scores]), dims=2);
 			tr_y = ldata[:tr_labels];
