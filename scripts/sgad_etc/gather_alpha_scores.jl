@@ -81,9 +81,7 @@ function create_save_scores(model_id, af, out_model_name, alpha_dir, pdata, data
 
 		# outf
 		outf = "eval_model_id=$(model_id)"
-		outf *= "_latent_score_type=$(adata["latent_score_type"][1])"
-		outf *= "_score=$(adata["score_type"][1])"
-		outf *= "_method=$(adata["method"][1])"
+		outf *= split(split(af, ".")[1], "model_id=$(model_id)")[2]
 		outf *= "_p=$sp.bson"
 
 		# save it
