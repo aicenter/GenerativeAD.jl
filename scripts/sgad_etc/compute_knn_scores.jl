@@ -107,7 +107,7 @@ for ac in 1:max_ac
         model_ids = map(x-> Meta.parse(split(split(x, "=")[2], ".")[1]), readdir(in_dir))
 
         for model_id in model_ids
-            for k in 1:100:2001
+            for k in vcat(1:4:100, 101:100:2001)
                 for v in [:delta, :kappa, :gamma]
                     compute_knn_score(model_id, in_dir, k, v, out_dir, seed, ac, dataset, modelname; force=false)
                 end
