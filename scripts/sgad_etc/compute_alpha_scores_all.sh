@@ -15,10 +15,6 @@ julia --project compute_alpha_scores.jl sgvae bottle mvtec normal
 julia --project compute_alpha_scores.jl sgvae bottle mvtec kld 
 julia --project compute_alpha_scores.jl sgvae bottle mvtec normal_logpx 
 
-julia --project compute_alpha_scores.jl sgvae grid mvtec normal 
-julia --project compute_alpha_scores.jl sgvae grid mvtec kld 
-julia --project compute_alpha_scores.jl sgvae grid mvtec normal_logpx 
-
 julia --project compute_alpha_scores.jl sgvae metal_nut mvtec normal 
 julia --project compute_alpha_scores.jl sgvae metal_nut mvtec kld 
 julia --project compute_alpha_scores.jl sgvae metal_nut mvtec normal_logpx 
@@ -26,10 +22,6 @@ julia --project compute_alpha_scores.jl sgvae metal_nut mvtec normal_logpx
 julia --project compute_alpha_scores.jl sgvae transistor mvtec normal 
 julia --project compute_alpha_scores.jl sgvae transistor mvtec kld 
 julia --project compute_alpha_scores.jl sgvae transistor mvtec normal_logpx 
-
-julia --project compute_alpha_scores.jl sgvae wood mvtec normal 
-julia --project compute_alpha_scores.jl sgvae wood mvtec kld 
-julia --project compute_alpha_scores.jl sgvae wood mvtec normal_logpx 
 
 julia --project compute_alpha_scores.jl sgvae pill mvtec normal 
 julia --project compute_alpha_scores.jl sgvae pill mvtec kld 
