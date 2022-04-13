@@ -25,7 +25,7 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack modelname, dataset, datatype, anomaly_class, force = parsed_args
 max_seed = (datatype == "mvtec") ? 5 : 1 
-ks = (datatype == "mvtec") ? 1:4:151 : vcat([1, 31, 61], collect(101:100:2001))
+ks = (datatype == "mvtec") ? collect(1:4:151) : vcat([1, 31, 61], collect(101:100:2001))
 
 ac = anomaly_class
 for seed in 1:max_seed
