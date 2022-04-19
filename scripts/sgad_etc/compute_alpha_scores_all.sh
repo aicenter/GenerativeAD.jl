@@ -1,40 +1,12 @@
 #!/bin/bash
-julia --project compute_alpha_scores.jl sgvae wildlife_MNIST leave-one-in knn
-julia --project compute_alpha_scores.jl sgvae wildlife_MNIST leave-one-in normal 
-julia --project compute_alpha_scores.jl sgvae wildlife_MNIST leave-one-in kld 
-julia --project compute_alpha_scores.jl sgvae wildlife_MNIST leave-one-in normal_logpx  
+FORCE=$1
 
-julia --project compute_alpha_scores.jl sgvae CIFAR10 leave-one-in knn 
-julia --project compute_alpha_scores.jl sgvae CIFAR10 leave-one-in normal
-julia --project compute_alpha_scores.jl sgvae CIFAR10 leave-one-in kld 
-julia --project compute_alpha_scores.jl sgvae CIFAR10 leave-one-in normal_logpx 
+./compute_alpha_scores_parallel.sh ../experiments_images/datasets_images_color.txt leave-one-in knn $FORCE
+./compute_alpha_scores_parallel.sh ../experiments_images/datasets_images_color.txt leave-one-in normal $FORCE
+./compute_alpha_scores_parallel.sh ../experiments_images/datasets_images_color.txt leave-one-in kld $FORCE
+./compute_alpha_scores_parallel.sh ../experiments_images/datasets_images_color.txt leave-one-in normal_logpx $FORCE
 
-julia --project compute_alpha_scores.jl sgvae SVHN2 leave-one-in knn
-julia --project compute_alpha_scores.jl sgvae SVHN2 leave-one-in normal 
-julia --project compute_alpha_scores.jl sgvae SVHN2 leave-one-in kld 
-julia --project compute_alpha_scores.jl sgvae SVHN2 leave-one-in normal_logpx 
-
-julia --project compute_alpha_scores.jl sgvae bottle mvtec knn
-julia --project compute_alpha_scores.jl sgvae bottle mvtec normal 
-julia --project compute_alpha_scores.jl sgvae bottle mvtec kld 
-julia --project compute_alpha_scores.jl sgvae bottle mvtec normal_logpx 
-
-julia --project compute_alpha_scores.jl sgvae metal_nut mvtec knn 
-julia --project compute_alpha_scores.jl sgvae metal_nut mvtec normal 
-julia --project compute_alpha_scores.jl sgvae metal_nut mvtec kld 
-julia --project compute_alpha_scores.jl sgvae metal_nut mvtec normal_logpx 
-
-julia --project compute_alpha_scores.jl sgvae transistor mvtec knn
-julia --project compute_alpha_scores.jl sgvae transistor mvtec normal 
-julia --project compute_alpha_scores.jl sgvae transistor mvtec kld 
-julia --project compute_alpha_scores.jl sgvae transistor mvtec normal_logpx 
-
-julia --project compute_alpha_scores.jl sgvae pill mvtec knn
-julia --project compute_alpha_scores.jl sgvae pill mvtec normal 
-julia --project compute_alpha_scores.jl sgvae pill mvtec kld 
-julia --project compute_alpha_scores.jl sgvae pill mvtec normal_logpx 
-
-julia --project compute_alpha_scores.jl sgvae capsule mvtec knn
-julia --project compute_alpha_scores.jl sgvae capsule mvtec normal 
-julia --project compute_alpha_scores.jl sgvae capsule mvtec kld 
-julia --project compute_alpha_scores.jl sgvae capsule mvtec normal_logpx 
+./compute_alpha_scores_parallel.sh ../mvtec_ad/categories_sgvae.txt mvtec knn $FORCE
+./compute_alpha_scores_parallel.sh ../mvtec_ad/categories_sgvae.txt mvtec normal $FORCE
+./compute_alpha_scores_parallel.sh ../mvtec_ad/categories_sgvae.txt mvtec kld $FORCE
+./compute_alpha_scores_parallel.sh ../mvtec_ad/categories_sgvae.txt mvtec normal_logpx $FORCE
