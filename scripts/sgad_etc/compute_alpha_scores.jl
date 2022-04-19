@@ -7,6 +7,7 @@ using BSON, FileIO, DataFrames
 using EvalMetrics
 using OrderedCollections
 using ArgParse
+using Suppressor
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -209,52 +210,55 @@ for ac in 1:max_ac
 			parameters = ldata[:parameters]
 			add_params = split(split(lf, "score")[1], "model_id=$(model_id)")[2]
 			param_string = "latent_score_type=$(latent_score_type)" * add_params * split(rf, ".bson")[1]
+			
+			res_df = @suppress begin
+				# prepare the result dataframe
+				res_df = OrderedDict()
+				res_df["modelname"] = modelname
+				res_df["dataset"] = dataset
+				res_df["phash"] = GenerativeAD.Evaluation.hash(parameters)
+				res_df["parameters"] = param_string
+				res_df["fit_t"] = rdata[:fit_t]
+				res_df["tr_eval_t"] = ldata[:tr_eval_t] + rdata[:tr_eval_t]
+				res_df["val_eval_t"] = ldata[:val_eval_t] + rdata[:val_eval_t]
+				res_df["tst_eval_t"] = ldata[:tst_eval_t] + rdata[:tst_eval_t]
+				res_df["seed"] = seed
+				res_df["npars"] = rdata[:npars]
+				res_df["anomaly_class"] = ac
+				res_df["method"] = method
+				res_df["score_type"] = score_type
+				res_df["latent_score_type"] = latent_score_type
 
-			# prepare the result dataframe
-			res_df = OrderedDict()
-			res_df["modelname"] = modelname
-			res_df["dataset"] = dataset
-			res_df["phash"] = GenerativeAD.Evaluation.hash(parameters)
-			res_df["parameters"] = param_string
-			res_df["fit_t"] = rdata[:fit_t]
-			res_df["tr_eval_t"] = ldata[:tr_eval_t] + rdata[:tr_eval_t]
-			res_df["val_eval_t"] = ldata[:val_eval_t] + rdata[:val_eval_t]
-			res_df["tst_eval_t"] = ldata[:tst_eval_t] + rdata[:tst_eval_t]
-			res_df["seed"] = seed
-			res_df["npars"] = rdata[:npars]
-			res_df["anomaly_class"] = ac
-			res_df["method"] = method
-			res_df["score_type"] = score_type
-			res_df["latent_score_type"] = latent_score_type
+				# fit the logistic regression - first on all the validation data
+				# first, filter out NaNs and Infs
+				inds = vec(mapslices(r->!any(r.==Inf), val_scores, dims=2))
+				val_scores = val_scores[inds, :]
+				val_y = val_y[inds]
+				inds = vec(mapslices(r->!any(isnan.(r)), val_scores, dims=2))
+				val_scores = val_scores[inds, :]
+				val_y = val_y[inds]
 
-			# fit the logistic regression - first on all the validation data
-			# first, filter out NaNs and Infs
-			inds = vec(mapslices(r->!any(r.==Inf), val_scores, dims=2))
-			val_scores = val_scores[inds, :]
-			val_y = val_y[inds]
-			inds = vec(mapslices(r->!any(isnan.(r)), val_scores, dims=2))
-			val_scores = val_scores[inds, :]
-			val_y = val_y[inds]
+				lr = LogReg()
+				fit!(lr, val_scores, val_y)
+				val_probs = predict(lr, val_scores)
+				tst_probs = predict(lr, tst_scores)
 
-			lr = LogReg()
-			fit!(lr, val_scores, val_y)
-			val_probs = predict(lr, val_scores)
-			tst_probs = predict(lr, tst_scores)
+				# now fill in the values
+				res_df["val_auc"], res_df["val_auprc"], res_df["val_tpr_5"], res_df["val_f1_5"] = 
+					basic_stats(val_y, val_probs)
+				res_df["tst_auc"], res_df["tst_auprc"], res_df["tst_tpr_5"], res_df["tst_f1_5"] = 
+					basic_stats(tst_y, tst_probs)
 
-			# now fill in the values
-			res_df["val_auc"], res_df["val_auprc"], res_df["val_tpr_5"], res_df["val_f1_5"] = 
-				basic_stats(val_y, val_probs)
-			res_df["tst_auc"], res_df["tst_auprc"], res_df["tst_tpr_5"], res_df["tst_f1_5"] = 
-				basic_stats(tst_y, tst_probs)
-
-			# then do the same on a small section of the data
-			for p in [0.01, 0.05, 0.1, 0.2]
-				ip = p >= 0.01 ? 1 : 2
-				sp = split("$(p*100)", ".")[ip]
-				res_df["val_pat_$(sp)"], res_df["val_auc_$(sp)"], res_df["tst_auc_$(sp)"] = 
-					perf_at_p_original(p, val_scores, val_y, tst_scores, tst_y)
+				# then do the same on a small section of the data
+				for p in [0.01, 0.05, 0.1, 0.2]
+					ip = p >= 0.01 ? 1 : 2
+					sp = split("$(p*100)", ".")[ip]
+					res_df["val_pat_$(sp)"], res_df["val_auc_$(sp)"], res_df["tst_auc_$(sp)"] = 
+						perf_at_p_original(p, val_scores, val_y, tst_scores, tst_y)
+				end
+				res_df
 			end
-
+			
 			# then save it
 			res_df = DataFrame(res_df)
 			save(outf, Dict(:df => res_df))
