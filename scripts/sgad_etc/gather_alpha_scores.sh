@@ -7,8 +7,7 @@
 
 DATASET=$1
 DATATYPE=$2
-LATENT_SCORE=$3
-AC=$4
+AC=$3
 
 module load Julia/1.5.3-linux-x86_64
 module load Python/3.9.6-GCCcore-11.2.0

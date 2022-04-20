@@ -1,10 +1,3 @@
 #!/bin/bash
-julia --project gather_alpha_scores.jl sgvae wildlife_MNIST leave-one-in
-julia --project gather_alpha_scores.jl sgvae SVHN2 leave-one-in
-julia --project gather_alpha_scores.jl sgvae CIFAR10 leave-one-in
-
-julia --project gather_alpha_scores.jl sgvae metal_nut mvtec
-julia --project gather_alpha_scores.jl sgvae bottle mvtec
-julia --project gather_alpha_scores.jl sgvae capsule mvtec
-julia --project gather_alpha_scores.jl sgvae pill mvtec
-julia --project gather_alpha_scores.jl sgvae transistor mvtec
+./gather_alpha_scores_parallel.sh ../experiments_images/datasets_images_color.txt leave-one-in 10
+./gather_alpha_scores_parallel.sh ../mvtec_ad/categories_sgvae.txt mvtec knn 1
