@@ -20,12 +20,15 @@ s = ArgParseSettings()
         default = "leave-one-in"
         arg_type = String
         help = "leave-one-in or mvtec"
+    "anomaly_class"
+    	default = nothing
+    	help = "which class to compute"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype = parsed_args
+@unpack modelname, dataset, datatype, anomaly_class = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
-max_seed = (datatype == "mvtec") ? 5 : 1 
-
+max_seed = (datatype == "mvtec") ? 5 : 1
+acs = isnothing(anomaly_class) ? collect(1:max_ac) : [Meta.parse(anomaly_class)]
 
 function create_save_scores(model_id, af, out_model_name, alpha_dir, pdata, dataset, seed, ac, save_dir, st)
 	adata = load(joinpath(alpha_dir, af))[:df]
@@ -94,7 +97,7 @@ end
 pf = datadir("sgad_alpha_evaluation/prototype.bson")
 pdata = load(pf)[:df]
 
-for ac in 1:max_ac
+for ac in acs
 	for seed in 1:max_seed
 		# first do the one for full validation dataset
 		for sub_type in ["", "_normal", "_kld", "_normal_logpx", "_knn"]
