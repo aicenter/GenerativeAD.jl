@@ -10,7 +10,7 @@ if [ ! -d "$LOG_DIR" ]; then
     mkdir $LOG_DIR
 fi
 
-for AC in {1..${MAX_AC}}
+for AC in $(seq 1 ${MAX_AC})
 do
     while read d; do
         # submit to slurm
