@@ -19,11 +19,9 @@ const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@
 
 include("./utils/ranks.jl")
 outdir = "result_tables"
-df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
-apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS)
 
-plot_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae", "sgvae_alpha", "sgvae_alpha_normal",
-    "sgvae_alpha_kld", "sgvae_alpha_normal_logpx", "sgvae_alpha_knn"]
+sgad_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae", "sgvaea", "sgvaenlp",
+    "sgvaekld", "sgvaelpx", "sgvaeknn"]
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
 
@@ -52,6 +50,10 @@ function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{Stri
             open(file, "w") do io
                 print_rank_table(io, rt; backend=:txt) # or :tex
             end
+            file = "$(datadir())/evaluation/$(dir)/$(prefix)_$(metric)_$(metric)_$(name)$(suffix).tex"
+            open(file, "w") do io
+                print_rank_table(io, rt; backend=:tex) # or :tex
+            end
             @info "saved to $file"
             push!(rts, rt)
         end
@@ -74,6 +76,10 @@ function save_selection(f, rt, plot_models)
 end
 
 ##### LOI images 
+df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
+apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS)
+
+
 # this generates the overall tables (aggregated by datasets)
 df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
 df_images_target_nonnan = filter(r-> !isnan(r.val_auc), df_images_target)

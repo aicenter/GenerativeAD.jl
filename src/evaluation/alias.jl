@@ -35,6 +35,11 @@ const MODEL_TYPE = Dict{String, String}(
 	"Conv-GANomaly" 	=> "autoencoders",
 	"Conv-SkipGANomaly" => "autoencoders",
 	"sgvae" 			=> "autoencoders",
+	"sgvae_alpha" 		=> "autoencoders",
+	"sgvae_alpha_knn" 	=> "autoencoders",
+	"sgvae_alpha_normal"=> "autoencoders",
+	"sgvae_alpha_normal_logpx"	=> "autoencoders",
+	"sgvae_alpha_kld" 	=> "autoencoders",
 	"aae_ocsvm"			=> "two-stage",
 	"dagmm"				=> "two-stage",
 	"vae_ocsvm" 		=> "two-stage",
@@ -83,7 +88,12 @@ const MODEL_ALIAS = Dict{String, String}(
 	"DeepSVDD"			=> "dsvd",
 	"repen" 			=> "rpn",
 	"cgn"				=> "cgn",
-	"sgvae"				=> "sgvae"
+	"sgvae"				=> "sgvae",
+	"sgvae_alpha" 		=> "sgvaea",
+	"sgvae_alpha_knn" 	=> "sgvaeknn",
+	"sgvae_alpha_normal"=> "sgvaenlp",
+	"sgvae_alpha_normal_logpx"	=> "sgvaelpx",
+	"sgvae_alpha_kld" 	=> "sgvaekld",
 )
 
 const DATASET_ALIAS = Dict{String, String}(
