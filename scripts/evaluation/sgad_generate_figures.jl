@@ -20,8 +20,9 @@ const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae", "sgvaea", "sgvaenlp",
-    "sgvaekld", "sgvaelpx", "sgvaeknn"]
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha",
+    "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx", "sgvae_alpha_kld"]
+sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models]
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
 
@@ -50,6 +51,7 @@ function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{Stri
             open(file, "w") do io
                 print_rank_table(io, rt; backend=:txt) # or :tex
             end
+            @info "saved to $file"
             file = "$(datadir())/evaluation/$(dir)/$(prefix)_$(metric)_$(metric)_$(name)$(suffix).tex"
             open(file, "w") do io
                 print_rank_table(io, rt; backend=:tex) # or :tex
@@ -77,8 +79,9 @@ end
 
 ##### LOI images 
 df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
-apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS)
-
+apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS) # rename
+# filter out only the interesting models
+df_images = filter(r->r.modelname in sgad_models, df_images)
 
 # this generates the overall tables (aggregated by datasets)
 df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
@@ -87,7 +90,7 @@ prefix="images_loi"
 suffix=""
 rts = basic_summary_table(df_images_target_nonnan, outdir, prefix=prefix, suffix=suffix)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
-    rts[1], plot_models)
+    rts[1], sgad_models_alias)
 
 # this is to be used for further distinguishing performance based on some hyperparam values
 perf_plot_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae", "sgvae_d", "sgvae_i"]
@@ -101,7 +104,6 @@ perf_df_images_target = vcat(subdf, df_images_target_nonnan)
 rts = basic_summary_table(perf_df_images_target, outdir, prefix=prefix, suffix=suffix)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
     rts[1], perf_plot_models)
-
 
 ##### LOI images per AC
 # this should generate the above tables split by anomaly classes
@@ -129,6 +131,11 @@ function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Di
             print_rank_table(io, rt; backend=:txt)
         end
         @info "saved to $file"
+        file = "$(datadir())/evaluation/$(dir)/$(prefix)_$(metric)_$(metric)_autoagg$(suffix).tex"
+        open(file, "w") do io
+            print_rank_table(io, rt; backend=:tex)
+        end
+        @info "saved to $file"
         push!(rts, rt)
     end
     rts
@@ -138,10 +145,11 @@ prefix="images_loi"
 suffix="_per_ac"
 rts = basic_summary_table_per_ac(df_images_target_nonnan, outdir, prefix=prefix, suffix=suffix)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
-    rts[1], plot_models)
+    rts[1], sgad_models_alias)
 
 
 # this is to be used for further distinguishing performance based on some hyperparam values
+"""
 for d in Set(["cifar10", "svhn2", "wmnist"])
     mask = (perf_df_images_target.dataset .== d)
     perf_df_images_target[mask, :dataset] .= perf_df_images_target[mask, :dataset] .* ":" .* convert_anomaly_class.(perf_df_images_target[mask, :anomaly_class], d)
@@ -153,7 +161,7 @@ suffix = "_sgvae_latent_structure_per_ac"
 rts = basic_summary_table_per_ac(perf_df_images_target, outdir, prefix=prefix, suffix=suffix)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
     rts[1], perf_plot_models)
-
+"""
 
 
 
@@ -163,13 +171,18 @@ save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suf
 # now let's do the same for mvtec results
 df_mvtec = load(datadir("evaluation/images_mvtec_eval_all.bson"))[:df];
 apply_aliases!(df_mvtec, col="dataset", d=DATASET_ALIAS)
+df_mvtec = filter(r->r.modelname in sgad_models, df_mvtec)
+df_mvtec = filter(r->!(r.dataset in ["grid", "wood"]), df_mvtec)
+df_mvtec_nonnan = filter(r-> !isnan(r.val_auc), df_mvtec)
+
 prefix="images_mvtec"
 suffix=""
-rts = basic_summary_table(df_mvtec, outdir, prefix=prefix, suffix=suffix)
+rts = basic_summary_table(df_mvtec_nonnan, outdir, prefix=prefix, suffix=suffix)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
-    rts[1], plot_models)
+    rts[1], sgad_models_alias)
 
 # do this for the different sgvae params
+"""
 prefix="images_mvtec"
 suffix = "_sgvae_latent_structure"
 
@@ -181,7 +194,7 @@ perf_df_mvtec = vcat(subdf, df_mvtec)
 rts = basic_summary_table(perf_df_mvtec, outdir, prefix=prefix, suffix=suffix)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
     rts[1], perf_plot_models)
-
+"""
 
 
 
@@ -191,7 +204,8 @@ save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suf
 # now let's load the clean dataframes and put together some knowledge plots
 orig_path = "/home/skvarvit/generativead/GenerativeAD.jl/data"
 df_images_loi_clean = load(datadir("evaluation/images_leave-one-in_clean_val_final_eval_all.bson"))[:df];
-#load(joinpath(orig_path, "evaluation/images_leave-one-in_clean_val_final_eval.bson"))[:df];
+df_images_loi_clean = filter(r->r.modelname in sgad_models, df_images_loi_clean)
+
 df_images_loi_clean[df_images_loi_clean.fit_t .=== nothing, :fit_t] .= 1.0; # ConvSkipGANomaly is missing the fit_t
 apply_aliases!(df_images_loi_clean, col="dataset", d=DATASET_ALIAS)
 for d in Set(["cifar10", "svhn2", "wmnist"])
@@ -202,6 +216,7 @@ end
 
 # mvtec
 df_images_mvtec_clean = load(datadir("evaluation/images_mvtec_clean_val_final_eval_all.bson"))[:df];
+df_images_mvtec_clean = filter(r->r.modelname in sgad_models, df_images_mvtec_clean)
 #load(joinpath(orig_path, "evaluation/images_mvtec_clean_val_final_eval.bson"))[:df];
 df_mvtec[:anomaly_class] = 1
 df_images_mvtec_clean[:anomaly_class] = 1
@@ -218,6 +233,21 @@ df_wmnist_clean = filter(r->(occursin("wmnist", r[:dataset])),df_images_loi_clea
 df_mvtec = df_mvtec
 df_mvtec_clean = df_images_mvtec_clean
 
+# also, add the clean sgvae alpha lines - these are the same as the ones from sgvae
+function add_alpha_clean(df)
+    subdf = filter(r->r.modelname == "sgvae", df)
+    for suffix in ["_alpha", "_alpha_knn", "_alpha_kld", "_alpha_normal", "_alpha_normal_logpx"]
+        subdf.modelname .= "sgvae" * suffix
+        df = vcat(df, copy(subdf))
+    end
+    df
+end
+df_semantic_clean = add_alpha_clean(df_semantic_clean)
+df_wmnist_clean = add_alpha_clean(df_wmnist_clean)
+df_mvtec_clean = add_alpha_clean(df_mvtec_clean)
+
+#
+subdf = filter(r->r.modelname == "sgvae", df_mvtec_clean)
 
 function _incremental_rank(df, criterions, agg)
     ranks, metric_means = [], []
@@ -227,10 +257,7 @@ function _incremental_rank(df, criterions, agg)
         apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
         sort!(df_agg, [:dataset, :modelname])
         rt = rank_table(df_agg, tst_metric)
-        # _meanfinite(a) = mean([x for x in a if !isnan(x)])
-        # mm = DataFrame([Symbol(model) => _meanfinite(rt[1:end-3, model]) for model in names(rt)[2:end]])
         mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model]) for model in names(rt)[2:end]])
-        # @info("", criterion, rt, mm)
         push!(ranks, rt[end:end, 2:end])
         push!(metric_means, mm)
     end
@@ -279,10 +306,16 @@ ranks_inc, metric_means_inc = _incremental_rank(df_semantic, extended_criterions
 ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), vcat(metric_means_clean, metric_means_inc; cols=:intersect)
 models = names(ranks_all)
 
+criterion = :val_pat_10
+agg = aggregate_stats_auto
+df = filter(r->!isnan(r[criterion]), df_semantic)
+df_agg = agg(df, criterion)
+
 #ab_plots = map(enumerate([(df_semantic, df_semantic_clean), (df_wmnist, df_wmnist_clean), (df_mvtec, df_mvtec_clean)])) do (i, (df, df_clean))
-ranks_dfs = map(enumerate(
-    zip(titles,
-        [(df_semantic, df_semantic_clean), (df_wmnist, df_wmnist_clean), (df_mvtec, df_mvtec_clean)]))) do (i, (title, (df, df_clean)))
+ranks_dfs = map(enumerate(zip(titles,
+        [(df_semantic, df_semantic_clean), 
+            (df_wmnist, df_wmnist_clean), 
+            (df_mvtec, df_mvtec_clean)]))) do (i, (title, (df, df_clean)))
     ranks_inc, metric_means_inc = _incremental_rank(df, extended_criterions, aggregate_stats_auto)
     
     if size(df_clean,1) > 0
