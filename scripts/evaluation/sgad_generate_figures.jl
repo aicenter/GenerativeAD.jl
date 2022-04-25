@@ -252,7 +252,19 @@ subdf = filter(r->r.modelname == "sgvae", df_mvtec_clean)
 function _incremental_rank(df, criterions, agg)
     ranks, metric_means = [], []
     for criterion in criterions
-        df_agg = agg(df, criterion)
+        df_nonnan = filter(r->!(isnan(r[criterion])), df)
+        df_agg = agg(df_nonnan, criterion)
+
+        # some model might be missing
+        nr = size(df_agg,2)
+        if !("sgvae_alpha" in df_agg.modelname)
+            for dataset in unique(df_agg.dataset)
+                for m in sgad_alpha_models
+                    df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, m]))
+                end
+            end
+        end
+
         apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
         apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
         sort!(df_agg, [:dataset, :modelname])
@@ -287,13 +299,12 @@ function _plot(df_ranks, metric_mean, cnames, models, title)
     a, b
 end
 
+## setup
 mn = "AUC"
 metric = :auc
 val_metric = _prefix_symbol("val", metric)
 tst_metric = _prefix_symbol("tst", metric)
-format = "pdf"
 
-ctype = "pat"
 cnames = PAT_METRICS_NAMES
 criterions = _prefix_symbol.("val", PAT_METRICS)
 
@@ -301,15 +312,12 @@ extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 titles = ["semantic", "wmnist", "mvtec"]
 
+
+# lets try it for semantic data
 ranks_clean, metric_means_clean = _incremental_rank(df_semantic_clean, [val_metric], aggregate_stats_max_mean)
 ranks_inc, metric_means_inc = _incremental_rank(df_semantic, extended_criterions, aggregate_stats_auto)
 ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), vcat(metric_means_clean, metric_means_inc; cols=:intersect)
 models = names(ranks_all)
-
-criterion = :val_pat_10
-agg = aggregate_stats_auto
-df = filter(r->!isnan(r[criterion]), df_semantic)
-df_agg = agg(df, criterion)
 
 #ab_plots = map(enumerate([(df_semantic, df_semantic_clean), (df_wmnist, df_wmnist_clean), (df_mvtec, df_mvtec_clean)])) do (i, (df, df_clean))
 ranks_dfs = map(enumerate(zip(titles,
