@@ -248,32 +248,54 @@ df_semantic_clean = add_alpha_clean(df_semantic_clean)
 df_wmnist_clean = add_alpha_clean(df_wmnist_clean)
 df_mvtec_clean = add_alpha_clean(df_mvtec_clean)
 
-#
-subdf = filter(r->r.modelname == "sgvae", df_mvtec_clean)
+# remove duplicate rows from mvtec clean
+models = df_mvtec_clean.modelname
+seeds = df_mvtec_clean.seed
+datasets = df_mvtec_clean.dataset
+subdfs = []
+for model in unique(models)
+    for dataset in unique(datasets)
+        for seed in unique(seeds)
+            inds = (models .== model) .& (seeds .== seed) .& (datasets .== dataset)
+            if sum(inds) > 0
+                subdf = df_mvtec_clean[inds,:]
+                #subdf = subdf[argmax(subdf.tst_auc), :]
+                subdf = subdf[1, :]
+                push!(subdfs, DataFrame(subdf))
+            end
+        end
+    end
+end
+df_mvtec_clean = vcat(subdfs...)
+# filter out grid and wood
+df_mvtec_clean = filter(r->!(r.dataset in ["wood", "grid"]), df_mvtec_clean)
 
 function _incremental_rank(df, criterions, agg)
     ranks, metric_means = [], []
     for criterion in criterions
         df_nonnan = filter(r->!(isnan(r[criterion])), df)
-        df_agg = agg(df_nonnan, criterion)
+        if size(df_nonnan, 1) > 0
+            df_agg = agg(df_nonnan, criterion)
 
-        # some model might be missing
-        nr = size(df_agg,2)
-        if !("sgvae_alpha" in df_agg.modelname)
-            for dataset in unique(df_agg.dataset)
-                for m in sgad_alpha_models
-                    df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, m]))
+            # some model might be missing
+            nr = size(df_agg,2)
+            modelnames = df_agg.modelname
+            if !("sgvae_alpha" in modelnames)
+                for dataset in unique(df_agg.dataset)
+                    for m in sgad_alpha_models
+                        df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, m]))
+                    end
                 end
             end
-        end
 
-        apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
-        apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
-        sort!(df_agg, [:dataset, :modelname])
-        rt = rank_table(df_agg, tst_metric)
-        mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model]) for model in names(rt)[2:end]])
-        push!(ranks, rt[end:end, 2:end])
-        push!(metric_means, mm)
+            apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
+            apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+            sort!(df_agg, [:dataset, :modelname])
+            rt = rank_table(df_agg, tst_metric)
+            mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model]) for model in names(rt)[2:end]])
+            push!(ranks, rt[end:end, 2:end])
+            push!(metric_means, mm)
+        end
     end
     vcat(ranks...), vcat(metric_means...)
 end
@@ -313,13 +335,6 @@ criterions = _prefix_symbol.("val", PAT_METRICS)
 extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 titles = ["semantic", "wmnist", "mvtec"]
-
-
-# lets try it for semantic data
-ranks_clean, metric_means_clean = _incremental_rank(df_semantic_clean, [val_metric], aggregate_stats_max_mean)
-ranks_inc, metric_means_inc = _incremental_rank(df_semantic, extended_criterions, aggregate_stats_auto)
-ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), vcat(metric_means_clean, metric_means_inc; cols=:intersect)
-models = names(ranks_all)
 
 #ab_plots = map(enumerate([(df_semantic, df_semantic_clean), (df_wmnist, df_wmnist_clean), (df_mvtec, df_mvtec_clean)])) do (i, (df, df_clean))
 ranks_dfs = map(enumerate(zip(titles,
