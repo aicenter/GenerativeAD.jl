@@ -23,12 +23,16 @@ s = ArgParseSettings()
     "anomaly_class"
     	default = nothing
     	help = "which class to compute"
+    "--valauc"
+    	action = :store_true
+    	help = "use validation auc instead of val precision"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype, anomaly_class = parsed_args
+@unpack modelname, dataset, datatype, anomaly_class, valauc = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1
 acs = isnothing(anomaly_class) ? collect(1:max_ac) : [Meta.parse(anomaly_class)]
+valauc_suffix = valauc ? "_auc" : ""
 
 function create_save_scores(model_id, af, out_model_name, alpha_dir, pdata, dataset, seed, ac, save_dir, st)
 	adata = load(joinpath(alpha_dir, af))[:df]
@@ -77,7 +81,11 @@ function create_save_scores(model_id, af, out_model_name, alpha_dir, pdata, data
 			res_df["val_auc"] = adata["val_auc"][1]
 			res_df["tst_auc"] = adata["tst_auc"][1]
 		else
-			res_df["val_pat_$(sp)"] = adata["val_pat_$(sp)"][1]
+			if valauc 
+				res_df["val_pat_$(sp)"] = adata["val_auc_$(sp)"][1]
+			else # this is the original method
+				res_df["val_pat_$(sp)"] = adata["val_pat_$(sp)"][1]
+			end
 			res_df["tst_auc"] = adata["tst_auc_$(sp)"][1]
 		end
 		res_df = DataFrame(res_df)
@@ -102,7 +110,7 @@ for ac in acs
 		# first do the one for full validation dataset
 		for sub_type in ["", "_normal", "_kld", "_normal_logpx", "_knn"]
 			aggreg_type = "alpha"*sub_type
-			out_model_name = modelname*"_"*aggreg_type
+			out_model_name = modelname*"_"*aggreg_type*valauc_suffix
 
 			# now to emulate this
 			alpha_dir = datadir("sgad_alpha_evaluation/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
@@ -116,7 +124,7 @@ for ac in acs
 			model_ids = map(x->Meta.parse(split(split(x, "=")[2], "_")[1]), afs)
 
 			# save path
-			save_dir = datadir("evaluation/images_$(datatype)/$(modelname)_$(aggreg_type)/$(dataset)/ac=$(ac)/seed=$(seed)")
+			save_dir = datadir("evaluation/images_$(datatype)/$(modelname)_$(aggreg_type)$(valauc_suffix)/$(dataset)/ac=$(ac)/seed=$(seed)")
 			mkpath(save_dir)
 			@info "Saving data to $(save_dir)..."
 
