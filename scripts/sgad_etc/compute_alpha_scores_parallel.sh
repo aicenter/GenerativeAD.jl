@@ -6,7 +6,7 @@ LATENT_SCORE=$3
 P_NEGATIVE=$4
 FORCE=$5
 
-LOG_DIR="${HOME}/logs/sgvae_alpha_scores"
+LOG_DIR="${HOME}/logs/sgvae_alpha_scores${P_NEGATIVE}"
 
 if [ ! -d "$LOG_DIR" ]; then
     mkdir $LOG_DIR
