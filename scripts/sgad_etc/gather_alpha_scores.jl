@@ -33,6 +33,8 @@ max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1
 acs = isnothing(anomaly_class) ? collect(1:max_ac) : [Meta.parse(anomaly_class)]
 valauc_suffix = valauc ? "_auc" : ""
+# only compute all the subtypes for the precision implementation
+subtypes = valauc ? [""] : ["", "_normal", "_kld", "_normal_logpx", "_knn"]
 
 function create_save_scores(model_id, af, out_model_name, alpha_dir, pdata, dataset, seed, ac, save_dir, st)
 	adata = load(joinpath(alpha_dir, af))[:df]
@@ -108,7 +110,7 @@ pdata = load(pf)[:df]
 for ac in acs
 	for seed in 1:max_seed
 		# first do the one for full validation dataset
-		for sub_type in ["", "_normal", "_kld", "_normal_logpx", "_knn"]
+		for sub_type in subtypes
 			aggreg_type = "alpha"*sub_type
 			out_model_name = modelname*"_"*aggreg_type*valauc_suffix
 

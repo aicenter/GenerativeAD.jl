@@ -62,6 +62,19 @@ function top_samples_at_p(p, scores, labels)
 	scores[inds,:], labels[inds], inds
 end
 
+"""
+	top_scores_at_p(p, scores)
+
+Assumes that the scores are of shape (nsamples, nfeatures).
+Returns the 100*p% of samples based on the values in the first column 
+which is supposed to be the top score. 
+"""
+function top_samples_at_p(p, scores, labels)
+	pN = floor(Int, p*size(scores,1))
+	inds = sortperm(scores[:,1],rev=true)[1:pN]
+	scores[inds,:], labels[inds], inds
+end
+
 function basic_stats(labels, scores)
 	try
 		roc = EvalMetrics.roccurve(labels, scores)
