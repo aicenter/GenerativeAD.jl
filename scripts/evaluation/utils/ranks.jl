@@ -166,3 +166,9 @@ function aggregate_stats_max_mean_top_10(df::DataFrame,
 	end
 	vcat(results...)
 end
+
+# splits single and multi class image datasets into "statistic" and "semantic" anomalies
+_split_image_datasets(df, dt) = (
+            filter(x -> x.dataset in dt, df), 
+            filter(x -> ~(x.dataset in dt), df)
+        )

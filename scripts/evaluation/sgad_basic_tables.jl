@@ -28,12 +28,6 @@ sgad_alpha_models = ["sgvae_alpha", "sgvae_alpha_knn", "sgvae_alpha_normal", "sg
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
 
-# splits single and multi class image datasets into "statistic" and "semantic" anomalies
-_split_image_datasets(df, dt) = (
-            filter(x -> x.dataset in dt, df), 
-            filter(x -> ~(x.dataset in dt), df)
-        )
-
 function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{String, Int}(), )
     agg_names = ["maxmean"]
     agg_funct = [aggregate_stats_max_mean]
@@ -164,8 +158,6 @@ rts = basic_summary_table_per_ac(perf_df_images_target, outdir, prefix=prefix, s
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
     rts[1], perf_plot_models)
 """
-
-
 
 
 
