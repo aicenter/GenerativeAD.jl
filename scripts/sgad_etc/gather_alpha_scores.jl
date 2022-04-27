@@ -23,6 +23,10 @@ s = ArgParseSettings()
     "anomaly_class"
     	default = nothing
     	help = "which class to compute"
+    "p_negative"
+    	arg_type = Float64
+    	help = "number of validation negative samples to include in fitting the alpha params"
+    	default = 0.0
     "--valauc"
     	action = :store_true
     	help = "use validation auc instead of val precision"
@@ -35,6 +39,7 @@ acs = isnothing(anomaly_class) ? collect(1:max_ac) : [Meta.parse(anomaly_class)]
 valauc_suffix = valauc ? "_auc" : ""
 # only compute all the subtypes for the precision implementation
 subtypes = valauc ? [""] : ["", "_normal", "_kld", "_normal_logpx", "_knn"]
+sp_negative = (p_negative == 0.0) ? "" : "_"*split("$(100*p_negative)", ".")[1]
 
 function create_save_scores(model_id, af, out_model_name, alpha_dir, pdata, dataset, seed, ac, save_dir, st)
 	adata = load(joinpath(alpha_dir, af))[:df]
@@ -112,10 +117,10 @@ for ac in acs
 		# first do the one for full validation dataset
 		for sub_type in subtypes
 			aggreg_type = "alpha"*sub_type
-			out_model_name = modelname*"_"*aggreg_type*valauc_suffix
+			out_model_name = modelname*"_"*aggreg_type*valauc_suffix*sp_negative
 
 			# now to emulate this
-			alpha_dir = datadir("sgad_alpha_evaluation/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+			alpha_dir = datadir("sgad_alpha_evaluation$(sp_negative)/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
 			afs = readdir(alpha_dir)
 			if sub_type != ""
 				st = sub_type[2:end]
@@ -126,7 +131,7 @@ for ac in acs
 			model_ids = map(x->Meta.parse(split(split(x, "=")[2], "_")[1]), afs)
 
 			# save path
-			save_dir = datadir("evaluation/images_$(datatype)/$(modelname)_$(aggreg_type)$(valauc_suffix)/$(dataset)/ac=$(ac)/seed=$(seed)")
+			save_dir = datadir("evaluation/images_$(datatype)/$(modelname)_$(aggreg_type)$(valauc_suffix)$(sp_negative)/$(dataset)/ac=$(ac)/seed=$(seed)")
 			mkpath(save_dir)
 			@info "Saving data to $(save_dir)..."
 

@@ -77,7 +77,7 @@ df_mvtec_clean = df_images_mvtec_clean
 # also, add the clean sgvae alpha lines - these are the same as the ones from sgvae
 function add_alpha_clean(df)
     subdf = filter(r->r.modelname == "sgvae", df)
-    for suffix in ["_alpha", "_alpha_knn", "_alpha_kld", "_alpha_normal", "_alpha_normal_logpx"]
+    for suffix in ["_alpha", "_alpha_knn", "_alpha_kld", "_alpha_normal", "_alpha_normal_logpx", "_alpha_auc"]
         subdf.modelname .= "sgvae" * suffix
         df = vcat(df, copy(subdf))
     end

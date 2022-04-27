@@ -27,7 +27,7 @@ s = ArgParseSettings()
         help = "leave-one-in or mvtec"
     "latent_score_type"
         arg_type = String
-        help = "normal, kld or normal_logpx"
+        help = "normal, kld, knn or normal_logpx"
         default = "normal"
     "device"
         arg_type = String

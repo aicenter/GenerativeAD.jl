@@ -6,7 +6,8 @@
 DATASET=$1
 DATATYPE=$2
 AC=$3
-VALAUC=$4
+P_NEGATIVE=$4
+VALAUC=$5
 
 module load Julia/1.5.3-linux-x86_64
 module load Python/3.9.6-GCCcore-11.2.0
@@ -15,4 +16,4 @@ source ${HOME}/sgad-env/bin/activate
 export PYTHON="${HOME}/sgad-env/bin/python"
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-julia ./gather_alpha_scores.jl sgvae ${DATASET} ${DATATYPE} ${AC} ${VALAUC}
+julia ./gather_alpha_scores.jl sgvae ${DATASET} ${DATATYPE} ${AC} ${P_NEGATIVE} ${VALAUC}
