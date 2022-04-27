@@ -51,6 +51,10 @@ for d in Set(["cifar10", "svhn2", "wmnist"])
 end
 
 # mvtec
+df_mvtec = load(datadir("evaluation/images_mvtec_eval_all.bson"))[:df];
+apply_aliases!(df_mvtec, col="dataset", d=DATASET_ALIAS)
+df_mvtec = filter(r->r.modelname in sgad_models, df_mvtec)
+df_mvtec = filter(r->!(r.dataset in ["grid", "wood"]), df_mvtec)
 df_images_mvtec_clean = load(datadir("evaluation/images_mvtec_clean_val_final_eval_all.bson"))[:df];
 df_images_mvtec_clean = filter(r->r.modelname in sgad_models, df_images_mvtec_clean)
 #load(joinpath(orig_path, "evaluation/images_mvtec_clean_val_final_eval.bson"))[:df];
