@@ -8,6 +8,8 @@ using EvalMetrics
 using OrderedCollections
 using ArgParse
 using Suppressor
+using StatsBase
+using Random
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -31,48 +33,49 @@ s = ArgParseSettings()
         arg_type = String
         help = "cpu or cuda"
         default = "cpu"
+    "p_negative"
+    	arg_type = Float64
+    	help = "number of validation negative samples to include in fitting the alpha params"
+    	default = 0.0
     "--force", "-f"
         action = :store_true
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype, latent_score_type, device, force = parsed_args
+@unpack modelname, dataset, datatype, latent_score_type, device, p_negative, force = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 
+sp_negative = (p_negative == 0.0) ? "" : "_"*split("$(100*p_negative)", ".")[1]
 score_type = "logpx"
 device = "cpu"
-method = "original"
+method = (p_negative == 0.0) ? "original" : "negative$(sp_negative)"
 
 		# how do the original eval files look?
 #		ef = datadir("sgad_alpha_evaluation/prototype.bson")
 #		edata = load(ef)[:df]
 
-
 """
-	top_scores_at_p(p, scores)
+	top_samples_at_p(p, p_negative, scores, labels; seed)
 
-Assumes that the scores are of shape (nsamples, nfeatures).
-Returns the 100*p% of samples based on the values in the first column 
-which is supposed to be the top score. 
+Returns p% of top samples and labels and p_negative% of negative samples and labels.
 """
-function top_samples_at_p(p, scores, labels)
+function top_samples_at_p(p, p_negative, scores, labels; seed = nothing)
+	inds = Bool.(zeros(length(labels)))
+	# first select the top p% of all samples
 	pN = floor(Int, p*size(scores,1))
-	inds = sortperm(scores[:,1],rev=true)[1:pN]
-	scores[inds,:], labels[inds], inds
-end
+	pinds = sortperm(scores[:,1],rev=true)[1:pN]
+	inds[pinds] .= true
+	# then add the p_negative% percent of the negative samples
+	n = Int((length(labels)-sum(labels)))
+	nN = floor(Int, p_negative*n)
+	ninds = Bool.(zeros(n))
+	isnothing(seed) ? nothing : Random.seed!(seed) 
+	ninds[sample(1:n, nN, replace=false)] .= true
+	isnothing(seed) ? nothing : Random.seed!()
+	inds[labels .== 0] .= (inds[labels .== 0] .| ninds)
 
-"""
-	top_scores_at_p(p, scores)
-
-Assumes that the scores are of shape (nsamples, nfeatures).
-Returns the 100*p% of samples based on the values in the first column 
-which is supposed to be the top score. 
-"""
-function top_samples_at_p(p, scores, labels)
-	pN = floor(Int, p*size(scores,1))
-	inds = sortperm(scores[:,1],rev=true)[1:pN]
-	scores[inds,:], labels[inds], inds
+	scores[inds, :], labels[inds], collect(1:length(labels))[inds]
 end
 
 function basic_stats(labels, scores)
@@ -100,8 +103,8 @@ end
 auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
 
 # TODO also change this method to something else, e.g.
-function perf_at_p_original(p, val_scores, val_y, tst_scores, tst_y)
-	scores, labels, _ = top_samples_at_p(p, val_scores, val_y)
+function perf_at_p_original(p, p_negative, val_scores, val_y, tst_scores, tst_y; seed=nothing)
+	scores, labels, _ = top_samples_at_p(p, p_negative, val_scores, val_y, seed=seed)
 	# if there are no samples return NaNs
 	if length(labels) == 0
 		val_prec = NaN
@@ -184,7 +187,7 @@ for ac in 1:max_ac
 		model_ids = map(x->Meta.parse(split(split(x, "=")[2], "_")[1]), lfs)
 
 		# make the save dir
-		save_dir = datadir("sgad_alpha_evaluation/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+		save_dir = datadir("sgad_alpha_evaluation$(sp_negative)/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
 		mkpath(save_dir)
 		@info "Saving data to $(save_dir)..."
 
@@ -267,7 +270,7 @@ for ac in 1:max_ac
 					ip = p >= 0.01 ? 1 : 2
 					sp = split("$(p*100)", ".")[ip]
 					res_df["val_pat_$(sp)"], res_df["val_auc_$(sp)"], res_df["tst_auc_$(sp)"] = 
-						perf_at_p_original(p, val_scores, val_y, tst_scores, tst_y)
+						perf_at_p_original(p, p_negative, val_scores, val_y, tst_scores, tst_y; seed=seed)
 				end
 				res_df
 			end
