@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=cpufast
+#SBATCH --partition=gpufast
 #SBATCH --time=4:00:00
 #SBATCH --nodes=1 --ntasks-per-node=2 --cpus-per-task=2
 #SBATCH --mem=20G
