@@ -10,6 +10,7 @@ using GenerativeAD
 using GenerativeAD.Evaluation: _prefix_symbol, _get_anomaly_class, _auc_at_subsamples_anomalous
 using GenerativeAD.Evaluation: BASE_METRICS
 using StatsBase, Random
+using ProgressMeter
 
 AUC_METRICS = ["auc_100", "auc_50", "auc_20", "auc_10", "auc_5", "auc_2", 
 	"auc_1", "auc_05", "auc_02", "auc_01"]
@@ -64,6 +65,7 @@ function generate_stats(project_dir::String, model::String, dataset::String; for
 	@info "Collected $(length(files)) files from $(source_dir) folder."
 	# it might happen that when appending results some of the cores just go over already computed files
 	files = files[randperm(length(files))]
+	p = Progress(length(files))
 
 	@threads for f in files
 		target = joinpath(out_dir, split(dirname(f), source_dir)[2][2:end], "eval_$(basename(f))")
@@ -81,6 +83,7 @@ function generate_stats(project_dir::String, model::String, dataset::String; for
 			end
 			@warn "Processing of $f failed due to \n$e"
 		end
+	    next!(p)
 	end
 end
 
