@@ -153,20 +153,20 @@ function compute_stats(r::Dict{Symbol,Any})
 
 			# compute auc on a randomly selected portion of samples
 			if splt == "val"
-				auc_ano_100 = [mean([auc_at_subsamples_anomalous(p/100, 1.0, labels, scores, seed=s) for s in 1:max_seed]) 
+				auc_ano_100 = [mean([_auc_at_subsamples_anomalous(p/100, 1.0, labels, scores, seed=s) for s in 1:max_seed]) 
 					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
 				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_100", AUC_METRICS)), auc_ano_100)...))
 
-				auc_ano_50 = [mean([auc_at_subsamples_anomalous(p/100, 0.5, labels, scores, seed=s) for s in 1:max_seed]) 
+				auc_ano_50 = [mean([_auc_at_subsamples_anomalous(p/100, 0.5, labels, scores, seed=s) for s in 1:max_seed]) 
 					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
 				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_50", AUC_METRICS)), auc_ano_50)...))
 
-				auc_ano_10 = [mean([auc_at_subsamples_anomalous(p/100, 0.1, labels, scores, seed=s) for s in 1:max_seed]) 
+				auc_ano_10 = [mean([_auc_at_subsamples_anomalous(p/100, 0.1, labels, scores, seed=s) for s in 1:max_seed]) 
 					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
 				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_10", AUC_METRICS)), auc_ano_10)...))
 
 				prop_ps = [100, 50, 20, 10, 5, 2, 1]
-				auc_prop_100 = [mean([auc_at_subsamples_anomalous(1.0, p/100, labels, scores, seed=s) for s in 1:max_seed]) 
+				auc_prop_100 = [mean([_auc_at_subsamples_anomalous(1.0, p/100, labels, scores, seed=s) for s in 1:max_seed]) 
 					for p in prop_ps]
 				row = merge(row, (;zip(_prefix_symbol.(splt, map(x-> "auc_100_$(x)", prop_ps)), auc_prop_100)...))
 			end
