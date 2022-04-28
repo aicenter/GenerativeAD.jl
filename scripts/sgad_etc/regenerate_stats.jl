@@ -72,7 +72,7 @@ function generate_stats(project_dir::String, model::String, dataset::String; for
 				r = load(f)
 				df = compute_stats(r)
 				wsave(target, Dict(:df => df))
-				@info "Saving evaluation results at $(target)"
+				#@info "Saving evaluation results at $(target)"
 			end
 		catch e
 			# remove old files in order to ensure consistency
