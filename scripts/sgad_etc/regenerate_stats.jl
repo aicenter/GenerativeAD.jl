@@ -7,7 +7,7 @@ using FileIO
 using DataFrames
 using Base.Threads: @threads
 using GenerativeAD
-using GenerativeAD.Evaluation: _prefix_symbol, _get_anomaly_class 
+using GenerativeAD.Evaluation: _prefix_symbol, _get_anomaly_class, _auc_at_subsamples_anomalous
 using GenerativeAD.Evaluation: BASE_METRICS
 using StatsBase, Random
 
@@ -42,48 +42,6 @@ end
 parsed_args = parse_args(ARGS, s)
 @unpack project_dir, model, dataset, force = parsed_args
 
-# p is the amount of anomalies to include in the evaluation
-# 1.0 means that the same number of normal and anomalous data is used
-# p_normal is the amount of normal data to use
-function subsample_data(p, p_normal, labels, scores; seed=nothing)
-	# set seed
-	isnothing(seed) ? nothing : Random.seed!(seed) 
-
-	# first sample the normal data
-	nn = Int(length(labels) - sum(labels))
-	pnn = floor(Int, p_normal*nn)
-	ninds = sample(1:nn, pnn, replace=false)
-	bin_ninds = Bool.(zeros(nn))
-	bin_ninds[ninds] .= true
-
-	# then sample the anomalous data
-	na = Int(sum(labels))
-	pna = floor(Int, p*pnn)
-	ainds = sample(1:na, pna, replace=false)
-	bin_ainds = Bool.(zeros(na))
-	bin_ainds[ainds] .= true
-
-	# restart the seed
-	isnothing(seed) ? nothing : Random.seed!()
-
-	# put the labels together
-	inds = Bool.(zeros(length(labels)))
-	inds[labels .== 0] .= bin_ninds
-	inds[labels .== 1] .= bin_ainds
-
-	# just return the samples then
-	return scores[inds], labels[inds], collect(1:length(labels))[inds]
-end
-
-function auc_at_subsamples_anomalous(p, p_normal, labels, scores; seed = nothing)
-	scores, labels, _ = subsample_data(p, p_normal, labels, scores; seed=seed)
-	if sum(labels) == 0.0
-		return NaN
-	end
-	roc = EvalMetrics.roccurve(labels, scores)
-	return EvalMetrics.auc_trapezoidal(roc...)
-end
-
 """
 	generate_stats(source_dir::String, model::String, dataset::String; force=true)
 
@@ -103,7 +61,7 @@ function generate_stats(project_dir::String, model::String, dataset::String; for
 	filter!(x -> !startswith(basename(x), "model"), files);
 	filter!(x -> !occursin(".pth", basename(x)), files);
 
-	@info "Collected $(length(files)) files from $source folder."
+	@info "Collected $(length(files)) files from $(source_dir) folder."
 	# it might happen that when appending results some of the cores just go over already computed files
 	files = files[randperm(length(files))]
 
@@ -140,6 +98,7 @@ function compute_stats(r::Dict{Symbol,Any})
 		npars = (Symbol("npars") in keys(r)) ? r[:npars] : 0
 	)
 	
+	max_seed = 10	
 	anomaly_class = _get_anomaly_class(r)
 	if anomaly_class != -1
 		row = merge(row, (anomaly_class = anomaly_class,))
@@ -194,20 +153,20 @@ function compute_stats(r::Dict{Symbol,Any})
 
 			# compute auc on a randomly selected portion of samples
 			if splt == "val"
-				auc_ano_100 = [mean([auc_at_subsamples_anomalous(p/100, 1.0, labels, scores, seed=s) for s in 1:5]) 
+				auc_ano_100 = [mean([auc_at_subsamples_anomalous(p/100, 1.0, labels, scores, seed=s) for s in 1:max_seed]) 
 					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
 				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_100", AUC_METRICS)), auc_ano_100)...))
 
-				auc_ano_50 = [mean([auc_at_subsamples_anomalous(p/100, 0.5, labels, scores, seed=s) for s in 1:5]) 
+				auc_ano_50 = [mean([auc_at_subsamples_anomalous(p/100, 0.5, labels, scores, seed=s) for s in 1:max_seed]) 
 					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
 				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_50", AUC_METRICS)), auc_ano_50)...))
 
-				auc_ano_10 = [mean([auc_at_subsamples_anomalous(p/100, 0.1, labels, scores, seed=s) for s in 1:5]) 
+				auc_ano_10 = [mean([auc_at_subsamples_anomalous(p/100, 0.1, labels, scores, seed=s) for s in 1:max_seed]) 
 					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
 				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_10", AUC_METRICS)), auc_ano_10)...))
 
 				prop_ps = [100, 50, 20, 10, 5, 2, 1]
-				auc_prop_100 = [mean([auc_at_subsamples_anomalous(1.0, p/100, labels, scores, seed=s) for s in 1:5]) 
+				auc_prop_100 = [mean([auc_at_subsamples_anomalous(1.0, p/100, labels, scores, seed=s) for s in 1:max_seed]) 
 					for p in prop_ps]
 				row = merge(row, (;zip(_prefix_symbol.(splt, map(x-> "auc_100_$(x)", prop_ps)), auc_prop_100)...))
 			end

@@ -19,6 +19,54 @@ Modifies symbol `s` by adding `prefix` with underscore.
 """
 _prefix_symbol(prefix, s) = Symbol("$(prefix)_$(s)")
 
+"""
+	_subsample_data(p, p_normal, labels, scores; seed=nothing)
+
+p is the amount of anomalies to include in the evaluation
+1.0 means that the same number of normal and anomalous data is used
+p_normal is the amount of normal data to use
+"""
+function _subsample_data(p, p_normal, labels, scores; seed=nothing)
+	# set seed
+	isnothing(seed) ? nothing : Random.seed!(seed) 
+
+	# first sample the normal data
+	nn = Int(length(labels) - sum(labels))
+	pnn = floor(Int, p_normal*nn)
+	ninds = sample(1:nn, pnn, replace=false)
+	bin_ninds = Bool.(zeros(nn))
+	bin_ninds[ninds] .= true
+
+	# then sample the anomalous data
+	na = Int(sum(labels))
+	pna = floor(Int, p*pnn)
+	ainds = sample(1:na, pna, replace=false)
+	bin_ainds = Bool.(zeros(na))
+	bin_ainds[ainds] .= true
+
+	# restart the seed
+	isnothing(seed) ? nothing : Random.seed!()
+
+	# put the labels together
+	inds = Bool.(zeros(length(labels)))
+	inds[labels .== 0] .= bin_ninds
+	inds[labels .== 1] .= bin_ainds
+
+	# just return the samples then
+	return scores[inds], labels[inds], collect(1:length(labels))[inds]
+end
+
+"""
+	_auc_at_subsamples_anomalous(p, p_normal, labels, scores; seed = nothing)
+"""
+function _auc_at_subsamples_anomalous(p, p_normal, labels, scores; seed = nothing)
+	scores, labels, _ = _subsample_data(p, p_normal, labels, scores; seed=seed)
+	if sum(labels) == 0.0
+		return NaN
+	end
+	roc = EvalMetrics.roccurve(labels, scores)
+	return EvalMetrics.auc_trapezoidal(roc...)
+end
 
 """
 	_precision_at(p, labels, scores)
