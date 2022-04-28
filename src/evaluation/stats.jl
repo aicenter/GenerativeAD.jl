@@ -60,7 +60,11 @@ end
 	_auc_at_subsamples_anomalous(p, p_normal, labels, scores; seed = nothing)
 """
 function _auc_at_subsamples_anomalous(p, p_normal, labels, scores; seed = nothing)
-	scores, labels, _ = _subsample_data(p, p_normal, labels, scores; seed=seed)
+	try
+		scores, labels, _ = _subsample_data(p, p_normal, labels, scores; seed=seed)
+	catch e 
+		return NaN
+	end
 	if sum(labels) == 0.0
 		return NaN
 	end
