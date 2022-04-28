@@ -47,7 +47,7 @@ score_type = "logpx"
 device = "cpu"
 method = (p_negative == 0.0) ? "original" : "negative$(sp_negative)"
 
-		# how do the original eval files look?
+# how do the original eval files look?
 #		ef = datadir("sgad_alpha_evaluation/prototype.bson")
 #		edata = load(ef)[:df]
 
