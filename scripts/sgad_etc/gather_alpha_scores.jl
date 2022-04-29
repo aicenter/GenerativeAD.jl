@@ -32,7 +32,7 @@ s = ArgParseSettings()
     	help = "use validation auc instead of val precision"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype, anomaly_class, valauc = parsed_args
+@unpack modelname, dataset, datatype, anomaly_class, p_negative, valauc = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1
 acs = isnothing(anomaly_class) ? collect(1:max_ac) : [Meta.parse(anomaly_class)]
