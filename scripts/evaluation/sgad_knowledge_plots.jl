@@ -14,8 +14,6 @@ using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, con
 
 const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@\\%5\$","\$PR@\\%10\$","\$PR@\\%20\$"]
 
-@suppress_err begin
-
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
@@ -154,6 +152,7 @@ extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 titles = ["semantic", "wmnist", "mvtec"]
 
 #ab_plots = map(enumerate([(df_semantic, df_semantic_clean), (df_wmnist, df_wmnist_clean), (df_mvtec, df_mvtec_clean)])) do (i, (df, df_clean))
+@suppress_err begin
 ranks_dfs = map(enumerate(zip(titles,
         [(df_semantic, df_semantic_clean), 
             (df_wmnist, df_wmnist_clean), 
@@ -177,11 +176,10 @@ ranks_dfs = map(enumerate(zip(titles,
     # one can do this manually at the end
     models = names(ranks_all)
     f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_$(title)_data.csv")
-    @info "saving to $f"
+    println("saving to $f")
     CSV.write(f, metric_means_all)
     ranks_all, metric_means_all
 #    a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
 #    a, b
 end
-
 end

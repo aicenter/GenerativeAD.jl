@@ -41,6 +41,7 @@ s = ArgParseSettings()
 end
 parsed_args = parse_args(ARGS, s)
 @unpack project_dir, model, dataset, force = parsed_args
+ignore_higher = model != "cgn"
 
 """
 	generate_stats(source_dir::String, model::String, dataset::String; force=true)
@@ -180,5 +181,5 @@ function compute_stats(r::Dict{Symbol,Any})
 	DataFrame([row])
 end
 
-generate_stats(project_dir, model, dataset; force=force)
+generate_stats(project_dir, model, dataset; force=force, ignore_higher=ignore_higher)
 @info "---------------- DONE -----------------"
