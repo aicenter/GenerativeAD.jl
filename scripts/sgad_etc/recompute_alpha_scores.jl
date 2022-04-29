@@ -70,7 +70,7 @@ end
 auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
 
 function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y; seed=nothing)
-	scores, labels, _ = _subsample_data(p, p_normal, val_labels, val_scores; seed=seed)
+	scores, labels, _ = _subsample_data(p, p_normal, val_y, val_scores; seed=seed)
 	# if there are no positive samples return NaNs
 	if sum(labels) == 0
 		val_auc = NaN
