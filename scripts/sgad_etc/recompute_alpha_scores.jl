@@ -36,7 +36,7 @@ s = ArgParseSettings()
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype, latent_score_type, p_negative, force = parsed_args
+@unpack modelname, dataset, datatype, latent_score_type, force = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 
@@ -69,8 +69,8 @@ end
 
 auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
 
-function perf_at_p_new(p, p_negative, val_scores, val_y, tst_scores, tst_y; seed=nothing)
-	scores, labels, _ = _subsample_data(p, p_negative, val_labels, val_scores; seed=seed)
+function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y; seed=nothing)
+	scores, labels, _ = _subsample_data(p, p_normal, val_labels, val_scores; seed=seed)
 	# if there are no positive samples return NaNs
 	if sum(labels) == 0
 		val_auc = NaN
