@@ -8,12 +8,9 @@ using DataFrames
 using Base.Threads: @threads
 using GenerativeAD
 using GenerativeAD.Evaluation: _prefix_symbol, _get_anomaly_class, _auc_at_subsamples_anomalous
-using GenerativeAD.Evaluation: BASE_METRICS
+using GenerativeAD.Evaluation: BASE_METRICS, AUC_METRICS
 using StatsBase, Random
 using ProgressMeter
-
-AUC_METRICS = ["auc_100", "auc_50", "auc_20", "auc_10", "auc_5", "auc_2", 
-	"auc_1", "auc_05", "auc_02", "auc_01"]
 
 # pkgs which come from deserialized BSONs
 # have to be present in the Main module

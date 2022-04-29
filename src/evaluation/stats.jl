@@ -11,6 +11,8 @@ const PAT_METRICS = ["pat_001", "pat_01", "pat_1", "pat_5", "pat_10", "pat_20"]
 const PATN_METRICS = ["patn_5", "patn_10", "patn_50", "patn_100", "patn_500", "patn_1000"]
 const PAC_METRICS = ["pac_5", "pac_10", "pac_50", "pac_100", "pac_500", "pac_1000"]
 const TRAIN_EVAL_TIMES = ["fit_t", "tr_eval_t", "tst_eval_t", "val_eval_t"]
+const AUC_METRICS = ["auc_100", "auc_50", "auc_20", "auc_10", "auc_5", "auc_2", 
+	"auc_1", "auc_05", "auc_02", "auc_01"]
 
 """
 	_prefix_symbol(prefix, s)
@@ -53,7 +55,11 @@ function _subsample_data(p, p_normal, labels, scores; seed=nothing)
 	inds[labels .== 1] .= bin_ainds
 
 	# just return the samples then
-	return scores[inds], labels[inds], collect(1:length(labels))[inds]
+	if ndims(scores) == 1
+		return scores[inds], labels[inds], collect(1:length(labels))[inds]
+	else
+		return scores[inds,:], labels[inds], collect(1:length(labels))[inds]
+	end
 end
 
 """
