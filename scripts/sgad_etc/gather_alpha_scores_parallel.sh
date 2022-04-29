@@ -18,6 +18,6 @@ do
         # submit to slurm
         sbatch \
         --output="${LOG_DIR}/${d}_${LATENT_SCORE}_${AC}_%A.out" \
-         ./gather_alpha_scores.sh $d $DATATYPE $AC {P_NEGATIVE} $VALAUC
+         ./gather_alpha_scores.sh $d $DATATYPE $AC ${P_NEGATIVE} $VALAUC
     done < ${DATASET_FILE}
 done
