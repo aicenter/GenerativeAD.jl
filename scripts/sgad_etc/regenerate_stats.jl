@@ -14,7 +14,6 @@ using ProgressMeter
 
 AUC_METRICS = ["auc_100", "auc_50", "auc_20", "auc_10", "auc_5", "auc_2", 
 	"auc_1", "auc_05", "auc_02", "auc_01"]
-AUCP_METRICS = ["aucp_100", "aucp_50", "aucp_20", "aucp_10", "aucp_5", "aucp_2", "aucp_1"]
 
 # pkgs which come from deserialized BSONs
 # have to be present in the Main module

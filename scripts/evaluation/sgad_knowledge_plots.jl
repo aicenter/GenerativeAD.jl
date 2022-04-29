@@ -106,6 +106,7 @@ for model in unique(models)
     end
 end
 df_mvtec_clean = vcat(subdfs...)
+
 # filter out grid and wood
 df_mvtec_clean = filter(r->!(r.dataset in ["wood", "grid"]), df_mvtec_clean)
 
@@ -137,29 +138,6 @@ function _incremental_rank(df, criterions, agg)
         end
     end
     vcat(ranks...), vcat(metric_means...)
-end
-
-function _plot(df_ranks, metric_mean, cnames, models, title)
-    a = PGFPlots.Axis([PGFPlots.Plots.Linear(
-                1:length(cnames), 
-                df_ranks[:, m]) for m in models], 
-        ylabel="avg. rnk",
-        title=title,
-        style="xtick=$(_pgf_array(1:length(cnames))), 
-            xticklabels=$(_pgf_array(cnames)),
-            width=5cm, height=3cm, scale only axis=true,
-            x tick label style={rotate=50,anchor=east},
-            title style={at={(current bounding box.south)}, anchor=west}")
-    b = PGFPlots.Axis([PGFPlots.Plots.Linear(
-                1:length(cnames), 
-                metric_mean[:, m], 
-                    legendentry=m) for m in models],
-        ylabel="avg. $mn",
-        legendStyle = "at={(0.3,1.30)}, anchor=west",
-        style="width=5cm, height=3cm, scale only axis=true, 
-        xtick=$(_pgf_array(1:length(cnames))), 
-        xticklabels={}")
-    a, b
 end
 
 ## setup
