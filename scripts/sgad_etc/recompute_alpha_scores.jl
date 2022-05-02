@@ -43,7 +43,7 @@ parsed_args = parse_args(ARGS, s)
 @unpack modelname, dataset, datatype, latent_score_type, anomaly_class, force = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
-acs = (anomaly_class == 0) ? 1:max_ac : [anomaly_class]
+acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
 
 score_type = "logpx"
 device = "cpu"
