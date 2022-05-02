@@ -3,10 +3,8 @@
 DATASET_FILE=$1
 DATATYPE=$2
 MAX_AC=$3
-P_NEGATIVE=$4
-VALAUC=$5
 
-LOG_DIR="${HOME}/logs/sgvae_gather_alpha_scores"
+LOG_DIR="${HOME}/logs/sgvae_regather_alpha_scores"
 
 if [ ! -d "$LOG_DIR" ]; then
     mkdir $LOG_DIR
@@ -18,6 +16,6 @@ do
         # submit to slurm
         sbatch \
         --output="${LOG_DIR}/${d}_${AC}_%A.out" \
-         ./gather_alpha_scores.sh $d $DATATYPE $AC ${P_NEGATIVE} $VALAUC
+         ./regather_alpha_scores.sh $d $DATATYPE $AC
     done < ${DATASET_FILE}
 done
