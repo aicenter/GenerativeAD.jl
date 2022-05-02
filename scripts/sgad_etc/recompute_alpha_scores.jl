@@ -137,6 +137,11 @@ def predict(X, alpha):
 	return py"predict"(X, lr.alpha)
 end
 
+ac = 1
+seed = 1
+model_id = model_ids[1]
+lf = lfs[1]
+
 for ac in 1:max_ac
 	for seed in 1:max_seed
 		# we will go over the models that have the latent scores computed - for them we can be sure that 
@@ -232,26 +237,30 @@ for ac in 1:max_ac
 				auc_ano_100 = [perf_at_p_agg(p/100, 1.0, val_scores, val_y, tst_scores, tst_y) 
 					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
 				for (k,v) in zip(map(x->x * "_100", AUC_METRICS), auc_ano_100)
-					res_df[k] = v
+					res_df["val_"*k] = v[1]
+					res_df["tst_"*k] = v[2]
 				end
 
 				auc_ano_50 = [perf_at_p_agg(p/100, 0.5, val_scores, val_y, tst_scores, tst_y) 
 					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
 				for (k,v) in zip(map(x->x * "_50", AUC_METRICS), auc_ano_50)
-					res_df[k] = v
+					res_df["val_"*k] = v[1]
+					res_df["tst_"*k] = v[2]
 				end
 
 				auc_ano_10 = [perf_at_p_agg(p/100, 0.1, val_scores, val_y, tst_scores, tst_y) 
 					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
 				for (k,v) in zip(map(x->x * "_10", AUC_METRICS), auc_ano_10)
-					res_df[k] = v
+					res_df["val_"*k] = v[1]
+					res_df["tst_"*k] = v[2]
 				end
 
 				prop_ps = [100, 50, 20, 10, 5, 2, 1]
 				auc_prop_100 = [perf_at_p_agg(1.0, p/100, val_scores, val_y, tst_scores, tst_y) 
 					for p in prop_ps]
 				for (k,v) in zip(map(x-> "auc_100_$(x)", prop_ps), auc_prop_100)
-					res_df[k] = v
+					res_df["val_"*k] = v[1]
+					res_df["tst_"*k] = v[2]
 				end
 				res_df
 			end

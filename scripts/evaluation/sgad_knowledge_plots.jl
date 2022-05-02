@@ -19,8 +19,11 @@ outdir = "result_tables"
 
 sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha",
     "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx", "sgvae_alpha_kld",
-    "sgvae_alpha_auc", "sgvae_alpha_auc_100"]
-sgad_models_alias = vcat([MODEL_ALIAS[n] for n in sgad_models], ["sgvae100"]]
+    "sgvae_alpha_auc"]
+sgad_models_alias = vcat([MODEL_ALIAS[n] for n in sgad_models], ["sgvae100"])
+model_alias = copy(MODEL_ALIAS)
+model_alias["sgvae_alpha_auc_100"] = "sgvae100"
+sgad_models = vcat(sgad_models, ["sgvae_alpha_auc_100"])
 sgad_alpha_models = ["sgvae_alpha", "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx", 
     "sgvae_alpha_kld", "sgvae_alpha_auc", "sgvae_alpha_auc_100"]
 
@@ -34,6 +37,9 @@ df_images = filter(r->r.modelname in sgad_models, df_images)
 
 # this generates the overall tables (aggregated by datasets)
 df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
+df_images_p_negative = load(datadir("evaluation/images_leave-one-in_p-negative_eval.bson"))[:df];
+apply_aliases!(df_images_p_negative, col="dataset", d=DATASET_ALIAS) # rename
+df_images_target = vcat(df_images_target, df_images_p_negative);
 
 ##### KNOWLEDGE PLOTS
 # now let's load the clean dataframes and put together some knowledge plots
@@ -75,7 +81,8 @@ df_mvtec_clean = df_images_mvtec_clean
 # also, add the clean sgvae alpha lines - these are the same as the ones from sgvae
 function add_alpha_clean(df)
     subdf = filter(r->r.modelname == "sgvae", df)
-    for suffix in ["_alpha", "_alpha_knn", "_alpha_kld", "_alpha_normal", "_alpha_normal_logpx", "_alpha_auc"]
+    for suffix in ["_alpha", "_alpha_knn", "_alpha_kld", "_alpha_normal", "_alpha_normal_logpx", "_alpha_auc", 
+        "_alpha_auc_100"]
         subdf.modelname .= "sgvae" * suffix
         df = vcat(df, copy(subdf))
     end
@@ -127,7 +134,7 @@ function _incremental_rank(df, criterions, agg)
             end
 
             apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
-            apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+            apply_aliases!(df_agg, col="modelname", d=model_alias)
             sort!(df_agg, [:dataset, :modelname])
             rt = rank_table(df_agg, tst_metric)
             mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model]) for model in names(rt)[2:end]])
@@ -151,7 +158,6 @@ extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 titles = ["semantic", "wmnist", "mvtec"]
 
-#ab_plots = map(enumerate([(df_semantic, df_semantic_clean), (df_wmnist, df_wmnist_clean), (df_mvtec, df_mvtec_clean)])) do (i, (df, df_clean))
 @suppress_err begin
 ranks_dfs = map(enumerate(zip(titles,
         [(df_semantic, df_semantic_clean), 
@@ -169,17 +175,10 @@ ranks_dfs = map(enumerate(zip(titles,
     else
         ranks_all, metric_means_all = ranks_inc, metric_means_inc
     end
-    # @info("", ranks_clean, ranks_inc)
-    # @info("", metric_means_clean, metric_means_inc)
 
-    # reorder table on tabular data as there is additional class of models (flows)
-    # one can do this manually at the end
-    models = names(ranks_all)
     f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_$(title)_data.csv")
     println("saving to $f")
     CSV.write(f, metric_means_all)
     ranks_all, metric_means_all
-#    a, b = _plot(ranks_all, metric_means_all, extended_cnames, models, titles[i])
-#    a, b
 end
 end
