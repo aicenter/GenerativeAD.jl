@@ -23,8 +23,8 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae"
-#	, "sgvae_alpha", "sgvae_alpha_knn", "sgvae_alpha_normal", 
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha"
+#, "sgvae_alpha_knn", "sgvae_alpha_normal", 
 # "sgvae_alpha_normal_logpx", "sgvae_alpha_kld", "sgvae_alpha_auc"
 ]
 sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models]
