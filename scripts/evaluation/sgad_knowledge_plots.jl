@@ -184,11 +184,3 @@ ranks_dfs = map(enumerate(zip(titles,
     ranks_all, metric_means_all
 end
 end
-
-criterion = :val_pat_1
-df = copy(df_mvtec)
-agg = aggregate_stats_auto
-df_nonnan = filter(r->!(isnan(r[criterion])), df)
-df_agg = agg(df_nonnan, criterion)
-
-df_agg[:,[criterion, :val_auc, :tst_auc, :dataset, :modelname]]
