@@ -137,11 +137,6 @@ def predict(X, alpha):
 	return py"predict"(X, lr.alpha)
 end
 
-ac = 1
-seed = 1
-model_id = model_ids[1]
-lf = lfs[1]
-
 for ac in 1:max_ac
 	for seed in 1:max_seed
 		# we will go over the models that have the latent scores computed - for them we can be sure that 
