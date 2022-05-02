@@ -70,8 +70,8 @@ end
 auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
 
 function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y; seed=nothing)
-	try
-		scores, labels, _ = _subsample_data(p, p_normal, val_y, val_scores; seed=seed)
+	scores, labels, _ = try
+		_subsample_data(p, p_normal, val_y, val_scores; seed=seed)
 	catch e
 		return NaN, NaN
 	end

@@ -57,6 +57,8 @@ end
 
 # mvtec
 df_mvtec = load(datadir("evaluation/images_mvtec_eval_all.bson"))[:df];
+df_mvtec_p_negative = load(datadir("evaluation/images_mvtec_eval_p-negative_all.bson"))[:df];
+df_mvtec = vcat(df_mvtec, df_mvtec_p_negative);
 apply_aliases!(df_mvtec, col="dataset", d=DATASET_ALIAS)
 df_mvtec = filter(r->r.modelname in sgad_models, df_mvtec)
 df_mvtec = filter(r->!(r.dataset in ["grid", "wood"]), df_mvtec)
