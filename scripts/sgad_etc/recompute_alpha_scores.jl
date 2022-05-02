@@ -70,7 +70,11 @@ end
 auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
 
 function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y; seed=nothing)
-	scores, labels, _ = _subsample_data(p, p_normal, val_y, val_scores; seed=seed)
+	try
+		scores, labels, _ = _subsample_data(p, p_normal, val_y, val_scores; seed=seed)
+	catch e
+		return NaN, NaN
+	end
 	# if there are no positive samples return NaNs
 	if sum(labels) == 0
 		val_auc = NaN
@@ -104,9 +108,11 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y; seed=n
 	return val_auc, tst_auc
 end	
 
+nanmean(x) = mean(x[.!isnan.(x)])
+
 function perf_at_p_agg(args...)
 	results = [perf_at_p_new(args...;seed=seed) for seed in 1:max_seed_perf]
-	return mean([x[1] for x in results]), mean([x[2] for x in results])
+	return nanmean([x[1] for x in results]), nanmean([x[2] for x in results])
 end
 
 # this is for fitting the logistic regression
