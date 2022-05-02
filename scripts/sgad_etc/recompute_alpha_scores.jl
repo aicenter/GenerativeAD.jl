@@ -31,14 +31,19 @@ s = ArgParseSettings()
         arg_type = String
         help = "normal, kld, knn or normal_logpx"
         default = "normal"
+    "anomaly_class"
+    	default = 0
+    	arg_type = Int
+    	help = "anomaly class"
     "--force", "-f"
         action = :store_true
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype, latent_score_type, force = parsed_args
+@unpack modelname, dataset, datatype, latent_score_type, anomaly_class, force = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
+acs = (anomaly_class == 0) ? 1:max_ac : [anomaly_class]
 
 score_type = "logpx"
 device = "cpu"
@@ -143,7 +148,7 @@ def predict(X, alpha):
 	return py"predict"(X, lr.alpha)
 end
 
-for ac in 1:max_ac
+for ac in acs
 	for seed in 1:max_seed
 		# we will go over the models that have the latent scores computed - for them we can be sure that 
 		# we have all we need

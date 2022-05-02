@@ -57,7 +57,7 @@ end
 
 # mvtec
 df_mvtec = load(datadir("evaluation/images_mvtec_eval_all.bson"))[:df];
-df_mvtec_p_negative = load(datadir("evaluation/images_mvtec_eval_p-negative_all.bson"))[:df];
+df_mvtec_p_negative = load(datadir("evaluation/images_mvtec_p-negative_eval.bson"))[:df];
 df_mvtec = vcat(df_mvtec, df_mvtec_p_negative);
 apply_aliases!(df_mvtec, col="dataset", d=DATASET_ALIAS)
 df_mvtec = filter(r->r.modelname in sgad_models, df_mvtec)
@@ -139,7 +139,7 @@ function _incremental_rank(df, criterions, agg)
             apply_aliases!(df_agg, col="modelname", d=model_alias)
             sort!(df_agg, [:dataset, :modelname])
             rt = rank_table(df_agg, tst_metric)
-            mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model]) for model in names(rt)[2:end]])
+            mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model][.!isnan.(rt[1:end-3, model])]) for model in names(rt)[2:end]])
             push!(ranks, rt[end:end, 2:end])
             push!(metric_means, mm)
         end
@@ -184,3 +184,11 @@ ranks_dfs = map(enumerate(zip(titles,
     ranks_all, metric_means_all
 end
 end
+
+criterion = :val_pat_1
+df = copy(df_mvtec)
+agg = aggregate_stats_auto
+df_nonnan = filter(r->!(isnan(r[criterion])), df)
+df_agg = agg(df_nonnan, criterion)
+
+df_agg[:,[criterion, :val_auc, :tst_auc, :dataset, :modelname]]
