@@ -14,6 +14,6 @@ for i in {1..50}
 do
     # submit to slurm
     sbatch \
-    --output="${LOG_DIR}/${d}_${SOURCE}_%A.out" \
+    --output="${LOG_DIR}/${SOURCE}_%A.out" \
      ./collect_stats_chunked.sh $i $SOURCE $TARGET $FORCE
 done

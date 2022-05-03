@@ -16,4 +16,4 @@ source ${HOME}/sgad-env/bin/activate
 export PYTHON="${HOME}/sgad-env/bin/python"
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-julia ./collect_stats_chunked.jl $INDEX $SOURCE $TARGET 100000 $FORCE
+julia --project ./collect_stats_chunked.jl $INDEX $SOURCE $TARGET 100000 $FORCE
