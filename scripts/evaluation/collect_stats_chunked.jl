@@ -6,7 +6,7 @@ using Random
 using FileIO
 using DataFrames
 using GenerativeAD
-using 
+using ProgressMeter
 
 s = ArgParseSettings()
 @add_arg_table! s begin
