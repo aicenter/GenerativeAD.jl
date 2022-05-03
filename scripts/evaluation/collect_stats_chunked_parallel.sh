@@ -10,7 +10,7 @@ if [ ! -d "$LOG_DIR" ]; then
     mkdir $LOG_DIR
 fi
 
-for i in {1..40} 
+for i in {1..50} 
 do
     # submit to slurm
     sbatch ./collect_stats_chunked.sh --output="${LOG_DIR}/%A.out" $i $SOURCE $TARGET $FORCE
