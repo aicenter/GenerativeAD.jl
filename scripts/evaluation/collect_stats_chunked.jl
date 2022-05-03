@@ -60,7 +60,7 @@ function main(args)
 	df, nchunks = collect_stats(args["source_prefix"], args["chunk_index"], args["chunk_size"])
 	out_dir = datadir(args["out_dir"])
 	mkpath(out_dir)
-	f = joinpath(out_dir, "$(chunk_index)-$(nchunks).bson")
+	f = joinpath(out_dir, "$(args["chunk_index"])-$(nchunks).bson")
 	if (isfile(f) && args["force"]) || ~isfile(f)
 		@info "Saving $(nrow(df)) rows to $f."
 		wsave(f, Dict(:df => df))
