@@ -5,8 +5,8 @@ using BSON
 using Random
 using FileIO
 using DataFrames
-using Base.Threads: @threads
 using GenerativeAD
+using 
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -46,7 +46,11 @@ function collect_stats(source_prefix::String, chunk_index::Int, chunk_size::Int)
 		return nothing
 	end
 	part = parts[chunk_index]
-	df = reduce(vcat, [load(f)[:df] for f in part])
+	fs = []
+	@showprogress for f in part
+		push!(fs, load(f)[:df])
+	end
+	df = reduce(vcat, fs)
 	@info "Loaded partition with index $(chunk_index)."
 	df, length(parts)
 end
