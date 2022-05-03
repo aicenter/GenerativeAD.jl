@@ -44,12 +44,14 @@ function collect_stats(part)
 end
 
 function main(args)
+	# get argvals
 	source_prefix = args["source_prefix"]
 	chunk_index = args["chunk_index"]
 	out_dir = args["out_dir"]
 	chunk_index = args["chunk_index"]
 	chunk_index = args["chunk_index"]
 
+	
 	source = datadir(source_prefix)
 	@info "Collecting files from $source folder."
 	files = GenerativeAD.Evaluation.collect_files_th(source)
