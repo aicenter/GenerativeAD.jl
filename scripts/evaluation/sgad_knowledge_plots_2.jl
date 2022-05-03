@@ -34,6 +34,10 @@ sgad_alpha_models = ["sgvae_alpha"]
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
 
 # LOI basic tables
+source_images = datadir("evaluation_kp/images_leave-one-in_cache")
+fs_images = readdir(source_images, join=true)
+df_images = reduce(vcat, map(x->load(x)[:df], fs_images))
+
 df_images = load(datadir("evaluation_kp/images_leave-one-in_eval.bson"))[:df];
 apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS) # rename
 # filter out only the interesting models
