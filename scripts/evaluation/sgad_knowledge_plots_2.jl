@@ -28,8 +28,8 @@ sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alp
 # "sgvae_alpha_normal_logpx", "sgvae_alpha_kld", "sgvae_alpha_auc"
 ]
 sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models]
-sgad_alpha_models = ["sgvae_alpha", "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx", 
-    "sgvae_alpha_kld", "sgvae_alpha_auc"]
+sgad_alpha_models = ["sgvae_alpha"]
+#, "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx",  "sgvae_alpha_kld", "sgvae_alpha_auc"]
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
 
@@ -125,7 +125,7 @@ function _incremental_rank(df, criterions, agg)
         if size(df_nonnan, 1) > 0
             df_agg = agg(df_nonnan, criterion)
 
-            """
+            
             # some model might be missing
             nr = size(df_agg,2)
             modelnames = df_agg.modelname
@@ -136,7 +136,7 @@ function _incremental_rank(df, criterions, agg)
                     end
                 end
             end
-            """
+            
 
             apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
@@ -236,3 +236,19 @@ ranks_dfs = map(enumerate(zip(titles,
 end
 
 end
+
+
+level = 100
+criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
+extended_criterions = vcat(criterions, [val_metric])
+extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
+criterion = criterions[end]
+
+ranks_inc, metric_means_inc = _incremental_rank(df_semantic, extended_criterions, auto_f)    
+
+df = copy(df_semantic)
+agg = auto_f
+df_nonnan = filter(r->!(isnan(r[criterion])), df)
+
+df_agg = agg(df_nonnan, criterion)
+df_agg[:,[criterion, :tst_auc, :dataset, :modelname]]
