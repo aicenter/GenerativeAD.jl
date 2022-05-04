@@ -160,6 +160,12 @@ extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 titles = ["semantic", "wmnist", "mvtec"]
 
+##############
+df = copy(df_semantic)
+ranks_inc, metric_means_inc = _incremental_rank(df, extended_criterions, aggregate_stats_auto)
+
+###############
+
 @suppress_err begin
 ranks_dfs = map(enumerate(zip(titles,
         [(df_semantic, df_semantic_clean), 

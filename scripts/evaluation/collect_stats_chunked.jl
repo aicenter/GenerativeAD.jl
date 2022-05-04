@@ -64,7 +64,7 @@ function main(args)
 	end
 	out_dir = datadir(out_dir)
 	mkpath(out_dir)
-	f = joinpath(out_dir, "$(chunk_index)-$(nchunks).bson")
+	f = joinpath(out_dir, "$(chunk_index)-$(nparts).bson")
 	if (isfile(f) && args["force"]) || ~isfile(f)
 		df = collect_stats(parts[chunk_index])
 		@info "Loaded partition with index $(chunk_index)."
