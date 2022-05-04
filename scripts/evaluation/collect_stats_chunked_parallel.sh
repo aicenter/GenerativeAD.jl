@@ -13,5 +13,5 @@ fi
 for i in {1..50} 
 do
     # submit to slurm
-    sbatch ./collect_stats_chunked.sh $i $SOURCE $TARGET $FORCE
+    sbatch --output="${LOG_DIR}/%A.out" ./collect_stats_chunked.sh $i $SOURCE $TARGET $FORCE
 done
