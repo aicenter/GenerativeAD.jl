@@ -172,24 +172,6 @@ maxmean_f(df,crit) = aggregate_stats_max_mean(df, crit; agg_cols=[])
 # at different percentages of normal data
 cnames = reverse(AUC_METRICS_NAMES)
 
-##########š
-level = 100
-criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
-extended_criterions = vcat(criterions, [val_metric])
-extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
-df = copy(df_semantic)
-ranks_inc, metric_means_inc = _incremental_rank(df, extended_criterions, auto_f)
-
-criterion = :val_auc
-agg = auto_f
-df_nonnan = filter(r->!(isnan(r[criterion])), df)
-df_agg = agg(df_nonnan, criterion)
-df_agg[:,[criterion, :tst_auc, :modelname, :dataset]]
-
-df_semantic
-##########š
-
-
 @suppress_err begin
 for level in [100, 50, 10]
 	criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
