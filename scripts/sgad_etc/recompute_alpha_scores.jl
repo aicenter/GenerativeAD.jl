@@ -41,6 +41,13 @@ s = ArgParseSettings()
 end
 parsed_args = parse_args(ARGS, s)
 @unpack modelname, dataset, datatype, latent_score_type, anomaly_class, force = parsed_args
+##########
+dataset = "CIFAR10"
+anomaly_class = 9
+latent_score_type = "knn"
+ac = anomaly_class
+seed = 1
+##########
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
@@ -172,6 +179,7 @@ for ac in acs
 
 		for (model_id, lf) in zip(model_ids, lfs)
 			outf = joinpath(save_dir, split(lf, ".")[1] * "_method=$(method).bson")
+			@info "$outf"
 			if !force && isfile(outf)
 				continue
 			end	
