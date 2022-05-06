@@ -35,26 +35,21 @@ s = ArgParseSettings()
     	default = 0
     	arg_type = Int
     	help = "anomaly class"
+    "method"
+    	default = "logreg"
+    	help = "logreg or probreg"
     "--force", "-f"
         action = :store_true
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype, latent_score_type, anomaly_class, force = parsed_args
-##########
-dataset = "CIFAR10"
-anomaly_class = 9
-latent_score_type = "knn"
-ac = anomaly_class
-seed = 1
-##########
+@unpack modelname, dataset, datatype, latent_score_type, anomaly_class, method, force = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
 
 score_type = "logpx"
 device = "cpu"
-method = "original"
 max_seed_perf = 10
 
 function basic_stats(labels, scores)
@@ -101,10 +96,10 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y; seed=n
 	# new scores - auc vals on the partial validation and full test dataset
 	else
 		try
-			lr = LogReg()
-			fit!(lr, scores, labels)
-			val_probs = predict(lr, scores)
-			tst_probs = predict(lr, tst_scores)
+			model = (method == "logreg") ? LogReg() : ProbReg()
+			fit!(model, scores, labels)
+			val_probs = predict(model, scores)
+			tst_probs = predict(model, tst_scores)
 			val_auc = auc_val(labels, val_probs)
 			tst_auc = auc_val(tst_y, tst_probs)
 		catch e
@@ -154,6 +149,80 @@ def predict(X, alpha):
 	"""
 	return py"predict"(X, lr.alpha)
 end
+
+# this is for fitting the logistic regression
+mutable struct ProbReg
+	ac
+	alpha
+end
+
+function ProbReg()
+	py"""
+from sgad.sgvae import AlphaClassifier
+	"""
+	m = ProbReg(py"AlphaClassifier()", nothing)
+	return m
+end
+
+function fit!(m::ProbReg, X, y; scale=true, kwargs...)
+	m.ac.fit(X, y; scale=scale, kwargs...)
+	m.alpha = m.ac.get_alpha().detach().numpy()
+end
+
+function predict(m::ProbReg, X, y; scale=true, kwargs...)
+	X = m.ac.scaler_transform(X)
+	scores = m.ac(X)
+end
+
+"""
+ac = 1
+seed = 1
+method = "probreg"
+
+model_id = model_ids[1]
+lf = lfs[1]
+
+p = 1.0
+p_normal = 1.0
+
+##########
+dataset = "CIFAR10"
+anomaly_class = 9
+latent_score_type = "knn"
+ac = anomaly_class
+seed = 1
+##########
+
+
+	scores, labels, _ = try
+		_subsample_data(p, p_normal, val_y, val_scores; seed=seed)
+	catch e
+		return NaN, NaN
+	end
+	# if there are no positive samples return NaNs
+	if sum(labels) == 0
+		val_auc = NaN
+		tst_auc = auc_val(tst_y, tst_scores[:,1])
+	# if top samples are only positive
+	# we cannot train alphas
+	# therefore we return the default val performance
+	elseif sum(labels) == length(labels) 
+		val_auc = NaN
+		tst_auc = auc_val(tst_y, tst_scores[:,1])
+	# if they are not only positive, then we train alphas and use them to compute 
+	# new scores - auc vals on the partial validation and full test dataset
+	else
+		try
+			model = ProbReg()
+			fit!(model, scores, labels)
+
+			lr = LogReg()
+			fit!(lr, scores, labels)
+			val_probs = predict(lr, scores)
+			tst_probs = predict(lr, tst_scores)
+			val_auc = auc_val(labels, val_probs)
+			tst_auc = auc_val(tst_y, tst_probs)
+"""
 
 for ac in acs
 	for seed in 1:max_seed
