@@ -9,3 +9,4 @@ FORCE=$2
 ./recompute_alpha_scores_parallel.sh ../mvtec_ad/categories_sgvae.txt mvtec normal ${METHOD} $FORCE
 ./recompute_alpha_scores_parallel.sh ../mvtec_ad/categories_sgvae.txt mvtec kld ${METHOD} $FORCE
 ./recompute_alpha_scores_parallel.sh ../mvtec_ad/categories_sgvae.txt mvtec normal_logpx ${METHOD} $FORCE
+./recompute_alpha_scores_parallel.sh ../mvtec_ad/categories_sgvae.txt mvtec knn ${METHOD} $FORCE
