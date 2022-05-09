@@ -280,11 +280,12 @@ for ac in acs
 			parameters = ldata[:parameters]
 			add_params = split(split(lf, "score")[1], "model_id=$(model_id)")[2]
 			param_string = "latent_score_type=$(latent_score_type)" * add_params * split(rf, ".bson")[1]
-			
+			save_modelname = (method == "logreg") ? modelname : modelname*"_$method"
+
 			res_df = @suppress begin
 				# prepare the result dataframe
 				res_df = OrderedDict()
-				res_df["modelname"] = modelname
+				res_df["modelname"] = save_modelname
 				res_df["dataset"] = dataset
 				res_df["phash"] = GenerativeAD.Evaluation.hash(parameters)
 				res_df["parameters"] = param_string
