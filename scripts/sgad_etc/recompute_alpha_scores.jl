@@ -173,7 +173,7 @@ function predict(m::ProbReg, X; scale=true, kwargs...)
 	if scale
 		X = m.ac.scaler_transform(X)
 	end
-	scores = m.ac(X)
+	scores = vec(m.ac(X).detach().numpy())
 end
 
 """
