@@ -169,8 +169,10 @@ function fit!(m::ProbReg, X, y; scale=true, kwargs...)
 	m.alpha = m.ac.get_alpha().detach().numpy()
 end
 
-function predict(m::ProbReg, X, y; scale=true, kwargs...)
-	X = m.ac.scaler_transform(X)
+function predict(m::ProbReg, X; scale=true, kwargs...)
+	if scale
+		X = m.ac.scaler_transform(X)
+	end
 	scores = m.ac(X)
 end
 
