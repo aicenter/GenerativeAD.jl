@@ -97,7 +97,7 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y; seed=n
 	else
 		try
 			model = (method == "logreg") ? LogReg() : ProbReg()
-			fit!(model, scores, labels)
+			fit!(model, scores, labels; verb=false, early_stopping=true, patience=1)
 			val_probs = predict(model, scores)
 			tst_probs = predict(model, tst_scores)
 			val_auc = auc_val(labels, val_probs)
