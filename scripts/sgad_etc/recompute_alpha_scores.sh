@@ -17,4 +17,4 @@ source ${HOME}/sgad-env/bin/activate
 export PYTHON="${HOME}/sgad-env/bin/python"
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-julia ./recompute_alpha_scores.jl sgvae ${DATASET} ${DATATYPE} ${LATENT_SCORE} ${METHOD} $FORCE
+julia ./recompute_alpha_scores.jl sgvae ${DATASET} ${DATATYPE} ${LATENT_SCORE} 0 ${METHOD} $FORCE

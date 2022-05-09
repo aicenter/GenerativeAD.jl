@@ -5,7 +5,7 @@ DATATYPE=$2
 LATENT_SCORE=$3
 ANOMALY_CLASS=$4
 METHOD=$5
-FORCE=$5
+FORCE=$6
 
 LOG_DIR="${HOME}/logs/sgvae_realpha_scores"
 
