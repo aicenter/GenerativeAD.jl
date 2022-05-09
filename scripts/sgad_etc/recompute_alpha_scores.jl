@@ -97,7 +97,8 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y; seed=n
 	else
 		try
 			model = (method == "logreg") ? LogReg() : ProbReg()
-			fit!(model, scores, labels; verb=false, early_stopping=true, patience=1)
+			(method == "logreg") ? fit!(model, scores, labels) : fit!(model, scores, labels; 
+				verb=false, early_stopping=true, patience=1)
 			val_probs = predict(model, scores)
 			tst_probs = predict(model, tst_scores)
 			val_auc = auc_val(labels, val_probs)
@@ -307,11 +308,14 @@ for ac in acs
 				val_scores = val_scores[inds, :]
 				val_y = val_y[inds]
 
-				lr = LogReg()
-				fit!(lr, val_scores, val_y)
-				val_probs = predict(lr, val_scores)
-				tst_probs = predict(lr, tst_scores)
+				model = (method == "logreg") ? LogReg() : ProbReg()
+				(method == "logreg") ? fit!(model, val_scores, val_labels) : fit!(model, val_scores, 
+					val_y; verb=false, early_stopping=true, patience=1, 
+					negative_p=ceil(Int, sum(val_y)/(length(val_y) - sum(val_y))))
 
+				val_probs = predict(model, val_scores)
+				tst_probs = predict(model, tst_scores)
+				
 				# now fill in the values
 				res_df["val_auc"], res_df["val_auprc"], res_df["val_tpr_5"], res_df["val_f1_5"] = 
 					basic_stats(val_y, val_probs)
@@ -319,30 +323,30 @@ for ac in acs
 					basic_stats(tst_y, tst_probs)
 
 				# then do the same on a small section of the data
-				auc_ano_100 = [perf_at_p_agg(p/100, 1.0, val_scores, val_y, tst_scores, tst_y) 
-					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
+				ps = [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]
+				auc_ano_100 = [perf_at_p_agg(p/100, 1.0, val_scores, val_y, tst_scores, tst_y) for p in ps]
 				for (k,v) in zip(map(x->x * "_100", AUC_METRICS), auc_ano_100)
 					res_df["val_"*k] = v[1]
 					res_df["tst_"*k] = v[2]
 				end
 
-				auc_ano_50 = [perf_at_p_agg(p/100, 0.5, val_scores, val_y, tst_scores, tst_y) 
-					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
+				auc_ano_50 = (method == "logreg") ? [perf_at_p_agg(p/100, 0.5, val_scores, val_y, 
+						tst_scores, tst_y) for p in ps] : repeat([(NaN, NaN)], length(ps))
 				for (k,v) in zip(map(x->x * "_50", AUC_METRICS), auc_ano_50)
 					res_df["val_"*k] = v[1]
 					res_df["tst_"*k] = v[2]
 				end
 
-				auc_ano_10 = [perf_at_p_agg(p/100, 0.1, val_scores, val_y, tst_scores, tst_y) 
-					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
+				auc_ano_10 = (method == "logreg") ? [perf_at_p_agg(p/100, 0.1, val_scores, val_y, 
+						tst_scores, tst_y) for p in ps] : repeat([(NaN, NaN)], length(ps))
 				for (k,v) in zip(map(x->x * "_10", AUC_METRICS), auc_ano_10)
 					res_df["val_"*k] = v[1]
 					res_df["tst_"*k] = v[2]
 				end
 
 				prop_ps = [100, 50, 20, 10, 5, 2, 1]
-				auc_prop_100 = [perf_at_p_agg(1.0, p/100, val_scores, val_y, tst_scores, tst_y) 
-					for p in prop_ps]
+				auc_prop_100 = (method == "logreg") ? [perf_at_p_agg(1.0, p/100, val_scores, val_y, 
+					tst_scores, tst_y) for p in prop_ps] : repeat([(NaN, NaN)], 7)
 				for (k,v) in zip(map(x-> "auc_100_$(x)", prop_ps), auc_prop_100)
 					res_df["val_"*k] = v[1]
 					res_df["tst_"*k] = v[2]
