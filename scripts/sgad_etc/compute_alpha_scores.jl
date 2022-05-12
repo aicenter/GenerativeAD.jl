@@ -10,6 +10,7 @@ using ArgParse
 using Suppressor
 using StatsBase
 using Random
+include("../pyutils.jl")
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -141,34 +142,6 @@ function perf_at_p_original(p, p_negative, val_scores, val_y, tst_scores, tst_y;
 	end
 	return val_prec, val_auc, tst_auc
 end	
-
-# this is for fitting the logistic regression
-mutable struct LogReg
-	alpha
-end
-
-LogReg() = LogReg(nothing)
-
-function fit!(lr::LogReg, X, y)
-	py"""
-from sgad.sgvae.utils import logreg_fit
-
-def fit(X,y):
-	alpha, _ = logreg_fit(X, 1-y)
-	return alpha
-	"""
-	lr.alpha = py"fit"(X, y)
-end
-
-function predict(lr::LogReg, X)
-	py"""
-from sgad.sgvae.utils import logreg_prob
-
-def predict(X, alpha):
-	return logreg_prob(X, alpha)
-	"""
-	return py"predict"(X, lr.alpha)
-end
 
 for ac in 1:max_ac
 	for seed in 1:max_seed

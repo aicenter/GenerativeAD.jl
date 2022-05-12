@@ -12,6 +12,7 @@ using StatsBase
 using Random
 using GenerativeAD.Evaluation: _prefix_symbol, _get_anomaly_class, _subsample_data
 using GenerativeAD.Evaluation: BASE_METRICS, AUC_METRICS
+include("../pyutils.jl")
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -121,60 +122,6 @@ nanmean(x) = mean(x[.!isnan.(x)])
 function perf_at_p_agg(args...)
 	results = [perf_at_p_new(args...;seed=seed) for seed in 1:max_seed_perf]
 	return nanmean([x[1] for x in results]), nanmean([x[2] for x in results])
-end
-
-# this is for fitting the logistic regression
-mutable struct LogReg
-	alpha
-end
-
-LogReg() = LogReg(nothing)
-
-function fit!(lr::LogReg, X, y)
-	py"""
-from sgad.sgvae.utils import logreg_fit
-
-def fit(X,y):
-	alpha, _ = logreg_fit(X, 1-y)
-	return alpha
-	"""
-	lr.alpha = py"fit"(X, y)
-end
-
-function predict(lr::LogReg, X)
-	py"""
-from sgad.sgvae.utils import logreg_prob
-
-def predict(X, alpha):
-	return logreg_prob(X, alpha)
-	"""
-	return py"predict"(X, lr.alpha)
-end
-
-# this is for fitting the logistic regression
-mutable struct ProbReg
-	ac
-	alpha
-end
-
-function ProbReg()
-	py"""
-from sgad.sgvae import AlphaClassifier
-	"""
-	m = ProbReg(py"AlphaClassifier()", nothing)
-	return m
-end
-
-function fit!(m::ProbReg, X, y; scale=true, kwargs...)
-	m.ac.fit(X, y; scale=scale, kwargs...)
-	m.alpha = m.ac.get_alpha().detach().numpy()
-end
-
-function predict(m::ProbReg, X; scale=true, kwargs...)
-	if scale
-		X = m.ac.scaler_transform(X)
-	end
-	scores = vec(m.ac(X).detach().numpy())
 end
 
 """
@@ -310,7 +257,7 @@ for ac in acs
 				val_y = val_y[inds]
 
 				model = (method == "logreg") ? LogReg() : ProbReg()
-				(method == "logreg") ? fit!(model, val_scores, val_labels) : fit!(model, val_scores, 
+				(method == "logreg") ? fit!(model, val_scores, val_y) : fit!(model, val_scores, 
 					val_y; verb=false, early_stopping=true, patience=1, 
 					negative_p=ceil(Int, sum(val_y)/(length(val_y) - sum(val_y))))
 

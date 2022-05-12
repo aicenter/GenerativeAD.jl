@@ -4,6 +4,7 @@ using GenerativeAD
 using PyCall
 using BSON, FileIO, DataFrames
 using ArgParse, StatsBase
+include("../pyutils.jl")
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -31,23 +32,6 @@ parsed_args = parse_args(ARGS, s)
 @unpack modelname, dataset, datatype, device, force = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
-
-# so the we dont get the "too many open files" os error
-torch = pyimport("torch")
-torch.multiprocessing.set_sharing_strategy("file_system")
-
-function load_sgvae_model(dir, device)
-    py"""
-import sgad
-from sgad.sgvae import SGVAE
-from sgad.utils import load_model
-
-def model(dir, device):
-    return load_model(SGVAE, dir, device=device)
-    """
-
-    return py"model"(dir, device)
-end
 
 function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_dir, 
     out_dir, seed, ac, dataset, modelname; force=false)
