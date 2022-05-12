@@ -128,8 +128,8 @@ function load_wildlife_mnist_data(;
 	
 	# denormalize
 	if denormalize
-		x_tr = x_tr .* 0.5 .+ 0.5
-		x_tst = x_tst .* 0.5 .+ 0.5
+		x_tr = x_tr .* 0.5f0 .+ 0.5f0
+		x_tst = x_tst .* 0.5f0 .+ 0.5f0
 	end
 
 	# now get the normal and anomalous data
