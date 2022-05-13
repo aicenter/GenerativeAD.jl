@@ -18,94 +18,141 @@ s = ArgParseSettings()
         default = "wildlife_MNIST"
         arg_type = String
         help = "dataset"
-  	"max_seed"
-        default = 5
-        arg_type = Int
-        help = "seed"
     "device"
     	default = "cpu"
     	arg_type = String
     	help = "cpu or cuda"
+    "--force", "-f"
+        action = :store_true
+        help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, max_seed, device = parsed_args
+@unpack modelname, dataset, device, force = parsed_args
 method = "leave-one-in"
 
-# this is to understand whether to normalize data or not for sgvae - see commit
-# 3ad577956bc7b8690e0a4ab63d7d6fb4d26a0819 in GenerativeAD.jl#sgad
-#norm_date = DateTime(2022,3,31)
-#norm_time = Dates.datetime2unix(norm_date)
+function multifactor_experiment(score_fun, parameters, data, normal_label, savepath; force=true, verb=true, 
+    save_entries...)
+    # first create savename and check if it is not already present
+    savef = joinpath(savepath, savename(parameters, "bson", digits=5))
+    if isfile(savef) && !(force)
+        verb ? (@info "$savef already present, skipping") : nothing
+        return nothing
+    end
+    
+    # get the data
+    tr_data, val_data, tst_data, mf_data = data
 
-modelname = "sgvae"
-ac = 1
+    # extract scores
+    tr_scores, tr_eval_t, _, _, _ = @timed score_fun(tr_data[1])
+    val_scores, val_eval_t, _, _, _ = @timed score_fun(val_data[1])
+    tst_scores, tst_eval_t, _, _, _ = @timed score_fun(tst_data[1])
+    mf_scores, mf_eval_t, _, _, _ = @timed score_fun(mf_data[1])
+
+    # now save the stuff
+    result = (
+        parameters = parameters,
+        tr_scores = tr_scores,
+        tr_eval_t = tr_eval_t,
+        val_scores = val_scores,
+        val_eval_t = val_eval_t,
+        tst_scores = tst_scores,
+        tst_eval_t = tst_eval_t,
+        mf_scores = mf_scores,
+        mf_labels = mf_data[2],
+        mf_eval_t = mf_eval_t,
+        normal_label = normal_label
+        )
+    result = Dict{Symbol, Any}([sym=>val for (sym,val) in pairs(merge(result, save_entries))]) # this has to be a Dict 
+    tagsave(savef, result, safe = true)
+    verb ? (@info "Results saved to $savef") : nothing
+    result
+end
+
+function compute_scores(mf, model_id, expfs, paths; verb=true)
+    # paths
+    exppath, outdir = paths
+
+    # load the original experiment file
+    expf = filter(x->occursin("$(model_id)", x), expfs)
+    expf = filter(x->!occursin("model", x), expf)
+    # put a return here in case this is empty
+    if length(expf) == 0
+        return nothing
+    end
+    expf = joinpath(exppath, expf[1])
+    #exptime = mtime(expf)
+    expdata = load(expf)
+
+    # this will have to be specific for each modelname
+    if modelname == "sgvae"
+        model = GenerativeAD.Models.SGVAE(load_sgvae_model(mf, device))
+    else
+        error("unknown modelname $modelname")
+    end
+
+    # setup the parameters to be saved
+    save_parameters = dropnames(expdata[:parameters], (:score,))
+    save_entries = Dict(
+        :anomaly_class => ac,
+        :dataset => dataset,
+        :modelname => modelname,
+        :npars => expdata[:npars],
+        :seed => seed
+        )
+    data = (orig_data[1], orig_data[2], orig_data[3], multifactor_data);
+    
+    # compose the return function
+    results = 
+    if modelname == "sgvae"
+        [
+        (x-> StatsBase.predict(model, x, score_type="logpx", n=10, workers=4), merge(save_parameters, (score = "logpx",))),
+        ]
+    else
+        error("predict functions for $modelname not implemented")
+    end
+
+    # now run and save the experiments
+    for result in results
+        multifactor_experiment(result..., data, ac, outdir; force=force, verb=verb, save_entries...)
+    end
+end
+
+function dropnames(namedtuple::NamedTuple, names::Tuple{Vararg{Symbol}}) 
+    keepnames = Base.diff_names(Base._nt_names(namedtuple), names)
+    return NamedTuple{keepnames}(namedtuple)
+end
+
 seed = 1
+for ac in 1:10
+    # load the original train/val/test split
+    orig_data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=method);
+    # also load the new data for inference
+    if dataset == "wildlife_MNIST"
+        multifactor_data = GenerativeAD.Datasets.load_wildlife_mnist_raw("test")[2];
+    else
+        error("unkown dataset $(dataset)")
+    end
 
-# load the original train/val/test split
-orig_data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=method);
-#orig_data = GenerativeAD.Datasets.normalize_data(orig_data);
-#orig_data_denormalized = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=method, 
-#    denormalize=true);
+    # setup paths
+    if modelname in ["sgvae", "cgn"]
+    	main_modelpath = datadir("sgad_models/images_$(method)/$(modelname)/$(dataset)")
+    end
 
+    # save dir
+    outdir = datadir("experiments/images_multifactor/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+    mkpath(outdir)
 
+    # original experiment dir
+    exppath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+    expfs = readdir(exppath)
 
-if modelname in ["sgvae", "cgn"]
-	main_modelpath = datadir("sgad_models/images_$(method)/$(modelname)/$(dataset)")
+    # model dir
+    modelpath = joinpath(main_modelpath, "ac=$(ac)/seed=$(seed)")
+    mfs = readdir(modelpath, join=true)
+    model_ids = map(x->Meta.parse(split(x, "model_id=")[2]), mfs)
+
+    @info "processing $(modelpath)..."
+    for (mf, model_id) in zip(mfs, model_ids)
+        compute_scores(mf, model_id, expfs, (exppath, outdir); verb=true)
+    end 
 end
-
-# save dir
-outdir = datadir("experiments/images_multifactor/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-mkpath(outdir)
-
-# model dir
-modelpath = joinpath(main_modelpath, "ac=$(ac)/seed=$(seed)")
-mfs = readdir(modelpath, join=true)
-model_ids = map(x->Meta.parse(split(x, "model_id=")[2]), mfs)
-
-# original experiment dir
-exppath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-expfs = readdir(exppath)
-
-i = 1
-
-mf = mfs[i]
-model_id = model_ids[i]
-
-# this will have to be specific for each modelname
-#if "weights" in readdir(mf)
-if modelname == "sgvae"
-    model = GenerativeAD.Models.SGVAE(load_sgvae_model(mf, device))
-else
-    error("unknown modelname $modelname")
-end
-
-# load the original experiment file
-expf = filter(x->occursin("$(model_id)", x), expfs)
-expf = filter(x->!occursin("model", x), expf)
-# put a return here in case this is empty
-expf = joinpath(exppath, expf[1])
-exptime = mtime(expf)
-expdata = load(expf)
-
-# first do inference on the original data
-tr_scores, val_scores_orig, tst_scores_orig = map(x->StatsBase.predict(model, x), (orig_data[1][1],
-    orig_data[2][1][:,:,:,orig_data[2][2] .== 0], orig_data[3][1][:,:,:,orig_data[3][2] .== 0]))
-
-# also load the new data for inference
-if dataset == "wildlife_MNIST"
-
-else
-    error("unkown dataset $(dataset)")
-end
-
-
-if exptime > norm_time
-
-
-"""
-x = orig_data[1][1][:,:,:,1:10];
-x = orig_data_denormalized[1][1][:,:,:,1:10];
-y = orig_data[1][2][1:10];
-StatsBase.predict(model, x)
-expdata[:tr_scores][1:10]
-
-"""

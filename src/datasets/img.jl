@@ -104,20 +104,20 @@ end
 Selection is one of ["all", "train", "test"].
 """
 function load_wildlife_mnist_raw(selection="all")
-    inpath = datadir("wildlife_MNIST")
-    if selection == "train"
-	    x_tr = permutedims(npzread(joinpath(inpath, "data.npy")), (4,3,2,1))
-	    y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
-	    x_tst = y_tst = nothing
+	inpath = datadir("wildlife_MNIST")
+	if selection == "train"
+		x_tr = permutedims(npzread(joinpath(inpath, "data.npy")), (4,3,2,1))
+		y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
+		x_tst = y_tst = nothing
 	elseif selection == "test"
-	    x_tr = y_tr = nothing
-	    x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
-	    y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
+		x_tr = y_tr = nothing
+		x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
+		y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
 	elseif selection == "all"
 		x_tr = permutedims(npzread(joinpath(inpath, "data.npy")), (4,3,2,1))
-	    y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
-	    x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
-	    y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
+		y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
+		x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
+		y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
 	else
 		error("unknown value $selection")
 	end
