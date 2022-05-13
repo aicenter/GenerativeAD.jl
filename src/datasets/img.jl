@@ -99,6 +99,32 @@ function load_mvtec_ad_data_downscaled(;img_size = 256, category::String="bottle
 end
 
 """
+	load_wildlife_mnist_raw(selection="all")
+
+Selection is one of ["all", "train", "test"].
+"""
+function load_wildlife_mnist_raw(selection="all")
+    inpath = datadir("wildlife_MNIST")
+    if selection == "train"
+	    x_tr = permutedims(npzread(joinpath(inpath, "data.npy")), (4,3,2,1))
+	    y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
+	    x_tst = y_tst = nothing
+	elseif selection == "test"
+	    x_tr = y_tr = nothing
+	    x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
+	    y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
+	elseif selection == "all"
+		x_tr = permutedims(npzread(joinpath(inpath, "data.npy")), (4,3,2,1))
+	    y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
+	    x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
+	    y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
+	else
+		error("unknown value $selection")
+	end
+	return (x_tr, y_tr), (x_tst, y_tst)
+end
+
+"""
 	load_wildlife_mnist_data(;
 	normal_class_ind::Union{Int,Tuple,Vector}=1,
 	anomaly_class_ind::Union{Int,Tuple,Vector}=-1,
@@ -120,11 +146,8 @@ function load_wildlife_mnist_data(;
 	anomaly_class_ind::Union{Int,Tuple,Vector}=-1,
 	denormalize = false,
 	kwargs...)
-	inpath = datadir("wildlife_MNIST")
-	x_tr = permutedims(npzread(joinpath(inpath, "data.npy")), (4,3,2,1))
-	x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
-	y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
-	y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
+	# load all data
+	(x_tr, y_tr), (x_tst, y_tst) = load_wildlife_mnist_raw(selection="all")
 	
 	# denormalize
 	if denormalize
