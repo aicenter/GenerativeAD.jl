@@ -74,7 +74,7 @@ function compute_scores(mf, model_id, expfs, paths, ac; verb=true)
 
     # load the original experiment file
     expf = filter(x->occursin("$(model_id)", x), expfs)
-    expf = filter(x->!occursin("model", x), expf)
+    expf = filter(x->occursin("model", x), expf)
     # put a return here in case this is empty
     if length(expf) == 0
         return nothing
@@ -91,12 +91,15 @@ function compute_scores(mf, model_id, expfs, paths, ac; verb=true)
     end
 
     # setup the parameters to be saved
-    save_parameters = dropnames(expdata[:parameters], (:score,))
+    save_parameters = dropnames(expdata["parameters"], (
+        :log_var_x_estimate_top, 
+        :latent_structure
+        ))
     save_entries = Dict(
         :anomaly_class => ac,
         :dataset => dataset,
         :modelname => modelname,
-        :npars => expdata[:npars],
+        :npars => get(expdata, "npars", nothing),
         :seed => seed
         )
     data = (orig_data[1], orig_data[2], orig_data[3], multifactor_data);
