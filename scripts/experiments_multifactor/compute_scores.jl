@@ -92,7 +92,7 @@ tr_scores, val_scores_orig, tst_scores_orig = map(x->StatsBase.predict(model, x)
 
 # also load the new data for inference
 if dataset == "wildlife_MNIST"
-    
+
 else
     error("unkown dataset $(dataset)")
 end

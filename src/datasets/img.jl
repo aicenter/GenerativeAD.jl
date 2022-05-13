@@ -147,8 +147,8 @@ function load_wildlife_mnist_data(;
 	denormalize = false,
 	kwargs...)
 	# load all data
-	(x_tr, y_tr), (x_tst, y_tst) = load_wildlife_mnist_raw(selection="all")
-	
+	(x_tr, y_tr), (x_tst, y_tst) = load_wildlife_mnist_raw("all")
+
 	# denormalize
 	if denormalize
 		x_tr = x_tr .* 0.5f0 .+ 0.5f0
