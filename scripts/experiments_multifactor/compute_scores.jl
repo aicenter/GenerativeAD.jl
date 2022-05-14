@@ -68,7 +68,7 @@ function multifactor_experiment(score_fun, parameters, data, normal_label, savep
     result
 end
 
-function compute_scores(mf, model_id, expfs, paths, ac; verb=true)
+function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_data; verb=true)
     # paths
     exppath, outdir = paths
 
@@ -156,6 +156,6 @@ for ac in 1:10
 
     @info "processing $(modelpath)..."
     for (mf, model_id) in zip(mfs, model_ids)
-        compute_scores(mf, model_id, expfs, (exppath, outdir), ac; verb=true)
+        compute_scores(mf, model_id, expfs, (exppath, outdir), ac, orig_data, multifactor_data; verb=true)
     end 
 end
