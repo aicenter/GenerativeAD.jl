@@ -35,6 +35,9 @@ parsed_args = parse_args(ARGS, s)
 method = "leave-one-in"
 acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
 seed = 1
+if device == "cuda"
+    using CUDA
+end
 
 function multifactor_experiment(score_fun, parameters, data, normal_label, savepath; force=true, verb=true, 
     save_entries...)
