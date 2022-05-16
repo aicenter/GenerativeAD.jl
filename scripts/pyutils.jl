@@ -18,6 +18,18 @@ def model(dir, device):
     return py"model"(dir, device)
 end
 
+function load_cgn_model(dir, device)
+    py"""
+import sgad
+from sgad.utils import load_cgnanomaly
+
+def model(dir, device):
+    return load_model(dir, device=device)
+    """
+
+    return py"model"(dir, device)
+end
+
 # this is for fitting the logistic regression
 mutable struct LogReg
 	alpha
