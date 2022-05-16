@@ -35,9 +35,6 @@ parsed_args = parse_args(ARGS, s)
 method = "leave-one-in"
 acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
 seed = 1
-if device == "cuda"
-    using CUDA
-end
 
 function multifactor_experiment(score_fun, parameters, data, normal_label, savepath; force=true, verb=true, 
     save_entries...)
@@ -107,7 +104,7 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
     elseif modelname in ["vae", "fmgan"]
         model = expdata["model"]
         if device == "cuda"
-            model = gpu(model)
+            model = Flux.gpu(model)
         end
     else
         error("unknown modelname $modelname")
