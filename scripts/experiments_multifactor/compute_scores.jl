@@ -7,7 +7,7 @@ using DataFrames
 using StatsBase
 using Dates
 using ValueHistories, Flux, GenerativeModels
-#using Flux, PyCall
+using DistributionsAD
 include("../pyutils.jl")
 
 s = ArgParseSettings()
@@ -97,7 +97,6 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         return nothing
     end
     expf = joinpath(exppath, expf[1])
-    #exptime = mtime(expf)
     expdata = load(expf)
 
     # this will have to be specific for each modelname
@@ -105,7 +104,7 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         model = GenerativeAD.Models.SGVAE(load_sgvae_model(mf, device))
     elseif modelname == "cgn"
         model = GenerativeAD.Models.CGNAnomaly(load_cgn_model(mf, device))
-    elseif modelname in ["vae"]
+    elseif modelname in ["vae", "fmgan"]
         model = expdata["model"]
         if device == "cuda"
             model = gpu(model)
@@ -145,6 +144,10 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         (x -> batch_score(GenerativeAD.Models.reconstruction_score_mean, model, x), merge(save_parameters, (score = "reconstruction-mean",))),
         (x -> batch_score(GenerativeAD.Models.latent_score, model, x), merge(save_parameters, (score = "latent",))),
         (x -> batch_score(GenerativeAD.Models.latent_score_mean, model, x), merge(save_parameters, (score = "latent-mean",))),
+        ]
+    elseif modelname == "fmgan"
+        [
+        (x -> 1f0 .- batch_score(GenerativeAD.Models.discriminate, model, x), save_parameters)
         ]
     else
         error("predict functions for $modelname not implemented")
