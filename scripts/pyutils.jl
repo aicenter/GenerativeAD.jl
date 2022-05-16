@@ -1,9 +1,5 @@
 using PyCall
 
-# so the we dont get the "too many open files" os error
-torch = pyimport("torch")
-torch.multiprocessing.set_sharing_strategy("file_system")
-
 # loading a pymodel
 function load_sgvae_model(dir, device)
     py"""

@@ -36,6 +36,12 @@ method = "leave-one-in"
 acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
 seed = 1
 
+if modelname in ["sgvae", "cgn"]
+    # so the we dont get the "too many open files" os error
+    torch = pyimport("torch")
+    torch.multiprocessing.set_sharing_strategy("file_system")
+end
+
 function multifactor_experiment(score_fun, parameters, data, normal_label, savepath; force=true, verb=true, 
     save_entries...)
     # first create savename and check if it is not already present
