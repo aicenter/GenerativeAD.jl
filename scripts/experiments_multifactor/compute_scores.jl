@@ -96,6 +96,8 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
     # this will have to be specific for each modelname
     if modelname == "sgvae"
         model = GenerativeAD.Models.SGVAE(load_sgvae_model(mf, device))
+    elseif modelname == "cgn"
+        model = GenerativeAD.Models.CGNAnomaly(load_cgn_model(mf, device))
     else
         error("unknown modelname $modelname")
     end
@@ -119,6 +121,11 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
     if modelname == "sgvae"
         [
         (x-> StatsBase.predict(model, x, score_type="logpx", n=10, workers=4), merge(save_parameters, (score = "logpx",))),
+        ]
+    elseif modelname == "cgn"
+        [
+        (x-> StatsBase.predict(model, x, score_type="discriminator"), merge(save_parameters, (score = "discriminator",))),
+        (x-> StatsBase.predict(model, x, score_type="perceptual"), merge(save_parameters, (score = "perceptual",)))
         ]
     else
         error("predict functions for $modelname not implemented")
