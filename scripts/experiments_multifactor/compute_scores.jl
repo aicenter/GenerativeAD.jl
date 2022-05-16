@@ -22,13 +22,18 @@ s = ArgParseSettings()
     	default = "cpu"
     	arg_type = String
     	help = "cpu or cuda"
+    "anomaly_class"
+        default = nothing
+        help = "set the anomaly class to be computed"
     "--force", "-f"
         action = :store_true
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, device, force = parsed_args
+@unpack modelname, dataset, device, anomaly_class, force = parsed_args
 method = "leave-one-in"
+acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
+seed = 1
 
 function multifactor_experiment(score_fun, parameters, data, normal_label, savepath; force=true, verb=true, 
     save_entries...)
@@ -43,10 +48,15 @@ function multifactor_experiment(score_fun, parameters, data, normal_label, savep
     tr_data, val_data, tst_data, mf_data = data
 
     # extract scores
-    tr_scores, tr_eval_t, _, _, _ = @timed score_fun(tr_data[1])
-    val_scores, val_eval_t, _, _, _ = @timed score_fun(val_data[1])
-    tst_scores, tst_eval_t, _, _, _ = @timed score_fun(tst_data[1])
-    mf_scores, mf_eval_t, _, _, _ = @timed score_fun(mf_data[1])
+    try
+        tr_scores, tr_eval_t, _, _, _ = @timed score_fun(tr_data[1])
+        val_scores, val_eval_t, _, _, _ = @timed score_fun(val_data[1])
+        tst_scores, tst_eval_t, _, _, _ = @timed score_fun(tst_data[1])
+        mf_scores, mf_eval_t, _, _, _ = @timed score_fun(mf_data[1])
+    catch e
+        verb ? (@info "Error in score computation while processin $(savef)") : nothing
+        return nothing
+    end
 
     # now save the stuff
     result = (
@@ -125,8 +135,7 @@ function dropnames(namedtuple::NamedTuple, names::Tuple{Vararg{Symbol}})
     return NamedTuple{keepnames}(namedtuple)
 end
 
-seed = 1
-for ac in 1:10
+for ac in acs
     # load the original train/val/test split
     orig_data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=method);
     # also load the new data for inference
