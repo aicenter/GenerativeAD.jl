@@ -13,6 +13,6 @@ fi
 for AC in {1..10}; do
     # submit to slurm
     sbatch \
-    --output="${LOG_DIR}/${MODELNAME}_${AC}_%A.out" \
+    --output="${LOG_DIR}/${MODELNAME}_${DATASET}_${AC}_%A.out" \
      ./compute_scores.sh $MODELNAME $DATASET $AC $FORCE
 done
