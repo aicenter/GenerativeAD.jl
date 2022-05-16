@@ -6,6 +6,7 @@ using ArgParse
 using DataFrames
 using StatsBase
 using Dates
+using ValueHistories, Flux, GenerativeModels
 #using Flux, PyCall
 include("../pyutils.jl")
 
