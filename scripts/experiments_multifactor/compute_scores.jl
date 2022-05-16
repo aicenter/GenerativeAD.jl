@@ -86,7 +86,8 @@ function multifactor_experiment(score_fun, parameters, data, normal_label, savep
 end
 
 batch_score(scoref, model, x, batchsize=512) =
-    vcat(map(y->cpu(invokelatest(scoref, model, gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+    vcat(map(y->cpu(Base.invokelatest(scoref, model, gpu(Array(y)))), 
+        Flux.Data.DataLoader(x, batchsize=batchsize))...)
 
 function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_data; verb=true)
     # paths
