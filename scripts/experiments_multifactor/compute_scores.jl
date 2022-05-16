@@ -170,6 +170,8 @@ for ac in acs
     # setup paths
     if modelname in ["sgvae", "cgn"]
     	main_modelpath = datadir("sgad_models/images_$(method)/$(modelname)/$(dataset)")
+    else
+        main_modelpath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)")
     end
 
     # save dir
