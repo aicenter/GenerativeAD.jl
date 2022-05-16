@@ -78,6 +78,9 @@ function multifactor_experiment(score_fun, parameters, data, normal_label, savep
     result
 end
 
+batch_score(scoref, model, x, batchsize=512) =
+    vcat(map(y->cpu(scoref(model, gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
+
 function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_data; verb=true)
     # paths
     exppath, outdir = paths
@@ -98,6 +101,11 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         model = GenerativeAD.Models.SGVAE(load_sgvae_model(mf, device))
     elseif modelname == "cgn"
         model = GenerativeAD.Models.CGNAnomaly(load_cgn_model(mf, device))
+    elseif modelname in ["vae"]
+        model = expdata["model"]
+        if device == "cuda"
+            model = gpu(model)
+        end
     else
         error("unknown modelname $modelname")
     end
@@ -126,6 +134,13 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         [
         (x-> StatsBase.predict(model, x, score_type="discriminator"), merge(save_parameters, (score = "discriminator",))),
         (x-> StatsBase.predict(model, x, score_type="perceptual"), merge(save_parameters, (score = "perceptual",)))
+        ]
+    elseif modelname == "vae"
+        [
+        (x -> batch_score(GenerativeAD.Models.reconstruction_score, model, x), merge(save_parameters, (score = "reconstruction",))),
+        (x -> batch_score(GenerativeAD.Models.reconstruction_score_mean, model, x), merge(save_parameters, (score = "reconstruction-mean",))),
+        (x -> batch_score(GenerativeAD.Models.latent_score, model, x), merge(save_parameters, (score = "latent",))),
+        (x -> batch_score(GenerativeAD.Models.latent_score_mean, model, x), merge(save_parameters, (score = "latent-mean",))),
         ]
     else
         error("predict functions for $modelname not implemented")
@@ -168,7 +183,12 @@ for ac in acs
     # model dir
     modelpath = joinpath(main_modelpath, "ac=$(ac)/seed=$(seed)")
     mfs = readdir(modelpath, join=true)
-    model_ids = map(x->Meta.parse(split(x, "model_id=")[2]), mfs)
+    mfs = filter(x->occursin("model", x), mfs)
+    if modelname in ["sgvae", "cgn"]
+        model_ids = map(x->Meta.parse(split(x, "model_id=")[2]), mfs)
+    else
+        model_ids = map(x->Meta.parse(split(split(x, "init_seed=")[2], "_")[1]), mfs)
+    end
 
     @info "processing $(modelpath)..."
     for (mf, model_id) in zip(mfs, model_ids)
