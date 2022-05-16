@@ -164,6 +164,7 @@ end
 for ac in acs
     # load the original train/val/test split
     orig_data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=method);
+    
     # also load the new data for inference
     if dataset == "wildlife_MNIST"
         multifactor_data = GenerativeAD.Datasets.load_wildlife_mnist_raw("test")[2];
