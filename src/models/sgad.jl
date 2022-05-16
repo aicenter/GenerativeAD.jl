@@ -14,7 +14,12 @@ end
 function StatsBase.predict(model::SGADModel, X::Array{T, 4}; kwargs...) where T<:Real
     model.model.eval()
     X = Array(permutedims(X, [4,3,2,1]))
-    return Array(model.model.predict(X; kwargs...))
+    preds = try
+        Array(model.model.predict(X; kwargs...))
+    catch e
+        nothing
+    end
+    return preds 
 end
 
 mutable struct CGNAnomaly <: SGADModel

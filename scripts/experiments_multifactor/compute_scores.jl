@@ -48,13 +48,13 @@ function multifactor_experiment(score_fun, parameters, data, normal_label, savep
     tr_data, val_data, tst_data, mf_data = data
 
     # extract scores
-    try
-        tr_scores, tr_eval_t, _, _, _ = @timed score_fun(tr_data[1])
-        val_scores, val_eval_t, _, _, _ = @timed score_fun(val_data[1])
-        tst_scores, tst_eval_t, _, _, _ = @timed score_fun(tst_data[1])
-        mf_scores, mf_eval_t, _, _, _ = @timed score_fun(mf_data[1])
-    catch e
-        verb ? (@info "Error in score computation while processin $(savef)") : nothing
+    tr_scores, tr_eval_t, _, _, _ = @timed score_fun(tr_data[1])
+    val_scores, val_eval_t, _, _, _ = @timed score_fun(val_data[1])
+    tst_scores, tst_eval_t, _, _, _ = @timed score_fun(tst_data[1])
+    mf_scores, mf_eval_t, _, _, _ = @timed score_fun(mf_data[1])
+
+    if isnothing(tr_scores) || isnothing(val_scores) || isnothing(tst_scores) || isnothing(mf_scores)
+        verb ? (@info "error when computing scores for $savef") : nothing
         return nothing
     end
 
