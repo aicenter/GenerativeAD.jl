@@ -108,7 +108,7 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         model = GenerativeAD.Models.SGVAE(load_sgvae_model(mf, device))
     elseif modelname == "cgn"
         model = GenerativeAD.Models.CGNAnomaly(load_cgn_model(mf, device))
-    elseif modelname in ["vae", "fmgan"]
+    elseif modelname in ["vae", "fmgan", "DeepSVDD", "fAnoGAN"]
         model = expdata["model"]
         if device == "cuda"
             model = Flux.gpu(model)
