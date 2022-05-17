@@ -259,7 +259,7 @@ for level in [100, 50, 10]
 	    CSV.write(f, metric_means_all)
         f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_v2_ranks_$(title)_ano_$(level).csv")
         println("saving to $f")
-        CSV.write(f, metric_ranks_all)
+        CSV.write(f, ranks_all)
 	    ranks_all, metric_means_all
 	end
 end
