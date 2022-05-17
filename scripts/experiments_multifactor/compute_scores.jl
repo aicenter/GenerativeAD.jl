@@ -8,6 +8,7 @@ using StatsBase
 using Dates
 using ValueHistories, Flux, GenerativeModels
 using DistributionsAD
+using PDMats, FillArrays, Distributions
 include("../pyutils.jl")
 
 s = ArgParseSettings()
