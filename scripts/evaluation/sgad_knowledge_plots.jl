@@ -181,6 +181,9 @@ ranks_dfs = map(enumerate(zip(titles,
     f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_$(title)_data.csv")
     println("saving to $f")
     CSV.write(f, metric_means_all)
+    f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_ranks_$(title)_data.csv")
+    println("saving to $f")
+    CSV.write(f, ranks_all)
     ranks_all, metric_means_all
 end
 end

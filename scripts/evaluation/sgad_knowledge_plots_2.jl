@@ -254,10 +254,12 @@ for level in [100, 50, 10]
 
 	    # reorder table on tabular data as there is additional class of models (flows)
 	    # one can do this manually at the end
-	    models = names(ranks_all)
 	    f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_v2_$(title)_ano_$(level).csv")
 	    println("saving to $f")
 	    CSV.write(f, metric_means_all)
+        f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_v2_ranks_$(title)_ano_$(level).csv")
+        println("saving to $f")
+        CSV.write(f, metric_ranks_all)
 	    ranks_all, metric_means_all
 	end
 end
@@ -289,10 +291,12 @@ extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 
     # reorder table on tabular data as there is additional class of models (flows)
     # one can do this manually at the end
-    models = names(ranks_all)
     f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_v2_$(title)_prop.csv")
     println("saving to $f")
     CSV.write(f, metric_means_all)
+    f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_v2_ranks_$(title)_prop.csv")
+    println("saving to $f")
+    CSV.write(f, ranks_all)
     ranks_all, metric_means_all
 end
 
