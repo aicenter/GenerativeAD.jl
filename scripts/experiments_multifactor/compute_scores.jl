@@ -95,7 +95,11 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
 
     # load the original experiment file
     expf = filter(x->occursin("$(model_id)", x), expfs)
-    expf = filter(x->occursin("model", x), expf)
+    expf = if modelname in ["DeepSVDD", "fAnoGAN"] # these two have the params in the res file
+        filter(x->!occursin("model", x), expf)
+    else
+        filter(x->occursin("model", x), expf)
+    end
     # put a return here in case this is empty
     if length(expf) == 0
         return nothing
@@ -108,15 +112,19 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         model = GenerativeAD.Models.SGVAE(load_sgvae_model(mf, device))
     elseif modelname == "cgn"
         model = GenerativeAD.Models.CGNAnomaly(load_cgn_model(mf, device))
-    elseif modelname in ["vae", "fmgan", "DeepSVDD", "fAnoGAN"]
+    elseif modelname in ["vae", "fmgan"]
         model = expdata["model"]
-        if device == "cuda"
-            model = Flux.gpu(model)
-        end
+    elseif modelname in ["DeepSVDD", "fAnoGAN"]
+        model = load(mf)["model"]
     else
         error("unknown modelname $modelname")
     end
 
+    # move flux models to gpu
+    if (device == "cuda") && (modelname in ["vae", "fmgan", "DeepSVDD", "fAnoGAN"])
+        model = Flux.gpu(model)
+    end
+    
     # setup the parameters to be saved
     save_parameters = dropnames(expdata["parameters"], (
         :log_var_x_estimate_top, 
