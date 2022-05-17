@@ -126,7 +126,12 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
     end
     
     # setup the parameters to be saved
-    save_parameters = dropnames(expdata["parameters"], (
+    save_parameters = if modelname in ["DeepSVDD", "fAnoGAN"]
+        expdata[:parameters]
+    else
+        expdata["parameters"]
+    else
+    save_parameters = dropnames(save_parameters, (
         :log_var_x_estimate_top, 
         :latent_structure
         ))
