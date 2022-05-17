@@ -168,11 +168,11 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         ]
     elseif modelname == "DeepSVDD"
         [
-        (x -> GenerativeAD.Models.anomaly_score_gpu(model, x), save_parameters)
+        (x -> Base.invokelatest(GenerativeAD.Models.anomaly_score_gpu, model, x), save_parameters)
         ]
     elseif modelname == "fAnoGAN"
         [
-        (x -> GenerativeAD.Models.anomaly_score_gpu(model, x), save_parameters)
+        (x -> Base.invokelatest(GenerativeAD.Models.anomaly_score_gpu, model, x), save_parameters)
         ]
     else
         error("predict functions for $modelname not implemented")
