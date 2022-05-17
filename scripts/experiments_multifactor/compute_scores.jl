@@ -130,7 +130,7 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         expdata[:parameters]
     else
         expdata["parameters"]
-    else
+    end
     save_parameters = dropnames(save_parameters, (
         :log_var_x_estimate_top, 
         :latent_structure
