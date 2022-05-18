@@ -162,7 +162,7 @@ Hash of the model's parameters is precomputed in order to make the groupby easie
 As there are additional modes of failure in computation of top metrics (`PAT_METRICS`,...),
 now there is option not to compute them by setting `top_metrics=false`.
 """
-function compute_stats(r::Dict{Symbol,Any}; top_metrics=true)
+function compute_stats(r::Dict{Symbol,Any}; top_metrics=true, top_metrics_new=false)
 	row = (
 		modelname = r[:modelname],
 		dataset = Symbol("dataset") in keys(r) ? r[:dataset] : "MVTec-AD_" * r[:category], # until the files are fixed
@@ -176,6 +176,7 @@ function compute_stats(r::Dict{Symbol,Any}; top_metrics=true)
 		npars = (Symbol("npars") in keys(r)) ? r[:npars] : 0
 	)
 	
+	max_seed = 10	
 	anomaly_class = _get_anomaly_class(r)
 	if anomaly_class != -1
 		row = merge(row, (anomaly_class = anomaly_class,))
@@ -228,16 +229,43 @@ function compute_stats(r::Dict{Symbol,Any}; top_metrics=true)
 					BASE_METRICS), 
 					[auc, auprc, tpr5, f5])...))
 
-			# compute precision on most anomalous samples
-			if top_metrics
-				pat = [_precision_at(p/100.0, labels, scores) for p in [0.01, 0.1, 1.0, 5.0, 10.0, 20.0]]
-				row = merge(row, (;zip(_prefix_symbol.(splt, PAT_METRICS), pat)...))
+			# compute auc on a randomly selected portion of samples
+			if splt == "val"
+				auc_ano_100 = [mean([_auc_at_subsamples_anomalous(p/100, 1.0, labels, scores, seed=s) for s in 1:max_seed]) 
+					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
+				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_100", AUC_METRICS)), auc_ano_100)...))
 
-				patn = [_nprecision_at(n, labels, scores) for n in [5, 10, 50, 100, 500, 1000]]
-				row = merge(row, (;zip(_prefix_symbol.(splt, PATN_METRICS), patn)...))	
+				auc_ano_50 = [mean([_auc_at_subsamples_anomalous(p/100, 0.5, labels, scores, seed=s) for s in 1:max_seed]) 
+					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
+				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_50", AUC_METRICS)), auc_ano_50)...))
 
-				pac = [_auc_at(n, labels, scores, auc) for n in [5, 10, 50, 100, 500, 1000]]
-				row = merge(row, (;zip(_prefix_symbol.(splt, PAC_METRICS), pac)...))
+				auc_ano_10 = [mean([_auc_at_subsamples_anomalous(p/100, 0.1, labels, scores, seed=s) for s in 1:max_seed]) 
+					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
+				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_10", AUC_METRICS)), auc_ano_10)...))
+
+				prop_ps = [100, 50, 20, 10, 5, 2, 1]
+				auc_prop_100 = [mean([_auc_at_subsamples_anomalous(1.0, p/100, labels, scores, seed=s) for s in 1:max_seed]) 
+					for p in prop_ps]
+				row = merge(row, (;zip(_prefix_symbol.(splt, map(x-> "auc_100_$(x)", prop_ps)), auc_prop_100)...))
+			# different way of splitting the data
+			elseif top_metrics_new && splt == "val"
+				max_seed = 10
+				auc_ano_100 = [mean([_auc_at_subsamples_anomalous(p/100, 1.0, labels, scores, seed=s) for s in 1:max_seed]) 
+					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
+				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_100", AUC_METRICS)), auc_ano_100)...))
+
+				auc_ano_50 = [mean([_auc_at_subsamples_anomalous(p/100, 0.5, labels, scores, seed=s) for s in 1:max_seed]) 
+					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
+				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_50", AUC_METRICS)), auc_ano_50)...))
+
+				auc_ano_10 = [mean([_auc_at_subsamples_anomalous(p/100, 0.1, labels, scores, seed=s) for s in 1:max_seed]) 
+					for p in [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]]
+				row = merge(row, (;zip(_prefix_symbol.(splt, map(x->x * "_10", AUC_METRICS)), auc_ano_10)...))
+
+				prop_ps = [100, 50, 20, 10, 5, 2, 1]
+				auc_prop_100 = [mean([_auc_at_subsamples_anomalous(1.0, p/100, labels, scores, seed=s) for s in 1:max_seed]) 
+					for p in prop_ps]
+				row = merge(row, (;zip(_prefix_symbol.(splt, map(x-> "auc_100_$(x)", prop_ps)), auc_prop_100)...))
 			end
 		else
 			error("$(splt)_scores contain only one value")
