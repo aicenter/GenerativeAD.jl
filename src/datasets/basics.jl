@@ -52,9 +52,11 @@ function train_val_test_split(data_normal, data_anomalous, ratios=(0.6,0.2,0.2);
 	split_inds_anomalous = train_val_test_inds(indices_anomalous, (tr, vtr, vtr); seed=seed)
 
 	# this can be done universally - how?
-	if nd == 2
+	if nd == 1
+		tr_n, val_n, tst_n = map(is -> data_normal[is], split_inds)
+		tr_a, val_a, tst_a = map(is -> data_anomalous[is], split_inds_anomalous)
+	elseif nd == 2
 		tr_n, val_n, tst_n = map(is -> data_normal[:,is], split_inds)
-		tr_a, val_a, tst_a = map(is -> data_anomalous[:,is], split_inds_anomalous)
 	elseif nd == 4
 		tr_n, val_n, tst_n = map(is -> data_normal[:,:,:,is], split_inds)
 		tr_a, val_a, tst_a = map(is -> data_anomalous[:,:,:,is], split_inds_anomalous)
