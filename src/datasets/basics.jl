@@ -162,10 +162,10 @@ function split_multifactor_data(anomaly_factors, train_class, scores_orig, mf_sc
     # now split the multifactor scores
     mf_split = if use_mf_anomalies
         # dont use this probably as there are too many confusing anomalies
-        GenerativeAD.Datasets.train_val_test_split(n_scores, a_scores, (0.0, 0.5, 0.5), seed=1);
+        train_val_test_split(n_scores, a_scores, (0.0, 0.5, 0.5), seed=1);
     else
         # this does not contain normal data from the mf dataset
-        GenerativeAD.Datasets.train_val_test_split(n_scores[2:1], a_scores, (0.0, 0.5, 0.5), seed=1);
+        train_val_test_split(n_scores[2:1], a_scores, (0.0, 0.5, 0.5), seed=1);
     end
 
     # get scores and labels for the evaluation function
