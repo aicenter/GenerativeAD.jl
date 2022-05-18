@@ -220,6 +220,13 @@ function load_wildlife_mnist_data(;
 end
 
 """
+	array_to_img_rgb(arr)	
+
+Converts a 3D array (w,h,c) to an image you can display with display().
+"""
+array_to_img_rgb(arr) = RGB.(arr[:,:,1], arr[:,:,2], arr[:,:,3])
+
+"""
 	img_to_array_rgb(img)
 
 Convert RGB img to a 3D tensor.

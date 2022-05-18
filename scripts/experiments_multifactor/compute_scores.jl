@@ -143,7 +143,13 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         :npars => get(expdata, "npars", nothing),
         :seed => seed
         )
-    data = (orig_data[1], orig_data[2], orig_data[3], multifactor_data);
+    # only use the normal original data
+    normal_inds = map(is->is .== 0, (orig_data[1][2], orig_data[2][2], orig_data[3][2]));
+    data = (
+        (orig_data[1][1][:,:,:,normal_inds[1]], orig_data[1][2][normal_inds[1]]),
+        (orig_data[2][1][:,:,:,normal_inds[2]], orig_data[2][2][normal_inds[2]]),
+        (orig_data[3][1][:,:,:,normal_inds[3]], orig_data[3][2][normal_inds[3]]),
+         multifactor_data);
     
     # compose the return function
     results = 
@@ -209,7 +215,7 @@ for ac in acs
     end
 
     # save dir
-    outdir = datadir("experiments/images_multifactor/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+    outdir = datadir("experiments_multifactor/base_scores/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
     mkpath(outdir)
 
     # original experiment dir
