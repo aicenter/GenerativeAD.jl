@@ -148,6 +148,10 @@ function normalize_data(data)
     end
 end
 
+"""
+	split_multifactor_data(anomaly_factors, train_class, scores_orig, mf_scores, mf_labels; 
+    	use_mf_anomalies=false, seed=nothing)
+"""
 function split_multifactor_data(anomaly_factors, train_class, scores_orig, mf_scores, mf_labels; 
     use_mf_anomalies=false, seed=nothing)
     # get the original data - these are supposed to be clean
