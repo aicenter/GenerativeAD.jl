@@ -147,3 +147,32 @@ function normalize_data(data)
         return data
     end
 end
+
+function split_multifactor_data(anomaly_factors, train_class, scores_orig, mf_scores, mf_labels; 
+    use_mf_anomalies=false, seed=nothing)
+    # get the original data - these are supposed to be clean
+    val_scores_orig, tst_scores_orig = scores_orig
+
+    # construct the normal and anomalous datasets
+    ainds = map(i->mf_labels[i,:] .!= train_class, anomaly_factors)
+    ainds = map(is -> reduce(|, is), zip(ainds...))
+    a_scores = mf_scores[ainds]
+    n_scores = mf_scores[.!ainds]
+
+    # now split the multifactor scores
+    mf_split = if use_mf_anomalies
+        # dont use this probably as there are too many confusing anomalies
+        GenerativeAD.Datasets.train_val_test_split(n_scores, a_scores, (0.0, 0.5, 0.5), seed=1);
+    else
+        # this does not contain normal data from the mf dataset
+        GenerativeAD.Datasets.train_val_test_split(n_scores[2:1], a_scores, (0.0, 0.5, 0.5), seed=1);
+    end
+
+    # get scores and labels for the evaluation function
+    val_scores = vcat(val_scores_orig, mf_split[2][1]);
+    tst_scores = vcat(tst_scores_orig, mf_split[3][1]);
+    val_labels = vcat(zeros(length(val_scores_orig)), mf_split[2][2]);
+    tst_labels = vcat(zeros(length(tst_scores_orig)), mf_split[3][2]);
+
+    return (val_scores, val_labels), (tst_scores, tst_labels)
+end
