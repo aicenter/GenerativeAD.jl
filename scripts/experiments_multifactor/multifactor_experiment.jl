@@ -9,9 +9,6 @@ s = ArgParseSettings()
         default = "vae"
 		arg_type = String
 		help = "model name"
-    "train_class"
-        default = 1
-        help = "set the anomaly class to be computed"
     "dataset"
         default = "wildlife_MNIST"
         arg_type = String
@@ -25,7 +22,7 @@ s = ArgParseSettings()
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, train_class, anomaly_factors, force = parsed_args
+@unpack modelname, dataset, anomaly_factors, force = parsed_args
 method = "leave-one-in"
 seed = 1
 nf = length(anomaly_factors)
@@ -79,14 +76,17 @@ function experiment(sf, score_dir, save_dir, modelname, dataset, seed, train_cla
     @info "saved evaluation at $target"
 end
 
-# save dir
-save_dir = datadir("experiments_multifactor/evaluation/$(modelname)/$(dataset)/ac=$(train_class)/seed=$(seed)/af=$(afstring)")
-mkpath(save_dir)
 
-# then load the requested scores
-score_dir = datadir("experiments_multifactor/base_scores/$(modelname)/$(dataset)/ac=$(train_class)/seed=$(seed)")
-sfs = readdir(score_dir)
+for train_class in 1:10
+    # save dir
+    save_dir = datadir("experiments_multifactor/evaluation/$(modelname)/$(dataset)/ac=$(train_class)/seed=$(seed)/af=$(afstring)")
+    mkpath(save_dir)
 
-for sf in sfs
-    experiment(sf, score_dir, save_dir, modelname, dataset, seed, train_class, anomaly_factors, afstring)
+    # then load the requested scores
+    score_dir = datadir("experiments_multifactor/base_scores/$(modelname)/$(dataset)/ac=$(train_class)/seed=$(seed)")
+    sfs = readdir(score_dir)
+
+    for sf in sfs
+        experiment(sf, score_dir, save_dir, modelname, dataset, seed, train_class, anomaly_factors, afstring)
+    end
 end

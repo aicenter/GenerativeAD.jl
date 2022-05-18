@@ -13,10 +13,8 @@ if [ ! -d "$LOG_DIR" ]; then
 fi
 
 while read MODELNAME; do
-    for TRAIN_CLASS in {1..10}; do
-        # submit to slurm
-        sbatch \
-        --output="${LOG_DIR}/${MODELNAME}_${DATASET}_${TRAIN_CLASS}_%A.out" \
-         ./multifactor_experiment.sh $MODELNAME $DATASET ${TRAIN_CLASS} $AF1 $AF2 $AF3
-    done
+    # submit to slurm
+    sbatch \
+    --output="${LOG_DIR}/${MODELNAME}_${DATASET}_%A.out" \
+     ./multifactor_experiment.sh $MODELNAME $DATASET $AF1 $AF2 $AF3
 done < ${MODELFILE}
