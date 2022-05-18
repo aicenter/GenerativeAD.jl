@@ -51,6 +51,8 @@ function multifactor_experiment(score_fun, parameters, data, normal_label, savep
         verb ? (@info "$savef already present, skipping") : nothing
         return nothing
     end
+    # remove the original - drwatson does not overwrite
+    isfile(savef) ? rm(savef) : nothing
     
     # get the data
     tr_data, val_data, tst_data, mf_data = data
