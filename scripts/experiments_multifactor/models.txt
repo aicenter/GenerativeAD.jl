@@ -1,0 +1,6 @@
+vae
+fmgan
+DeepSVDD
+cgn
+sgvae
+fAnoGAN
