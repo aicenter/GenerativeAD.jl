@@ -17,4 +17,4 @@ source ${HOME}/sgad-env/bin/activate
 export PYTHON="${HOME}/sgad-env/bin/python"
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-julia ./compute_scores.jl ${MODELNAME} ${DATASET} cuda ${AC} $FORCE
+julia ./base_scores.jl ${MODELNAME} ${DATASET} cuda ${AC} $FORCE

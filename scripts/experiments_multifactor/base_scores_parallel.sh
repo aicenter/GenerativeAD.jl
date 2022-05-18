@@ -4,7 +4,7 @@ MODELNAME=$1
 DATASET=$2
 FORCE=$3
 
-LOG_DIR="${HOME}/logs/experiments_multifactor"
+LOG_DIR="${HOME}/logs/base_scores"
 
 if [ ! -d "$LOG_DIR" ]; then
     mkdir $LOG_DIR
@@ -14,5 +14,5 @@ for AC in {1..10}; do
     # submit to slurm
     sbatch \
     --output="${LOG_DIR}/${MODELNAME}_${DATASET}_${AC}_%A.out" \
-     ./compute_scores.sh $MODELNAME $DATASET $AC $FORCE
+     ./base_scores.sh $MODELNAME $DATASET $AC $FORCE
 done
