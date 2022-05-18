@@ -20,16 +20,12 @@ s = ArgParseSettings()
         arg_type = Int
         nargs = '+'
         help = "set one or more anomalous factors"
-    "--max_seed"
-        arg_type = Int
-        default = 1
-        help = "number of crossvalidation splits"
     "--force", "-f"
         action = :store_true
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, train_class, anomaly_factors, max_seed, force = parsed_args
+@unpack modelname, dataset, train_class, anomaly_factors, force = parsed_args
 method = "leave-one-in"
 seed = 1
 nf = length(anomaly_factors)
