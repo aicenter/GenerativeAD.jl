@@ -13,6 +13,9 @@ s = ArgParseSettings()
         default = "wildlife_MNIST"
         arg_type = String
         help = "dataset"
+    "--mf_normal"
+        action = :store_true
+        help = "dont use the original normal data but all the multifactor data not used as anomalies"
     "--anomaly_factors"
         arg_type = Int
         nargs = '+'
@@ -22,8 +25,9 @@ s = ArgParseSettings()
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, anomaly_factors, force = parsed_args
+@unpack modelname, dataset, mf_normal, anomaly_factors, force = parsed_args
 method = "leave-one-in"
+save_suffix = mf_normal ? "_mf_normal" : ""
 seed = 1
 nf = length(anomaly_factors)
 (nf == 0 || nf > 3) ? error("number of --anomaly_factors must be between 1 and 3") : nothing
@@ -50,7 +54,7 @@ function experiment(sf, score_dir, save_dir, modelname, dataset, seed, train_cla
     # split them (pseudo)randomly
     (val_scores, val_labels), (tst_scores, tst_labels) = GenerativeAD.Datasets.split_multifactor_data(
         anomaly_factors, train_class, (val_scores_orig, tst_scores_orig), mf_scores, mf_labels; 
-        use_mf_anomalies=false, seed=seed)
+        mf_normal=mf_normal, seed=seed)
 
     # make the correct input for the next function
     res_dict = Dict(
@@ -76,10 +80,9 @@ function experiment(sf, score_dir, save_dir, modelname, dataset, seed, train_cla
     @info "saved evaluation at $target"
 end
 
-
 for train_class in 1:10
     # save dir
-    save_dir = datadir("experiments_multifactor/evaluation/$(modelname)/$(dataset)/ac=$(train_class)/seed=$(seed)/af=$(afstring)")
+    save_dir = datadir("experiments_multifactor/evaluation$(save_suffix)/images_leave-one-in/$(modelname)/$(dataset)/ac=$(train_class)/seed=$(seed)/af=$(afstring)")
     mkpath(save_dir)
 
     # then load the requested scores
