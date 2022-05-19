@@ -94,7 +94,7 @@ for train_class in 1:10
     end
 end
 
-
+"""
 mf_normal = true
 anomaly_factors = [1, 3]
 train_class = 1
@@ -115,3 +115,4 @@ mf_labels = sdata[:mf_labels]
 (val_scores, val_labels), (tst_scores, tst_labels) = GenerativeAD.Datasets.split_multifactor_data(
     anomaly_factors, train_class, (val_scores_orig, tst_scores_orig), mf_scores, mf_labels; 
     mf_normal=mf_normal, seed=seed)
+"""
