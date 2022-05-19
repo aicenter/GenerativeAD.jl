@@ -167,8 +167,8 @@ function split_multifactor_data(anomaly_factors, train_class, scores_orig, mf_sc
     if mf_normal
         # this is much harder
         mf_split = train_val_test_split(n_scores, a_scores, (0.0, 0.5, 0.5), seed=1);
-        val_scores, val_labels = mf_split[1]
-        tst_scores, tst_labels = mf_split[2]
+        val_scores, val_labels = mf_split[2]
+        tst_scores, tst_labels = mf_split[3]
     else
         # this does not contain normal data from the mf dataset
         mf_split = train_val_test_split(n_scores[2:1], a_scores, (0.0, 0.5, 0.5), seed=1);
