@@ -93,26 +93,3 @@ for train_class in 1:10
         experiment(sf, score_dir, save_dir, modelname, dataset, seed, train_class, anomaly_factors, afstring)
     end
 end
-
-"""
-mf_normal = true
-anomaly_factors = [1, 3]
-train_class = 1
-afstring =  _afs2str(anomaly_factors)
-
-
-# then load the requested scores
-score_dir = datadir("experiments_multifactor/base_scores/$(modelname)/$(dataset)/ac=$(train_class)/seed=$(seed)")
-sfs = readdir(score_dir)
-sf = sfs[1]
-
-# val and tst scores are only scores of normal samples
-sdata = load(joinpath(score_dir, sf))
-val_scores_orig, tst_scores_orig, mf_scores = sdata[:val_scores], sdata[:tst_scores], sdata[:mf_scores]
-mf_labels = sdata[:mf_labels]
-
-# split them (pseudo)randomly
-(val_scores, val_labels), (tst_scores, tst_labels) = GenerativeAD.Datasets.split_multifactor_data(
-    anomaly_factors, train_class, (val_scores_orig, tst_scores_orig), mf_scores, mf_labels; 
-    mf_normal=mf_normal, seed=seed)
-"""

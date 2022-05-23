@@ -3,4 +3,4 @@ fmgan
 DeepSVDD
 cgn
 sgvae
-fAnoGAN
+fAnoGAN 
