@@ -211,7 +211,7 @@ for ac in acs
 			# first, filter out NaNs and Infs
 			inds = vec(mapslices(r->!any(r.==Inf), val_scores, dims=2))
 			val_scores = val_scores[inds, :]
-			val_y = val_labels[inds]
+			val_y = val_y[inds]
 			inds = vec(mapslices(r->!any(isnan.(r)), val_scores, dims=2))
 			val_scores = val_scores[inds, :]
 			val_y = val_y[inds]
