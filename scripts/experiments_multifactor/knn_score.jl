@@ -10,12 +10,15 @@ s = ArgParseSettings()
         default = "wildlife_MNIST"
         arg_type = String
         help = "dataset or mvtec category"
+    "anomaly_class"
+        default = nothing
+        help = "set the anomaly class to be computed"
     "--force", "-f"
         action = :store_true
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, force = parsed_args
+@unpack modelname, dataset, anomaly_class, force = parsed_args
 datatype = "leave-one-in"
 acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
 seed = 1
