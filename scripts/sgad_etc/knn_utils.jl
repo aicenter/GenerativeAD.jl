@@ -72,7 +72,7 @@ function compute_knn_score(model_id, in_dir, k, v, out_dir, seed, ac, dataset, m
 end
 
 ### this is for multifactor experiments
-function fit_predict(k, v, tr_x, val_x, tst_x, mf_x)
+function fit_predict_multifactor(k, v, tr_x, val_x, tst_x, mf_x)
     model = GenerativeAD.Models.knn_constructor(;v=v, k=k)
     fit!(model, Array(transpose(tr_x)))
     val_scores = get_scores(model, Array(transpose(val_x)))
@@ -102,8 +102,8 @@ function compute_knn_score_multifactor(model_id, in_dir, k, v, out_dir, seed, ac
         (in_d[:tr_encodings_foreground], in_d[:val_encodings_foreground], 
             in_d[:tst_encodings_foreground], in_d[:mf_encodings_foreground])
         );
-    scores = map(x->fit_predict(k,v,x...), data);
-    scores = map(i->Array(transpose(hcat([x[i] for x in scores]...))), 1:2)
+    scores = map(x->fit_predict_multifactor(k,v,x...), data);
+    scores = map(i->Array(transpose(hcat([x[i] for x in scores]...))), 1:3)
 
     # and save them
     output = Dict(
