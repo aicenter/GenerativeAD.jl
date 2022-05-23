@@ -160,8 +160,15 @@ function split_multifactor_data(anomaly_factors, train_class, scores_orig, mf_sc
     # construct the normal and anomalous datasets
     ainds = map(i->mf_labels[i,:] .!= train_class, anomaly_factors)
     ainds = map(is -> reduce(|, is), zip(ainds...))
-    a_scores = mf_scores[ainds]
-    n_scores = mf_scores[.!ainds]
+    if ndims(a_scores) == 1
+        a_scores = mf_scores[ainds]
+        n_scores = mf_scores[.!ainds]
+    elseif ndims(a_scores) == 2
+        a_scores = mf_scores[:,ainds]
+        n_scores = mf_scores[:,.!ainds]
+    else
+        error("this only works for 1D and 2D arrays")
+    end
 
     # now split the multifactor scores
     if mf_normal
