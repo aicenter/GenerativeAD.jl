@@ -135,6 +135,7 @@ model_id = model_ids[i]
 lf = lfs[i]
 anomaly_factors = [1]
 
+
 for ac in acs
 	# we will go over the models that have the latent scores computed - for them we can be sure that 
 	# we have all we need

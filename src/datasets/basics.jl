@@ -163,7 +163,7 @@ function split_multifactor_data(anomaly_factors, train_class, scores_orig, mf_sc
     a_scores, n_scores = if ndims(mf_scores) == 1
          mf_scores[ainds], mf_scores[.!ainds]
     elseif ndims(mf_scores) == 2
-        mf_scores[ainds,:], mf_scores[.!ainds,:]
+        mf_scores[:,ainds], mf_scores[:,.!ainds]
     else
         error("this only works for 1D and 2D arrays")
     end
@@ -179,8 +179,8 @@ function split_multifactor_data(anomaly_factors, train_class, scores_orig, mf_sc
         mf_split = train_val_test_split(n_scores[2:1], a_scores, (0.0, 0.5, 0.5), seed=1);
 
         # get scores and labels for the evaluation function
-        val_scores = vcat(val_scores_orig, mf_split[2][1]);
-        tst_scores = vcat(tst_scores_orig, mf_split[3][1]);
+        val_scores = cat(val_scores_orig, mf_split[2][1], dims=ndims(mf_scores));
+        tst_scores = cat(tst_scores_orig, mf_split[3][1], dims=ndims(mf_scores));
         val_labels = vcat(zeros(length(val_scores_orig)), mf_split[2][2]);
         tst_labels = vcat(zeros(length(tst_scores_orig)), mf_split[3][2]);
     end
