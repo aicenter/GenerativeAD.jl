@@ -129,13 +129,6 @@ function perf_at_p_agg(args...)
 	return nanmean([x[1] for x in results]), nanmean([x[2] for x in results])
 end
 
-ac = 1
-i = 1
-model_id = model_ids[i]
-lf = lfs[i]
-anomaly_factors = [1]
-
-
 for ac in acs
 	# we will go over the models that have the latent scores computed - for them we can be sure that 
 	# we have all we need
@@ -181,53 +174,14 @@ for ac in acs
 		val_scores_orig = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
 		tst_scores_orig = cat(rdata[:tst_scores], transpose(ldata[:tst_scores]), dims=2);
 		mf_scores = cat(rdata[:mf_scores], transpose(ldata[:mf_scores]), dims=2);
-		val_y = ldata[:val_labels];
-		tst_y = ldata[:tst_labels];
-		mf_y = mf_labels = ldata[:mf_labels];
+		mf_y = ldata[:mf_labels];
 
 		# split them (pseudo)randomly
-	    (val_scores, val_labels), (tst_scores, tst_labels) = GenerativeAD.Datasets.split_multifactor_data(
+	    (val_scores, val_y), (tst_scores, tst_y) = GenerativeAD.Datasets.split_multifactor_data(
 	        anomaly_factors, ac, (transpose(val_scores_orig), transpose(tst_scores_orig)), 
-	        transpose(mf_scores), mf_labels; mf_normal=mf_normal, seed=seed)
+	        transpose(mf_scores), mf_y; mf_normal=mf_normal, seed=seed)
 	    val_scores = Array(transpose(val_scores))
 	    tst_scores = Array(transpose(tst_scores))
-
-	    train_class = ac
-	    scores_orig = (transpose(val_scores_orig), transpose(tst_scores_orig))
-	    mf_scores = transpose(mf_scores)
-
-    # get the original data - these are supposed to be clean
-    val_scores_orig, tst_scores_orig = scores_orig
-
-    # construct the normal and anomalous datasets
-    ainds = map(i->mf_labels[i,:] .!= train_class, anomaly_factors)
-    ainds = map(is -> reduce(|, is), zip(ainds...))
-    a_scores, n_scores = if ndims(mf_scores) == 1
-         mf_scores[ainds], mf_scores[.!ainds]
-    elseif ndims(mf_scores) == 2
-        mf_scores[:,ainds], mf_scores[:,.!ainds]
-    else
-        error("this only works for 1D and 2D arrays")
-    end
-
-    # now split the multifactor scores
-    if mf_normal
-        # this is much harder
-        mf_split = train_val_test_split(n_scores, a_scores, (0.0, 0.5, 0.5), seed=1);
-        val_scores, val_labels = mf_split[2]
-        tst_scores, tst_labels = mf_split[3]
-    else
-        # this does not contain normal data from the mf dataset
-        mf_split = (ndims(mf_scores) == 1) ? 
-        	GenerativeAD.Datasets.train_val_test_split(n_scores[2:1], a_scores, (0.0, 0.5, 0.5), seed=1) :
-        	GenerativeAD.Datasets.train_val_test_split(n_scores[:,2:1], a_scores, (0.0, 0.5, 0.5), seed=1);
-
-        # get scores and labels for the evaluation function
-        val_scores = cat(val_scores_orig, mf_split[2][1], dims=ndims(mf_scores));
-        tst_scores = cat(tst_scores_orig, mf_split[3][1], dims=ndims(mf_scores));
-        val_labels = vcat(zeros(size(val_scores_orig, ndims(val_scores_orig))), mf_split[2][2]);
-        tst_labels = vcat(zeros(size(tst_scores_orig, ndims(tst_scores_orig))), mf_split[3][2]);
-    end
 
 		# setup params
 		parameters = ldata[:parameters]
@@ -242,7 +196,7 @@ for ac in acs
 			res_df["dataset"] = dataset
 			res_df["phash"] = GenerativeAD.Evaluation.hash(parameters)
 			res_df["parameters"] = param_string
-			res_df["fit_t"] = rdata[:fit_t]
+			res_df["fit_t"] = NaN
 			res_df["tr_eval_t"] = ldata[:tr_eval_t] + rdata[:tr_eval_t]
 			res_df["val_eval_t"] = ldata[:val_eval_t] + rdata[:val_eval_t]
 			res_df["tst_eval_t"] = ldata[:tst_eval_t] + rdata[:tst_eval_t]
@@ -257,7 +211,7 @@ for ac in acs
 			# first, filter out NaNs and Infs
 			inds = vec(mapslices(r->!any(r.==Inf), val_scores, dims=2))
 			val_scores = val_scores[inds, :]
-			val_y = val_y[inds]
+			val_y = val_labels[inds]
 			inds = vec(mapslices(r->!any(isnan.(r)), val_scores, dims=2))
 			val_scores = val_scores[inds, :]
 			val_y = val_y[inds]
