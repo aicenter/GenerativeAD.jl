@@ -28,7 +28,7 @@ s = ArgParseSettings()
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype, device, force = parsed_args
+@unpack modelname, dataset, device, anomaly_class, force = parsed_args
 acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
 seed = 1
 datatype = "leave-one-in"
@@ -110,7 +110,6 @@ function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_d
         :val_labels => val_y,
         :tst_labels => tst_y,
         :mf_labels => mf_y,
-        :normal_label => ac
         )
     save(joinpath(out_dir, outf), output)
     @info "Results writen to $outf."
@@ -118,39 +117,37 @@ function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_d
 end
 
 for ac in acs
-    for seed in 1:max_seed
-        # load data
-        if dataset == "wildlife_MNIST"
-            # load the original train/val/test split
-            orig_data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=datatype);
-            # and also the multifactor dataset
-            multifactor_data = GenerativeAD.Datasets.load_wildlife_mnist_raw("test")[2];
-        else
-            error("unkown dataset $(dataset)")
-        end
+    # load data
+    if dataset == "wildlife_MNIST"
+        # load the original train/val/test split
+        orig_data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=datatype);
+        # and also the multifactor dataset
+        multifactor_data = GenerativeAD.Datasets.load_wildlife_mnist_raw("test")[2];
+    else
+        error("unkown dataset $(dataset)")
+    end
 
-        # only use the normal original data
-        normal_inds = map(is->is .== 0, (orig_data[1][2], orig_data[2][2], orig_data[3][2]));
-        data = (
-        (orig_data[1][1][:,:,:,normal_inds[1]], orig_data[1][2][normal_inds[1]]),
-        (orig_data[2][1][:,:,:,normal_inds[2]], orig_data[2][2][normal_inds[2]]),
-        (orig_data[3][1][:,:,:,normal_inds[3]], orig_data[3][2][normal_inds[3]]),
-         multifactor_data);
+    # only use the normal original data
+    normal_inds = map(is->is .== 0, (orig_data[1][2], orig_data[2][2], orig_data[3][2]));
+    data = (
+    (orig_data[1][1][:,:,:,normal_inds[1]], orig_data[1][2][normal_inds[1]]),
+    (orig_data[2][1][:,:,:,normal_inds[2]], orig_data[2][2][normal_inds[2]]),
+    (orig_data[3][1][:,:,:,normal_inds[3]], orig_data[3][2][normal_inds[3]]),
+     multifactor_data);
 
 
-        # outputs
-        out_dir = datadir("experiments_multifactor/encodings/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-        mkpath(out_dir)
+    # outputs
+    out_dir = datadir("experiments_multifactor/encodings/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+    mkpath(out_dir)
 
-        # model dir
-        model_dir = datadir("sgad_models/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-        model_ids = map(x-> Meta.parse(split(x, "=")[2]), readdir(model_dir))
-        res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-        res_fs = readdir(res_dir)
+    # model dir
+    model_dir = datadir("sgad_models/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+    model_ids = map(x-> Meta.parse(split(x, "=")[2]), readdir(model_dir))
+    res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+    res_fs = readdir(res_dir)
 
-        for model_id in model_ids
-            compute_save_encodings(model_id, model_dir, device, data, res_fs, res_dir, 
-                out_dir, seed, ac, dataset, modelname, force=force)
-        end
+    for model_id in model_ids
+        compute_save_encodings(model_id, model_dir, device, data, res_fs, res_dir, 
+            out_dir, seed, ac, dataset, modelname, force=force)
     end
 end
