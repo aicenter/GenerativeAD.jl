@@ -163,7 +163,7 @@ function split_multifactor_data(anomaly_factors, train_class, scores_orig, mf_sc
     a_scores, n_scores = if ndims(mf_scores) == 1
          mf_scores[ainds], mf_scores[.!ainds]
     elseif ndims(mf_scores) == 2
-        mf_scores[:,ainds], mf_scores[:,.!ainds]
+        mf_scores[ainds,:], mf_scores[.!ainds,:]
     else
         error("this only works for 1D and 2D arrays")
     end
