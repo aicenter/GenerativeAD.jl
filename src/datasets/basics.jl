@@ -176,13 +176,15 @@ function split_multifactor_data(anomaly_factors, train_class, scores_orig, mf_sc
         tst_scores, tst_labels = mf_split[3]
     else
         # this does not contain normal data from the mf dataset
-        mf_split = train_val_test_split(n_scores[2:1], a_scores, (0.0, 0.5, 0.5), seed=1);
+        mf_split = (ndims(mf_scores) == 1) ? 
+            train_val_test_split(n_scores[2:1], a_scores, (0.0, 0.5, 0.5), seed=1) :
+            train_val_test_split(n_scores[:,2:1], a_scores, (0.0, 0.5, 0.5), seed=1);
 
         # get scores and labels for the evaluation function
         val_scores = cat(val_scores_orig, mf_split[2][1], dims=ndims(mf_scores));
         tst_scores = cat(tst_scores_orig, mf_split[3][1], dims=ndims(mf_scores));
-        val_labels = vcat(zeros(length(val_scores_orig)), mf_split[2][2]);
-        tst_labels = vcat(zeros(length(tst_scores_orig)), mf_split[3][2]);
+        val_labels = vcat(zeros(size(val_scores_orig, ndims(val_scores_orig))), mf_split[2][2]);
+        tst_labels = vcat(zeros(size(tst_scores_orig, ndims(tst_scores_orig))), mf_split[3][2]);
     end
 
     return (val_scores, val_labels), (tst_scores, tst_labels)

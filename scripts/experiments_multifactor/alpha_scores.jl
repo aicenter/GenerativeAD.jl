@@ -192,6 +192,43 @@ for ac in acs
 	    val_scores = Array(transpose(val_scores))
 	    tst_scores = Array(transpose(tst_scores))
 
+	    train_class = ac
+	    scores_orig = (transpose(val_scores_orig), transpose(tst_scores_orig))
+	    mf_scores = transpose(mf_scores)
+
+    # get the original data - these are supposed to be clean
+    val_scores_orig, tst_scores_orig = scores_orig
+
+    # construct the normal and anomalous datasets
+    ainds = map(i->mf_labels[i,:] .!= train_class, anomaly_factors)
+    ainds = map(is -> reduce(|, is), zip(ainds...))
+    a_scores, n_scores = if ndims(mf_scores) == 1
+         mf_scores[ainds], mf_scores[.!ainds]
+    elseif ndims(mf_scores) == 2
+        mf_scores[:,ainds], mf_scores[:,.!ainds]
+    else
+        error("this only works for 1D and 2D arrays")
+    end
+
+    # now split the multifactor scores
+    if mf_normal
+        # this is much harder
+        mf_split = train_val_test_split(n_scores, a_scores, (0.0, 0.5, 0.5), seed=1);
+        val_scores, val_labels = mf_split[2]
+        tst_scores, tst_labels = mf_split[3]
+    else
+        # this does not contain normal data from the mf dataset
+        mf_split = (ndims(mf_scores) == 1) ? 
+        	GenerativeAD.Datasets.train_val_test_split(n_scores[2:1], a_scores, (0.0, 0.5, 0.5), seed=1) :
+        	GenerativeAD.Datasets.train_val_test_split(n_scores[:,2:1], a_scores, (0.0, 0.5, 0.5), seed=1);
+
+        # get scores and labels for the evaluation function
+        val_scores = cat(val_scores_orig, mf_split[2][1], dims=ndims(mf_scores));
+        tst_scores = cat(tst_scores_orig, mf_split[3][1], dims=ndims(mf_scores));
+        val_labels = vcat(zeros(size(val_scores_orig, ndims(val_scores_orig))), mf_split[2][2]);
+        tst_labels = vcat(zeros(size(tst_scores_orig, ndims(tst_scores_orig))), mf_split[3][2]);
+    end
+
 		# setup params
 		parameters = ldata[:parameters]
 		add_params = split(split(lf, "score")[1], "model_id=$(model_id)")[2]
