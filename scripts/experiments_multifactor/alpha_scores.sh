@@ -20,4 +20,4 @@ source ${HOME}/sgad-env/bin/activate
 export PYTHON="${HOME}/sgad-env/bin/python"
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-julia ./alpha_scores.jl ${MODELNAME} ${DATASET} ${LATENT_SCORE} $AC $METHOD -f --anomaly_factors $AF1 $AF2 $AF3
+julia ./alpha_scores.jl ${MODELNAME} ${DATASET} ${LATENT_SCORE} $AC $METHOD --mf_normal --anomaly_factors $AF1 $AF2 $AF3
