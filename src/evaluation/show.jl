@@ -17,13 +17,13 @@ const latex_booktabs = LatexTableFormat(
 )
 
 """
-	print_table(df::DataFrame, metric_col=:tst_auc)
+	print_table(df::DataFrame, metric_col=:tst_auc; round_results=true)
 
 Prints dataframe with columns [:modelname, :dataset] and one scalar variable column
 given by `metric_col` argument. By default highlights maximum value in each row.
 Last row of the dataframe contains average rank of each model.
 """
-function rank_table(df::DataFrame, metric_col=:tst_auc)
+function rank_table(df::DataFrame, metric_col=:tst_auc; round_results=true)
 	# check if column names are present
 	(!(String(metric_col) in names(df)) || !("modelname" in names(df)) || !("dataset" in names(df))) && error("Incorrect column names.")
 	
@@ -67,8 +67,10 @@ function rank_table(df::DataFrame, metric_col=:tst_auc)
 	push!(rt, ["MEAN_TOP10_STD", top_10_std...])
 	
 	# round all values in the table before computing rank
-	rt[:, 2:end] .= round.(rt[:, 2:end], digits=2)
-	
+	if round_results
+		rt[:, 2:end] .= round.(rt[:, 2:end], digits=2)
+	end
+
 	# add average rank
 	mask_nan_max = (x) -> (isnan(x) ? -Inf : x)
 	rs = zeros(size(rt, 2) - 1)
@@ -76,7 +78,9 @@ function rank_table(df::DataFrame, metric_col=:tst_auc)
 		rs .+= StatsBase.competerank(mask_nan_max.(Vector(row[2:end])), rev = true)
 	end
 	rs ./= (size(rt, 1) - 2)
-	rs = round.(rs, digits=1)
+	if round_results
+		rs = round.(rs, digits=1)
+	end
 	push!(rt, ["RANK", rs...])
 
 	rt
