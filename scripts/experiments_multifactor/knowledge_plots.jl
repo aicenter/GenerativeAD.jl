@@ -55,17 +55,16 @@ df_images[:anomaly_factors] = map(x->parse_savename(x)[2]["anomaly-factors"], pa
 
 """
 # compute number of afs for models
-for model in unique(df_images.modelname)
-    println(model)
-    for af in unique(df_images.anomaly_factors)
-        subdf = filter(r->r.modelname == model && r.anomaly_factors==af, df_images)
-        println("   $af : $(size(subdf,1))")
-    end
-    println("")
-end
+#for model in unique(df_images.modelname)
+#    println(model)
+#    for af in unique(df_images.anomaly_factors)
+#        subdf = filter(r->r.modelname == model && r.anomaly_factors==af, df_images)
+#        println("   $af : $(size(subdf,1))")
+#    end
+#    println("")
+#end
 """
 
-#### TOTOTOTOTO
 df_images_alpha = mf_normal ?
     load(datadir("experiments_multifactor/alpha_evaluation_mf_normal/images_leave-one-in_eval.bson"))[:df] :
     load(datadir("experiments_multifactor/alpha_evaluation/images_leave-one-in_eval.bson"))[:df];
