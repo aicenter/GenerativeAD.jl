@@ -53,7 +53,6 @@ df_images = filter(r->r.modelname in sgad_models, df_images)
 parameters = map(x->replace(x, "anomaly_factors" => "anomaly-factors"), df_images.parameters)
 df_images[:anomaly_factors] = map(x->parse_savename(x)[2]["anomaly-factors"], parameters) 
 
-"""
 # compute number of afs for models
 #for model in unique(df_images.modelname)
 #    println(model)
@@ -63,7 +62,6 @@ df_images[:anomaly_factors] = map(x->parse_savename(x)[2]["anomaly-factors"], pa
 #    end
 #    println("")
 #end
-"""
 
 df_images_alpha = mf_normal ?
     load(datadir("experiments_multifactor/alpha_evaluation_mf_normal/images_leave-one-in_eval.bson"))[:df] :
