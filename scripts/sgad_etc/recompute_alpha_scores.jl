@@ -255,7 +255,7 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 		end
 
 		auc_ano_10 = (method == "logreg") ? [perf_at_p_agg(p/100, 0.1, val_scores, val_y, 
-				tst_scores, tst_y, init_alpha, base_beta; scale=scale)) for p in ps] : repeat([(NaN, NaN)], length(ps))
+				tst_scores, tst_y, init_alpha, base_beta; scale=scale) for p in ps] : repeat([(NaN, NaN)], length(ps))
 		for (k,v) in zip(map(x->x * "_10", AUC_METRICS), auc_ano_10)
 			res_df["val_"*k] = v[1]
 			res_df["tst_"*k] = v[2]
