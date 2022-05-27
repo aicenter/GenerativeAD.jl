@@ -44,7 +44,7 @@ def fit(X,y):
 	lr.alpha = py"fit"(X, y)
 end
 
-function predict(lr::LogReg, X)
+function predict(lr::LogReg, X; kwargs...)
 	py"""
 from sgad.sgvae.utils import logreg_prob
 
@@ -54,7 +54,7 @@ def predict(X, alpha):
 	return py"predict"(X, lr.alpha)
 end
 
-# this is for fitting the logistic regression
+# this is for fitting the softmax logistic regression
 mutable struct ProbReg
 	ac
 	alpha
@@ -78,4 +78,30 @@ function predict(m::ProbReg, X; scale=true, kwargs...)
 		X = m.ac.scaler_transform(X)
 	end
 	scores = vec(m.ac(X).detach().numpy())
+end
+
+# this is for fitting the robust logistic regression
+mutable struct RobReg
+    lr
+    alpha
+end
+
+function RobReg(;alpha=[1,1,1,1], alpha0=[1,0,0,0], beta=1.0)
+	py"""
+from sgad.sgvae import RobustLogisticRegression
+	"""
+	m = RobReg(py"RobustLogisticRegression(alpha=$(alpha), beta=$(beta),alpha0=$(alpha0))", nothing)
+	return m
+end
+
+function fit!(m::RobReg, X, y; scale=true, verb=false, early_stopping=true, patience=1, kwargs...)
+	m.lr.fit(X, y; scale=scale, verb=verb, early_stopping=early_stopping, patience=patience, kwargs...)
+	m.alpha = m.lr.get_alpha().detach().numpy()
+end
+
+function predict(m::RobReg, X; scale=true, kwargs...)
+	if scale
+		X = m.lr.scaler_transform(X)
+	end
+	scores = vec(m.lr.predict_prob(X).detach().numpy())
 end
