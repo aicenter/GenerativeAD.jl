@@ -147,7 +147,7 @@ function perf_at_p_agg(args...; kwargs...))
 	return nanmean([x[1] for x in results]), nanmean([x[2] for x in results])
 end
 
-function experiment()
+function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	outf = joinpath(save_dir, split(lf, ".")[1] * "_method=$(method).bson")
 	@info "$outf"
 	if !force && isfile(outf)
