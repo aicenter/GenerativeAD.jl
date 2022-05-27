@@ -128,7 +128,7 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
             elseif method == "probreg"
                 fit!(model, scores, labels; verb=false, early_stopping=true, patience=10, balanced=true)
             elseif method == "robreg"
-                fit!(model, score, labels; verb=false, early_stopping=true, scale=scale, patience=10,
+                fit!(model, scores, labels; verb=false, early_stopping=true, scale=scale, patience=10,
                     balanced=true)
             end
 
