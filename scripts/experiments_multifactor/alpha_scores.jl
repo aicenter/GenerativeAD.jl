@@ -33,7 +33,7 @@ s = ArgParseSettings()
         help = "anomaly class"
     "method"
         default = "logreg"
-        help = "logreg or probreg"
+        help = "logreg or probreg or robreg"
     "--mf_normal"
         action = :store_true
         help = "dont use the original normal data but all the multifactor data not used as anomalies"
@@ -157,11 +157,11 @@ function perf_at_p_agg(args...; kwargs...)
     return nanmean([x[1] for x in results]), nanmean([x[2] for x in results])
 end
 
-function experiment(model_id, lf)
+function experiment(model_id, lf, ac, latent_dir, save_dir, res_dir)
     outf = joinpath(save_dir, split(lf, ".")[1] * "_method=$(method).bson")
     @info "$outf"
     if !force && isfile(outf)
-        continue
+        return
     end    
 
     # load the saved scores
@@ -169,14 +169,14 @@ function experiment(model_id, lf)
     rf = filter(x->occursin("$(model_id)", x), rfs)
     if length(rf) < 1
         @info "Something is wrong, original score file for $lf not found"
-        continue
+        return
     end
     rf = rf[1]
     rdata = load(joinpath(res_dir, rf))
 
     # prepare the data
     if isnan(ldata[:val_scores][1])
-        continue
+        return 
     end
     val_scores_orig = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
     tst_scores_orig = cat(rdata[:tst_scores], transpose(ldata[:tst_scores]), dims=2);
