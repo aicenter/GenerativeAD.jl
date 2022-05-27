@@ -142,7 +142,7 @@ end
 
 nanmean(x) = mean(x[.!isnan.(x)])
 
-function perf_at_p_agg(args...; kwargs...))
+function perf_at_p_agg(args...; kwargs...)
 	results = [perf_at_p_new(args...;seed=seed, kwargs...) for seed in 1:max_seed_perf]
 	return nanmean([x[1] for x in results]), nanmean([x[2] for x in results])
 end
