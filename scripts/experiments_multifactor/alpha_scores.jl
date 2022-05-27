@@ -111,7 +111,7 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
     # new scores - auc vals on the partial validation and full test dataset
     else
         try
-            # get the ligistic regression model
+            # get the logistic regression model
             model = if method == "logreg"
                 LogReg()
             elseif method == "probreg"
@@ -161,6 +161,7 @@ function experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
     outf = joinpath(save_dir, split(lf, ".")[1] * "_method=$(method).bson")
     @info "$outf"
     if !force && isfile(outf)
+        @info "Already present, skipping."
         return
     end    
 
@@ -176,6 +177,7 @@ function experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
 
     # prepare the data
     if isnan(ldata[:val_scores][1])
+        @info "scores not available or corrupted"
         return 
     end
     val_scores_orig = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
