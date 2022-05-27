@@ -157,7 +157,7 @@ function perf_at_p_agg(args...; kwargs...)
     return nanmean([x[1] for x in results]), nanmean([x[2] for x in results])
 end
 
-function experiment(model_id, lf, ac, latent_dir, save_dir, res_dir)
+function experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
     outf = joinpath(save_dir, split(lf, ".")[1] * "_method=$(method).bson")
     @info "$outf"
     if !force && isfile(outf)
@@ -317,7 +317,7 @@ for ac in acs
     rfs = filter(x->occursin(score_type, x), rfs)
 
     for (model_id, lf) in zip(model_ids, lfs)
-        experiment(model_id, lf, ac, latent_dir, save_dir, res_dir)
+        experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
     end
     @info "Done."
 end
