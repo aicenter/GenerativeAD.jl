@@ -245,7 +245,7 @@ function experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
         elseif method == "probreg"
             fit!(model, val_scores, val_y; verb=false, early_stopping=true, patience=10, balanced=true)
         elseif method == "robreg"
-            fit!(model, val_score, val_y; verb=false, early_stopping=true, scale=scale, patience=10,
+            fit!(model, val_scores, val_y; verb=false, early_stopping=true, scale=scale, patience=10,
                 balanced=true)
         end
         val_probs = predict(model, val_scores, scale=scale)
