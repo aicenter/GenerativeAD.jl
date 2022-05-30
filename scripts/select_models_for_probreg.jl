@@ -106,7 +106,7 @@ df_images_mvtec = load(datadir("sgad_alpha_evaluation_kp/images_mvtec_eval.bson"
 prepare_alpha_df!(df_images_mvtec)
 modelnames = unique(df_images_mvtec.modelname) 
 datasets = unique(df_images_mvtec.dataset)
-latent_score_types = unique(df_mvtec_alpha.latent_score_type)
+latent_score_types = unique(df_images_mvtec.latent_score_type)
 seeds = 1:5
 acs = 1:1
 
