@@ -278,6 +278,13 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	res_df
 end
 
+# this is the part where we load the best models
+bestf = datadir("sgad_alpha_evaluation_kp/best_models_$(datatype).bson")
+best_models = load(bestf)
+
+ac = 1
+seed = 1
+
 for ac in acs
 	for seed in 1:max_seed
 		# we will go over the models that have the latent scores computed - for them we can be sure that 
@@ -299,6 +306,8 @@ for ac in acs
 		res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
 		rfs = readdir(res_dir)
 		rfs = filter(x->occursin(score_type, x), rfs)
+
+		# now add the best models to the mix
 
 		for (model_id, lf) in zip(model_ids, lfs)
 			experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)

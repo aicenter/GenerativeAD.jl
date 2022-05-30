@@ -22,7 +22,6 @@ n_models = 1
 
 # functions
 function prepare_alpha_df!(df)
-    apply_aliases!(df, col="dataset", d=DATASET_ALIAS) # rename
     filter!(r->r.modelname in sgad_models, df)
     df.modelname = "sgvae_alpha"
     df.dataset[df.dataset .== "metal_nut"] .= "nut"
