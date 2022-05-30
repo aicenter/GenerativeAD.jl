@@ -289,7 +289,7 @@ function get_latent_file(_params, lfs)
 	_lfs = if _params["latent_score_type"] == "knn"
 		k = _params["k"]
 		v = _params["v"]
-		filter(x->occursin("k=$k",x) && occursin("v=$v",x), _lfs)
+		filter(x->occursin("k=$(k)_",x) && occursin("v=$v",x), _lfs)
 	else
 		_lfs
 	end
