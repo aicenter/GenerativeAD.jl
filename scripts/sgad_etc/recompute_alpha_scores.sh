@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --time=4:00:00
+#SBATCH --time=24:00:00
 #SBATCH --nodes=1 --ntasks-per-node=2 --cpus-per-task=2
-#SBATCH --partition=cpufast
+#SBATCH --partition=cpu
 #SBATCH --mem=30G
 
 DATASET=$1
