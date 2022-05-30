@@ -308,6 +308,12 @@ for ac in acs
 		rfs = filter(x->occursin(score_type, x), rfs)
 
 		# now add the best models to the mix
+		inds = (best_models[:anomaly_class] .== ac) .& (best_models[:seed] .== seed) .& 
+			(best_models[:dataset] .== dataset)
+		best_params = best_models[:parameters][inds]
+
+		# from these params extract the correct model_ids and lfs
+
 
 		for (model_id, lf) in zip(model_ids, lfs)
 			experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)

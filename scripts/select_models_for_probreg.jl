@@ -30,7 +30,7 @@ function prepare_alpha_df!(df)
     df
 end
 
-function best_models(df, modelnames, datasets, seeds, acs, criterions)
+function best_models(df, modelnames, datasets, seeds, acs, criterions, latent_score_types)
 	# setup a save df
 	outd = Dict()
 	outd[:seed] = []
@@ -38,26 +38,31 @@ function best_models(df, modelnames, datasets, seeds, acs, criterions)
 	outd[:dataset] = []
 	outd[:modelname] = []
 	outd[:parameters] = []
+	outd[:latent_score_type] = []
 
 	for modelname in modelnames
-		for dataset in datasets
-			for seed in seeds
-				for ac in acs
-					for crit in criterions
-						val_crit, tst_crit = crit;
-						# now select the best hyperparams
-						subdf = filter(r->r.modelname == modelname && r.dataset == dataset && 
-							r.seed == seed && r.anomaly_class == ac && !isnan(r[val_crit]), df);
-						if size(subdf, 1) > 0
-							imaxs = sortperm(subdf[val_crit], rev=true);
-							# write it into the dict
-							for imax in imaxs[1:n_models]
-								bestdf = subdf[imax,:]
-								push!(outd[:seed], seed)
-								push!(outd[:anomaly_class], ac)
-								push!(outd[:dataset], dataset)
-								push!(outd[:modelname], modelname)
-								push!(outd[:parameters], bestdf.parameters)
+		for latent_score_type in latent_score_types
+			for dataset in datasets
+				for seed in seeds
+					for ac in acs
+						for crit in criterions
+							val_crit, tst_crit = crit;
+							# now select the best hyperparams
+							subdf = filter(r->r.modelname == modelname && r.dataset == dataset && 
+								r.seed == seed && r.anomaly_class == ac && !isnan(r[val_crit]) &&
+								r.latent_score_type == latent_score_type, df);
+							if size(subdf, 1) > 0
+								imaxs = sortperm(subdf[val_crit], rev=true);
+								# write it into the dict
+								for imax in imaxs[1:n_models]
+									bestdf = subdf[imax,:]
+									push!(outd[:seed], seed)
+									push!(outd[:anomaly_class], ac)
+									push!(outd[:dataset], dataset)
+									push!(outd[:modelname], modelname)
+									push!(outd[:parameters], bestdf.parameters)
+									push!(outd[:latent_score_type], latent_score_type)
+								end
 							end
 						end
 					end
@@ -88,11 +93,12 @@ df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eva
 prepare_alpha_df!(df_images_alpha)
 modelnames = unique(df_images_alpha.modelname) 
 datasets = unique(df_images_alpha.dataset)
+latent_score_types = unique(df_images_alpha.latent_score_type)
 seeds = 1:1
 acs = 1:10
 
 outf = datadir("sgad_alpha_evaluation_kp/best_models_leave-one-in.bson") 
-outd = best_models(df_images_alpha, modelnames, datasets, seeds, acs, criterions)
+outd = best_models(df_images_alpha, modelnames, datasets, seeds, acs, criterions, latent_score_types)
 save(outf, outd)
 
 # mvtec
@@ -100,9 +106,10 @@ df_images_mvtec = load(datadir("sgad_alpha_evaluation_kp/images_mvtec_eval.bson"
 prepare_alpha_df!(df_images_mvtec)
 modelnames = unique(df_images_mvtec.modelname) 
 datasets = unique(df_images_mvtec.dataset)
+latent_score_types = unique(df_mvtec_alpha.latent_score_type)
 seeds = 1:5
 acs = 1:1
 
 outf = datadir("sgad_alpha_evaluation_kp/best_models_mvtec.bson") 
-outd = best_models(df_images_mvtec, modelnames, datasets, seeds, acs, criterions)
+outd = best_models(df_images_mvtec, modelnames, datasets, seeds, acs, criterions, latent_score_types)
 save(outf, outd)
