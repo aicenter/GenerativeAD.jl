@@ -31,7 +31,7 @@ s = ArgParseSettings()
     "latent_score_type"
         arg_type = String
         help = "normal, kld, knn or normal_logpx"
-        default = "normal"
+        default = "knn"
     "anomaly_class"
     	default = 0
     	arg_type = Int
@@ -278,12 +278,30 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	res_df
 end
 
+# get the right lf when using a selection of best models
+function get_latent_file(_params, lfs)
+	if _params["latent_score_type"] != latent_score_type
+		return nothing
+	end
+
+	model_id = _params["init_seed"]
+	_lfs = filter(x->occursin("$(model_id)",x), lfs)
+	_lfs = if _params["latent_score_type"] == "knn"
+		k = _params["k"]
+		v = _params["v"]
+		filter(x->occursin("k=$k",x) && occursin("v=$v",x), _lfs)
+	else
+		_lfs
+	end
+	if length(_lfs) != 1
+		error("something wrong when processing $(_params)")
+	end
+	return _lfs[1]
+end
+
 # this is the part where we load the best models
 bestf = datadir("sgad_alpha_evaluation_kp/best_models_$(datatype).bson")
 best_models = load(bestf)
-
-ac = 1
-seed = 1
 
 for ac in acs
 	for seed in 1:max_seed
@@ -307,15 +325,29 @@ for ac in acs
 		rfs = readdir(res_dir)
 		rfs = filter(x->occursin(score_type, x), rfs)
 
+		# this is where we select the files of best models
 		# now add the best models to the mix
 		inds = (best_models[:anomaly_class] .== ac) .& (best_models[:seed] .== seed) .& 
 			(best_models[:dataset] .== dataset)
 		best_params = best_models[:parameters][inds]
 
 		# from these params extract the correct model_ids and lfs
+		parsed_params = map(x->parse_savename("s_$x")[2], best_params)
+		best_model_ids = [x["init_seed"] for x in parsed_params]
+		best_lfs = map(x->get_latent_file(x, lfs), parsed_params)
 
+		# use only those that are not nothing - in agreement with the latent_score_type
+		used_inds = .!map(isnothing, best_lfs)
 
-		for (model_id, lf) in zip(model_ids, lfs)
+		# also, scramble the rest of the models
+		n = length(model_ids)
+		rand_inds = sample(1:n, n, replace=false)
+
+		# this is what will be iterated over
+		final_model_ids = vcat(best_model_ids[used_inds], model_ids[rand_inds])
+		final_lfs = vcat(best_lfs[used_inds], lfs[rand_inds])
+		
+		for (model_id, lf) in zip(final_model_ids, final_lfs)
 			experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 		end
 		@info "Done."
