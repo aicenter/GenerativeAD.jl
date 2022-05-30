@@ -18,7 +18,7 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 # setup
 modelname = "sgvae_alpha"
 sgad_models = ["sgvae","sgvae_alpha"]
-n_models = 1
+n_models = 2
 
 # functions
 function prepare_alpha_df!(df)
