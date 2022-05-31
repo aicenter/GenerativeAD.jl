@@ -54,7 +54,7 @@ function best_models(df, modelnames, datasets, seeds, acs, criterions, latent_sc
 							if size(subdf, 1) > 0
 								imaxs = sortperm(subdf[val_crit], rev=true);
 								# write it into the dict
-								n_max = minimum(n_models, length(imaxs))
+								n_max = minimum(n_models, size(subdf,1))
 								for imax in imaxs[1:n_max]
 									bestdf = subdf[imax,:]
 									push!(outd[:seed], seed)
