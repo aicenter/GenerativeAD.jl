@@ -23,12 +23,15 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha"
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha", "sgvae_probreg",
+"sgvae_robreg"]
 #, "sgvae_alpha_knn", "sgvae_alpha_normal", 
 # "sgvae_alpha_normal_logpx", "sgvae_alpha_kld", "sgvae_alpha_auc"
-]
-sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models]
-sgad_alpha_models = ["sgvae_alpha"]
+
+sgad_models_alias = [get(MODEL_ALIAS, n, "") for n in sgad_models]
+sgad_models_alias[end-1] = "sgvaep"
+sgad_models_alias[end] = "sgvaer"
+sgad_alpha_models = ["sgvae_alpha", "sgvae_probreg", "sgvae_robreg"]
 #, "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx",  "sgvae_alpha_kld", "sgvae_alpha_auc"]
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
@@ -88,6 +91,17 @@ df_mvtec[:anomaly_class] = 1
 df_images_mvtec_clean[:anomaly_class] = 1
 apply_aliases!(df_images_mvtec_clean, col="dataset", d=DATASET_ALIAS)
 
+# here we want to differentiate sgvae alpha and sgvae alpha with robust logistic regression
+df_images_alpha_robreg = filter(r->r.method == "robreg", df_images_alpha_target)
+df_images_alpha_robreg.modelname .= "sgvae_robreg"
+filter!(r->r.method=="original", df_images_alpha_target)
+df_images_alpha_target = vcat(df_images_alpha_target, df_images_alpha_robreg)
+# and do the same for mvtec as well
+df_mvtec_robreg = filter(r->r.method == "robreg", df_mvtec_alpha)
+df_mvtec_robreg.modelname .= "sgvae_robreg"
+filter!(r->r.method=="original", df_mvtec_alpha)
+df_mvtec_alpha = vcat(df_mvtec_alpha, df_mvtec_robreg)
+
 # now differentiate them
 df_semantic = filter(r->!(occursin("wmnist", r[:dataset])),df_images_target)
 df_semantic_alpha = filter(r->!(occursin("wmnist", r[:dataset])),df_images_alpha_target)
@@ -104,7 +118,7 @@ df_mvtec_clean = filter(r->!(r.dataset in ["wood", "grid"]), df_images_mvtec_cle
 # also, add the clean sgvae alpha lines - these are the same as the ones from sgvae
 function add_alpha_clean(df)
     subdf = filter(r->r.modelname == "sgvae", df)
-    for suffix in ["_alpha"]
+    for suffix in ["_alpha", "_robreg"]
         subdf.modelname .= "sgvae" * suffix
         df = vcat(df, copy(subdf))
     end
@@ -150,6 +164,12 @@ function _incremental_rank_clean(df, criterions, agg)
                     for m in sgad_alpha_models
                         df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, m]))
                     end
+                end
+            end
+
+            if !("sgvae_robreg" in modelnames)
+                for dataset in unique(df_agg.dataset)
+                    df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, sgvae_robreg]))
                 end
             end
             
@@ -199,6 +219,12 @@ function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols)
                     end
                 end
             end
+
+            if !("sgvae_robreg" in modelnames)
+                for dataset in unique(df_agg.dataset)
+                    df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, "sgvae_robreg"]))
+                end
+            end
             
             apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
@@ -246,7 +272,7 @@ for level in [100, 50, 10]
 	        if !("cgn" in names(metric_means_clean))
 	            metric_means_clean[:cgn] = NaN
 	        end
-	        ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), 
+            ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), 
 	        vcat(metric_means_clean, metric_means_inc; cols=:intersect)
 	    else
 	        ranks_all, metric_means_all = ranks_inc, metric_means_inc
@@ -299,5 +325,4 @@ extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
     CSV.write(f, ranks_all)
     ranks_all, metric_means_all
 end
-
 end
