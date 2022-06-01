@@ -41,7 +41,7 @@ s = ArgParseSettings()
     	help = "logreg or probreg or robreg"
     "base_beta"
     	default = 5.0
-    	arg_type = Float32
+    	arg_type = Float64
     	help = "base beta for robust logistic regression"
     "--force", "-f"
         action = :store_true
