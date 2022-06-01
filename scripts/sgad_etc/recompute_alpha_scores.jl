@@ -244,13 +244,6 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 
 		# then do the same on a small section of the data
 		ps = [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]
-		auc_ano_100 = [perf_at_p_agg(p/100, 1.0, val_scores, val_y, tst_scores, tst_y, init_alpha, 
-            base_beta; scale=scale) for p in ps]
-		for (k,v) in zip(map(x->x * "_100", AUC_METRICS), auc_ano_100)
-			res_df["val_"*k] = v[1]
-			res_df["tst_"*k] = v[2]
-		end
-
 		auc_ano_50 = (method == "logreg") ? [perf_at_p_agg(p/100, 0.5, val_scores, val_y, 
 				tst_scores, tst_y, init_alpha, base_beta; scale=scale) for p in ps] : repeat([(NaN, NaN)], length(ps))
 		for (k,v) in zip(map(x->x * "_50", AUC_METRICS), auc_ano_50)
@@ -272,6 +265,14 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 			res_df["val_"*k] = v[1]
 			res_df["tst_"*k] = v[2]
 		end
+
+		auc_ano_100 = [perf_at_p_agg(p/100, 1.0, val_scores, val_y, tst_scores, tst_y, init_alpha, 
+            base_beta; scale=scale) for p in ps]
+		for (k,v) in zip(map(x->x * "_100", AUC_METRICS), auc_ano_100)
+			res_df["val_"*k] = v[1]
+			res_df["tst_"*k] = v[2]
+		end
+
 		res_df
 	end
 	
