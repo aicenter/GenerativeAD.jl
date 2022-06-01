@@ -152,7 +152,12 @@ function perf_at_p_agg(args...; kwargs...)
 end
 
 function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
-	outf = joinpath(save_dir, split(lf, ".")[1] * "_method=$(method).bson")
+	outf = joinpath(save_dir, split(lf, ".")[1])
+	outf = if method == "robreg"
+		outf * "_beta=$(base_beta)_method=$(method).bson")
+	else
+		outf * "_method=$(method).bson")
+	end
 	@info "$outf"
 	if !force && isfile(outf)
 		@info "Already present, skipping."
