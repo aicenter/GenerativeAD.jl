@@ -118,7 +118,7 @@ save(outf, outd)
 @info "saved $outf"
 
 # multifactor experiment
-df_images_alpha = load(datadir("experiments_multifactor/evaluation_mf_normal/images_leave-one-in_eval.bson"))[:df];
+df_images_alpha = load(datadir("experiments_multifactor/alpha_evaluation_mf_normal/images_leave-one-in_eval.bson"))[:df];
 prepare_alpha_df!(df_images_alpha)
 modelnames = unique(df_images_alpha.modelname) 
 datasets = unique(df_images_alpha.dataset)
