@@ -39,12 +39,17 @@ s = ArgParseSettings()
     "method"
     	default = "logreg"
     	help = "logreg or probreg or robreg"
+    "base_beta"
+    	default = 5.0
+    	arg_type = Float32
+    	help = "base beta for robust logistic regression"
     "--force", "-f"
         action = :store_true
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype, latent_score_type, anomaly_class, method, force = parsed_args
+@unpack modelname, dataset, datatype, latent_score_type, anomaly_class, method, base_beta, force = 
+	parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
@@ -53,7 +58,6 @@ score_type = "logpx"
 device = "cpu"
 max_seed_perf = 10
 scale = true
-base_beta = 5.0
 init_alpha = [1.0, 0.1, 0.1, 0.1]
 
 function basic_stats(labels, scores)
