@@ -34,6 +34,10 @@ s = ArgParseSettings()
     "method"
         default = "logreg"
         help = "logreg or probreg or robreg"
+    "base_beta"
+        default = 5.0
+        arg_type = Float64
+        help = "base beta for robust logistic regression"
     "--mf_normal"
         action = :store_true
         help = "dont use the original normal data but all the multifactor data not used as anomalies"
@@ -46,7 +50,8 @@ s = ArgParseSettings()
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, latent_score_type, anomaly_class, method, mf_normal, anomaly_factors, force = parsed_args
+@unpack modelname, dataset, latent_score_type, anomaly_class, method, base_beta,
+    mf_normal, anomaly_factors, force = parsed_args
 datatype = "leave-one-in"
 acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
 seed = 1
@@ -58,7 +63,6 @@ score_type = "logpx"
 device = "cpu"
 max_seed_perf = 10
 scale = true
-base_beta = 5.0
 init_alpha = [1.0, 0.1, 0.1, 0.1]
 
 # anomaly factors to strings and back
@@ -297,6 +301,31 @@ function experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
     res_df
 end
 
+# get the right lf when using a selection of best models
+function get_latent_file(_params, lfs)
+    if _params["latent_score_type"] != latent_score_type
+        return nothing
+    end
+
+    model_id = _params["init_seed"]
+    _lfs = filter(x->occursin("$(model_id)",x), lfs)
+    _lfs = if _params["latent_score_type"] == "knn"
+        k = _params["k"]
+        v = _params["v"]
+        filter(x->occursin("k=$(k)_",x) && occursin("v=$v",x), _lfs)
+    else
+        _lfs
+    end
+    if length(_lfs) != 1
+        error("something wrong when processing $(_params)")
+    end
+    return _lfs[1]
+end
+
+# this is the part where we load the best models
+bestf = datadir("experiments_multifactor/evaluation_mf_normal/best_models_leave-one-in.bson")
+best_models = load(bestf)
+
 for ac in acs
     # we will go over the models that have the latent scores computed - for them we can be sure that 
     # we have all we need
@@ -318,7 +347,29 @@ for ac in acs
     rfs = readdir(res_dir)
     rfs = filter(x->occursin(score_type, x), rfs)
 
-    for (model_id, lf) in zip(model_ids, lfs)
+    # this is where we select the files of best models
+    # now add the best models to the mix
+    inds = (best_models[:anomaly_class] .== ac) .& (best_models[:seed] .== seed) .& 
+        (best_models[:dataset] .== dataset)
+    best_params = best_models[:parameters][inds]
+
+    # from these params extract the correct model_ids and lfs
+    parsed_params = map(x->parse_savename("s_$x")[2], best_params)
+    best_model_ids = [x["init_seed"] for x in parsed_params]
+    best_lfs = map(x->get_latent_file(x, lfs), parsed_params)
+
+    # use only those that are not nothing - in agreement with the latent_score_type
+    used_inds = .!map(isnothing, best_lfs)
+
+    # also, scramble the rest of the models
+    n = length(model_ids)
+    rand_inds = sample(1:n, n, replace=false)
+
+    # this is what will be iterated over
+    final_model_ids = vcat(best_model_ids[used_inds], model_ids[rand_inds])
+    final_lfs = vcat(best_lfs[used_inds], lfs[rand_inds])
+
+    for (model_id, lf) in zip(final_model_ids, final_lfs)
         experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
     end
     @info "Done."
