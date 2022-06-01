@@ -101,6 +101,7 @@ acs = 1:10
 outf = datadir("sgad_alpha_evaluation_kp/best_models_leave-one-in.bson") 
 outd = best_models(df_images_alpha, modelnames, datasets, seeds, acs, criterions, latent_score_types)
 save(outf, outd)
+@info "saved $outf"
 
 # mvtec
 df_images_mvtec = load(datadir("sgad_alpha_evaluation_kp/images_mvtec_eval.bson"))[:df];
@@ -114,3 +115,4 @@ acs = 1:1
 outf = datadir("sgad_alpha_evaluation_kp/best_models_mvtec.bson") 
 outd = best_models(df_images_mvtec, modelnames, datasets, seeds, acs, criterions, latent_score_types)
 save(outf, outd)
+@info "saved $outf"

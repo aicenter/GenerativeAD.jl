@@ -27,10 +27,7 @@ sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alp
 "sgvae_robreg"]
 #, "sgvae_alpha_knn", "sgvae_alpha_normal", 
 # "sgvae_alpha_normal_logpx", "sgvae_alpha_kld", "sgvae_alpha_auc"
-
-sgad_models_alias = [get(MODEL_ALIAS, n, "") for n in sgad_models]
-sgad_models_alias[end-1] = "sgvaep"
-sgad_models_alias[end] = "sgvaer"
+MODEL_ALIAS["sgvae_robreg"] = "sgvaer"
 sgad_alpha_models = ["sgvae_alpha", "sgvae_probreg", "sgvae_robreg"]
 #, "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx",  "sgvae_alpha_kld", "sgvae_alpha_auc"]
 
