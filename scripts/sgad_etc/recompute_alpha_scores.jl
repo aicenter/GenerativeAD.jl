@@ -122,8 +122,16 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
             elseif method == "probreg"
                 fit!(model, scores, labels; verb=false, early_stopping=true, patience=10, balanced=true)
             elseif method == "robreg"
-                fit!(model, scores, labels; verb=false, early_stopping=true, scale=scale, patience=10,
+            	try
+            		fit!(model, scores, labels; verb=false, early_stopping=true, scale=scale, patience=10,
                     balanced=true)
+                catch e
+	            	if isa(e, PyCall.PyError)
+			            return NaN, NaN
+			        else
+			        	rethrow(e)
+			        end
+			    end 
             end
 
             # predict
@@ -230,22 +238,38 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
         end
         
         # fit
+        converged = true
         if method == "logreg"
             fit!(model, val_scores, val_y)
         elseif method == "probreg"
             fit!(model, val_scores, val_y; verb=false, early_stopping=true, patience=10, balanced=true)
         elseif method == "robreg"
-            fit!(model, val_scores, val_y; verb=false, early_stopping=true, scale=scale, patience=10,
-                balanced=true)
+        	try
+	            fit!(model, val_scores, val_y; verb=false, early_stopping=true, scale=scale, patience=10,
+	                balanced=true)
+            catch e
+            	if isa(e, PyCall.PyError)
+            		converged = false
+		        else
+		        	rethrow(e)
+		        end
+		    end
         end
-        val_probs = predict(model, val_scores, scale=scale)
-        tst_probs = predict(model, tst_scores, scale=scale)
-		
-		# now fill in the values
-		res_df["val_auc"], res_df["val_auprc"], res_df["val_tpr_5"], res_df["val_f1_5"] = 
-			basic_stats(val_y, val_probs)
-		res_df["tst_auc"], res_df["tst_auprc"], res_df["tst_tpr_5"], res_df["tst_f1_5"] = 
-			basic_stats(tst_y, tst_probs)
+        if converged
+	        val_probs = predict(model, val_scores, scale=scale)
+	        tst_probs = predict(model, tst_scores, scale=scale)
+			
+			# now fill in the values
+			res_df["val_auc"], res_df["val_auprc"], res_df["val_tpr_5"], res_df["val_f1_5"] = 
+				basic_stats(val_y, val_probs)
+			res_df["tst_auc"], res_df["tst_auprc"], res_df["tst_tpr_5"], res_df["tst_f1_5"] = 
+				basic_stats(tst_y, tst_probs)
+		else
+			res_df["val_auc"], res_df["val_auprc"], res_df["val_tpr_5"], res_df["val_f1_5"] = 
+				NaN, NaN, NaN, NaN
+			res_df["tst_auc"], res_df["tst_auprc"], res_df["tst_tpr_5"], res_df["tst_f1_5"] = 
+				NaN, NaN, NaN, NaN
+		end
 
 		# then do the same on a small section of the data
 		ps = [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]
