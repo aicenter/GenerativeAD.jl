@@ -23,6 +23,7 @@ function fix_alpha_parameters(f)
 	beta = get(parse_savename("_"*fname)[2] , "beta", NaN)
 	d = load(f)[:df]
 	parameters = d[:parameters][1]
+	(typeof(parameters) <: NamedTuple) ? return : nothing
 	parameters = parse_savename("_"*parameters)[2]
 	parameters = NamedTuple{Tuple(Symbol.(keys(parameters)))}(values(parameters))
 	parameters = !isnan(beta) ? merge(parameters, (beta=beta,)) : parameters
