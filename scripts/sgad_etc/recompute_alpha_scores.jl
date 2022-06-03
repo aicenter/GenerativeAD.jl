@@ -195,8 +195,6 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 
 	# setup params
 	parameters = merge(ldata[:parameters], (beta=base_beta, init_alpha=init_alpha, scale=scale))
-	add_params = split(split(lf, "score")[1], "model_id=$(model_id)")[2]
-	param_string = "latent_score_type=$(latent_score_type)" * add_params * split(rf, ".bson")[1]
 	save_modelname = (method == "logreg") ? modelname : modelname*"_$method"
 
 	res_df = @suppress begin
@@ -205,7 +203,7 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 		res_df["modelname"] = save_modelname
 		res_df["dataset"] = dataset
 		res_df["phash"] = GenerativeAD.Evaluation.hash(parameters)
-		res_df["parameters"] = param_string
+		res_df["parameters"] = parameters
 		res_df["fit_t"] = rdata[:fit_t]
 		res_df["tr_eval_t"] = ldata[:tr_eval_t] + rdata[:tr_eval_t]
 		res_df["val_eval_t"] = ldata[:val_eval_t] + rdata[:val_eval_t]

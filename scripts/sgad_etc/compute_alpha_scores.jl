@@ -192,9 +192,7 @@ for ac in 1:max_ac
 			tst_y = ldata[:tst_labels];
 
 			# setup params
-			parameters = ldata[:parameters]
-			add_params = split(split(lf, "score")[1], "model_id=$(model_id)")[2]
-			param_string = "latent_score_type=$(latent_score_type)" * add_params * split(rf, ".bson")[1]
+			parameters = merge(ldata[:parameters], (latent_score_type = latent_score_type,)) 
 			
 			res_df = @suppress begin
 				# prepare the result dataframe
@@ -202,7 +200,7 @@ for ac in 1:max_ac
 				res_df["modelname"] = modelname
 				res_df["dataset"] = dataset
 				res_df["phash"] = GenerativeAD.Evaluation.hash(parameters)
-				res_df["parameters"] = param_string
+				res_df["parameters"] = parameters
 				res_df["fit_t"] = rdata[:fit_t]
 				res_df["tr_eval_t"] = ldata[:tr_eval_t] + rdata[:tr_eval_t]
 				res_df["val_eval_t"] = ldata[:val_eval_t] + rdata[:val_eval_t]
