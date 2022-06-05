@@ -21,14 +21,18 @@ files = GenerativeAD.Evaluation.collect_files_th(source)
 function fix_alpha_parameters(f)
 	fname = basename(f)
 	beta = get(parse_savename("_"*fname)[2] , "beta", NaN)
-	d = load(f)[:df]
-	parameters = d[:parameters][1]
-	(typeof(parameters) <: NamedTuple) ? (return nothing) : nothing
-	parameters = parse_savename("_"*parameters)[2]
-	parameters = NamedTuple{Tuple(Symbol.(keys(parameters)))}(values(parameters))
-	parameters = !isnan(beta) ? merge(parameters, (beta=beta,)) : parameters
-	d[:parameters][1] = parameters
-	save(f, :df => d)
+	try
+		d = load(f)[:df]
+		parameters = d[:parameters][1]
+		(typeof(parameters) <: NamedTuple) ? (return nothing) : nothing
+		parameters = parse_savename("_"*parameters)[2]
+		parameters = NamedTuple{Tuple(Symbol.(keys(parameters)))}(values(parameters))
+		parameters = !isnan(beta) ? merge(parameters, (beta=beta,)) : parameters
+		d[:parameters][1] = parameters
+		save(f, :df => d)
+	catch e
+		@info "$(typeof(e)) error when processing $f"
+	end
 end
 
 @showprogress for f in files
