@@ -20,7 +20,7 @@ files = GenerativeAD.Evaluation.collect_files_th(source)
 
 function fix_alpha_parameters(f)
 	fname = basename(f)
-	beta = occursin("beta", fname) ? get(parse_savename("beta"*split(fname, "beta")[2])[2] , "beta") : NaN
+	beta = occursin("beta", fname) ? get(parse_savename("beta"*split(fname, "beta")[2])[2] , "beta", NaN) : NaN
 	try
 		d = load(f)[:df]
 		parameters = d[:parameters][1]
