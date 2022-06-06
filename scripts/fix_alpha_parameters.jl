@@ -24,9 +24,14 @@ function fix_alpha_parameters(f)
 	try
 		d = load(f)[:df]
 		parameters = d[:parameters][1]
-		(typeof(parameters) <: NamedTuple) ? (return nothing) : nothing
-		parameters = parse_savename("_"*parameters)[2]
-		parameters = NamedTuple{Tuple(Symbol.(keys(parameters)))}(values(parameters))
+		if (typeof(parameters) <: NamedTuple)
+			if haskey(parameters, :beta)
+				return
+			end
+		else
+			parameters = parse_savename("_"*parameters)[2]
+			parameters = NamedTuple{Tuple(Symbol.(keys(parameters)))}(values(parameters))
+		end
 		parameters = !isnan(beta) ? merge(parameters, (beta=beta,)) : parameters
 		d[:parameters][1] = parameters
 		save(f, :df => d)
