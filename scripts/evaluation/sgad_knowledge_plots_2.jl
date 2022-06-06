@@ -24,11 +24,13 @@ include("./utils/ranks.jl")
 outdir = "result_tables"
 
 sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha", "sgvae_probreg",
-"sgvae_robreg"]
+"sgvae_robreg", "sgvae_robreg1", "sgvae_robreg5"]
 #, "sgvae_alpha_knn", "sgvae_alpha_normal", 
 # "sgvae_alpha_normal_logpx", "sgvae_alpha_kld", "sgvae_alpha_auc"
 MODEL_ALIAS["sgvae_robreg"] = "sgvaer"
-sgad_alpha_models = ["sgvae_alpha", "sgvae_probreg", "sgvae_robreg"]
+MODEL_ALIAS["sgvae_robreg1"] = "sgvaer1"
+MODEL_ALIAS["sgvae_robreg5"] = "sgvaer5"
+sgad_alpha_models = ["sgvae_alpha", "sgvae_probreg", "sgvae_robreg", "sgvae_robreg1", "sgvae_robreg5"]
 #, "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx",  "sgvae_alpha_kld", "sgvae_alpha_auc"]
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
@@ -90,14 +92,20 @@ apply_aliases!(df_images_mvtec_clean, col="dataset", d=DATASET_ALIAS)
 
 # here we want to differentiate sgvae alpha and sgvae alpha with robust logistic regression
 df_images_alpha_robreg = filter(r->r.method == "robreg", df_images_alpha_target)
-df_images_alpha_robreg.modelname .= "sgvae_robreg"
+inds1 = [x.beta for x in df_images_alpha_robreg.parameters] .== 1.0
+df_images_alpha_robreg.modelname[inds1] .= "sgvae_robreg1"
+df_images_alpha_robreg.modelname[.!inds1] .= "sgvae_robreg5"
 filter!(r->r.method=="original", df_images_alpha_target)
 df_images_alpha_target = vcat(df_images_alpha_target, df_images_alpha_robreg)
 # and do the same for mvtec as well
 df_mvtec_robreg = filter(r->r.method == "robreg", df_mvtec_alpha)
-df_mvtec_robreg.modelname .= "sgvae_robreg"
+inds1 = [x.beta for x in df_mvtec_robreg.parameters] .== 1.0
+df_images_alpha_robreg.modelname[inds1] .= "sgvae_robreg1"
+df_images_alpha_robreg.modelname[.!inds1] .= "sgvae_robreg5"
 filter!(r->r.method=="original", df_mvtec_alpha)
 df_mvtec_alpha = vcat(df_mvtec_alpha, df_mvtec_robreg)
+
+r = df_mvtec_robreg[end,:]
 
 # now differentiate them
 df_semantic = filter(r->!(occursin("wmnist", r[:dataset])),df_images_target)
