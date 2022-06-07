@@ -25,9 +25,12 @@ mf_normal = true
 outdir = mf_normal ? datadir("experiments_multifactor/evaluation_mf_normal/result_tables") : datadir("experiments_multifactor/evaluation/result_tables")
 mkpath(outdir)
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha"]
-sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models]
-sgad_alpha_models = ["sgvae_alpha"]
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha", "sgvae_probreg",
+"sgvae_robreg", "sgvae_robreg1", "sgvae_robreg5"]
+MODEL_ALIAS["sgvae_robreg"] = "sgvaer"
+MODEL_ALIAS["sgvae_robreg1"] = "sgvaer1"
+MODEL_ALIAS["sgvae_robreg5"] = "sgvaer5"
+sgad_alpha_models = ["sgvae_alpha", "sgvae_probreg", "sgvae_robreg", "sgvae_robreg1", "sgvae_robreg5"]
 
 TARGET_DATASETS = Set(["wmnist"])
 
@@ -69,9 +72,28 @@ df_images_alpha = mf_normal ?
 prepare_alpha_df!(df_images_alpha)
 df_images_alpha.anomaly_factors = Meta.parse.(string.(df_images_alpha.anomaly_factors))
 
+# here we want to differentiate sgvae alpha and sgvae alpha with robust logistic regression
+df_images_alpha_robreg = filter(r->r.method == "robreg", df_images_alpha)
+inds1 = [x.beta for x in df_images_alpha_robreg.parameters] .== 1.0
+df_images_alpha_robreg.modelname[inds1] .= "sgvae_robreg1"
+df_images_alpha_robreg.modelname[.!inds1] .= "sgvae_robreg5"
+filter!(r->r.method=="original", df_images_alpha)
+df_images_alpha = vcat(df_images_alpha, df_images_alpha_robreg)
+
 # now differentiate them
 df_wmnist = df_images
 df_wmnist_alpha = df_images_alpha
+
+function add_missing_model!(df, modelname)
+    nr = size(df,2)
+    modelnames = df.modelname
+    if !(modelname in modelnames)
+        for dataset in unique(df.dataset)
+            df = push!(df, vcat(repeat([NaN], nr-2), [dataset, modelname]))
+        end
+    end
+    df
+end
 
 function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols, round_results)
     ranks, metric_means = [], []
@@ -105,13 +127,9 @@ function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols, r
             # some model might be missing
             nr = size(df_agg,2)
             modelnames = df_agg.modelname
-            if !("sgvae_alpha" in modelnames)
-                for dataset in unique(df_agg.dataset)
-                    for m in sgad_alpha_models
-                        df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, m]))
-                    end
-                end
-            end
+
+            df_agg = add_missing_model!(df_agg, "sgvae_robreg1")
+            df_agg = add_missing_model!(df_agg, "sgvae_robreg5")
             
             apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
