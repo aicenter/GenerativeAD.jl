@@ -100,12 +100,10 @@ df_images_alpha_target = vcat(df_images_alpha_target, df_images_alpha_robreg)
 # and do the same for mvtec as well
 df_mvtec_robreg = filter(r->r.method == "robreg", df_mvtec_alpha)
 inds1 = [x.beta for x in df_mvtec_robreg.parameters] .== 1.0
-df_images_alpha_robreg.modelname[inds1] .= "sgvae_robreg1"
-df_images_alpha_robreg.modelname[.!inds1] .= "sgvae_robreg5"
+df_mvtec_robreg.modelname[inds1] .= "sgvae_robreg1"
+df_mvtec_robreg.modelname[.!inds1] .= "sgvae_robreg5"
 filter!(r->r.method=="original", df_mvtec_alpha)
 df_mvtec_alpha = vcat(df_mvtec_alpha, df_mvtec_robreg)
-
-r = df_mvtec_robreg[end,:]
 
 # now differentiate them
 df_semantic = filter(r->!(occursin("wmnist", r[:dataset])),df_images_target)
@@ -123,7 +121,7 @@ df_mvtec_clean = filter(r->!(r.dataset in ["wood", "grid"]), df_images_mvtec_cle
 # also, add the clean sgvae alpha lines - these are the same as the ones from sgvae
 function add_alpha_clean(df)
     subdf = filter(r->r.modelname == "sgvae", df)
-    for suffix in ["_alpha", "_robreg"]
+    for suffix in ["_alpha", "_robreg", "_robreg1", "_robreg5"]
         subdf.modelname .= "sgvae" * suffix
         df = vcat(df, copy(subdf))
     end
@@ -172,13 +170,9 @@ function _incremental_rank_clean(df, criterions, agg)
                 end
             end
 
-            if !("sgvae_robreg" in modelnames)
-                for dataset in unique(df_agg.dataset)
-                    df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, sgvae_robreg]))
-                end
-            end
-            
-
+            df_agg = add_missing_model!(df_agg, "sgvae_robreg1")
+            df_agg = add_missing_model!(df_agg, "sgvae_robreg5")
+     
             apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
             sort!(df_agg, [:dataset, :modelname])
@@ -189,6 +183,17 @@ function _incremental_rank_clean(df, criterions, agg)
         end
     end
     vcat(ranks...), vcat(metric_means...)
+end
+
+function add_missing_model!(df, modelname)
+    nr = size(df,2)
+    modelnames = df.modelname
+    if !(modelname in modelnames)
+        for dataset in unique(df.dataset)
+            df = push!(df, vcat(repeat([NaN], nr-2), [dataset, modelname]))
+        end
+    end
+    df
 end
 
 function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols)
@@ -225,11 +230,8 @@ function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols)
                 end
             end
 
-            if !("sgvae_robreg" in modelnames)
-                for dataset in unique(df_agg.dataset)
-                    df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, "sgvae_robreg"]))
-                end
-            end
+            df_agg = add_missing_model!(df_agg, "sgvae_robreg1")
+            df_agg = add_missing_model!(df_agg, "sgvae_robreg5")
             
             apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
@@ -256,10 +258,6 @@ non_agg_cols = ["modelname","dataset","anomaly_class","phash","parameters","seed
 agg_cols = filter(x->!(x in non_agg_cols), names(df_images))
 maxmean_f(df,crit) = aggregate_stats_max_mean(df, crit; agg_cols=[])
 
-# first create the knowledge plot data for the changing level of anomalies
-# at different percentages of normal data
-cnames = reverse(AUC_METRICS_NAMES)
-
 @suppress_err begin
 for level in [100, 50, 10]
 	criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
@@ -271,7 +269,8 @@ for level in [100, 50, 10]
 	            (df_wmnist, df_wmnist_alpha, df_wmnist_clean), 
 	            (df_mvtec, df_mvtec_alpha, df_mvtec_clean)]))) do (i, (title, (df, df_alpha, df_clean)))
 
-	    ranks_inc, metric_means_inc = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, non_agg_cols)
+	    ranks_inc, metric_means_inc = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
+            non_agg_cols)
 	    if size(df_clean,1) > 0
 	        ranks_clean, metric_means_clean = _incremental_rank_clean(df_clean, [val_metric], maxmean_f)
 	        if !("cgn" in names(metric_means_clean))
