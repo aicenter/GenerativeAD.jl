@@ -95,14 +95,14 @@ df_images_alpha_robreg = filter(r->r.method == "robreg", df_images_alpha_target)
 inds1 = [x.beta for x in df_images_alpha_robreg.parameters] .== 1.0
 df_images_alpha_robreg.modelname[inds1] .= "sgvae_robreg1"
 df_images_alpha_robreg.modelname[.!inds1] .= "sgvae_robreg5"
-filter!(r->r.method=="original", df_images_alpha_target)
+filter!(r->r.method!="robreg", df_images_alpha_target)
 df_images_alpha_target = vcat(df_images_alpha_target, df_images_alpha_robreg)
 # and do the same for mvtec as well
 df_mvtec_robreg = filter(r->r.method == "robreg", df_mvtec_alpha)
 inds1 = [x.beta for x in df_mvtec_robreg.parameters] .== 1.0
 df_mvtec_robreg.modelname[inds1] .= "sgvae_robreg1"
 df_mvtec_robreg.modelname[.!inds1] .= "sgvae_robreg5"
-filter!(r->r.method=="original", df_mvtec_alpha)
+filter!(r->r.method!="robreg", df_mvtec_alpha)
 df_mvtec_alpha = vcat(df_mvtec_alpha, df_mvtec_robreg)
 
 # now differentiate them

@@ -77,7 +77,7 @@ df_images_alpha_robreg = filter(r->r.method == "robreg", df_images_alpha)
 inds1 = [x.beta for x in df_images_alpha_robreg.parameters] .== 1.0
 df_images_alpha_robreg.modelname[inds1] .= "sgvae_robreg1"
 df_images_alpha_robreg.modelname[.!inds1] .= "sgvae_robreg5"
-filter!(r->r.method=="original", df_images_alpha)
+filter!(r->r.method!="robreg", df_images_alpha)
 df_images_alpha = vcat(df_images_alpha, df_images_alpha_robreg)
 
 # now differentiate them
