@@ -10,4 +10,4 @@ fi
 sbatch \
 --array=1-10 \
 --output="${LOG_DIR}/%A_%a.out" \
- ./collect_stats.sh $a
+ ./collect_stats.sh %a
