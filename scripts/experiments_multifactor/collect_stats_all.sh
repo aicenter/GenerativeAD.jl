@@ -7,7 +7,7 @@ if [ ! -d "$LOG_DIR" ]; then
 fi
 
 # submit to slurm
-sbatch \
---array=1-10 \
---output="${LOG_DIR}/%A_%a.out" \
- ./collect_stats.sh %a
+for AC in {1..10}
+do
+    sbatch --output="${LOG_DIR}/%A_$AC.out" ./collect_stats.sh $AC
+done
