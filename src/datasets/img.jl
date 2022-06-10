@@ -220,6 +220,32 @@ function load_wildlife_mnist_data(;
 end
 
 """
+	load_cocoplaces_raw(imsize=64,selection="all")
+
+Selection is one of ["all", "uniform", "mashed"].
+"""
+function load_cocoplaces_raw(imsize=64,selection="all")
+	inpath = datadir("cocoplaces")
+	if selection == "uniform"
+		x_u = permutedims(npzread(joinpath(inpath, "uniform_data_$(imsize).npy")), (4,3,2,1))
+		y_u = Array(npzread(joinpath(inpath, "uniform_labels_$(imsize).npy")) .+ 1)
+		x_m = y_m = nothing
+	elseif selection == "test"
+		x_u = y_u = nothing
+		x_m = permutedims(npzread(joinpath(inpath, "mashed_data_$(imsize).npy")), (4,3,2,1))
+		y_m = Array(npzread(joinpath(inpath, "uniform_labels_$(imsize).npy")) .+ 1)
+	elseif selection == "all"
+		x_u = permutedims(npzread(joinpath(inpath, "uniform_data_$(imsize).npy")), (4,3,2,1))
+		y_u = Array(npzread(joinpath(inpath, "uniform_labels_$(imsize).npy")) .+ 1)
+		x_m = permutedims(npzread(joinpath(inpath, "mashed_data_$(imsize).npy")), (4,3,2,1))
+		y_m = Array(npzread(joinpath(inpath, "uniform_labels_$(imsize).npy")) .+ 1)
+	else
+		error("unknown value $selection")
+	end
+	return (x_tr, y_tr), (x_tst, y_tst)
+end
+
+"""
 	array_to_img_rgb(arr)	
 
 Converts a 3D array (w,h,c) to an image you can display with display().
