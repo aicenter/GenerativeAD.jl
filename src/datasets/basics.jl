@@ -92,7 +92,7 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
     method="leave-one-out", contamination::Real=0.0, kwargs...)
     any(method .== ["leave-one-out","leave-one-in"]) ? nothing : error("unknown method, choose one of `leave-one-in`, `leave-one-out`")
     (method ==  "leave-one-in" && (!(dataset in mldatasets) & !(dataset in ["wildlife_MNIST", "cocoplaces"]))) ? 
-        error("`leave-one-in` only implemented for MNIST, FMNIST, SVHN2, CIFAR10 and wildlife_MNIST") : nothing
+        error("`leave-one-in` only implemented for MNIST, FMNIST, SVHN2, CIFAR10, cocoplaces and wildlife_MNIST") : nothing
 
     # extract data and labels
     if dataset in uci_datasets # UCI Loda data, standardized
@@ -128,7 +128,7 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
     end
 
     # now do the train/validation/test split
-    if dataset == "wildlife_MNIST"
+    if dataset in ["wildlife_MNIST", "cocoplaces"]
         return train_val_test_split(data_normal, data_anomalous, ratios; seed=seed, contamination=contamination)
     elseif method == "leave-one-in" # in this case, we swap the anomalous nad normal data
         return train_val_test_split(data_anomalous, data_normal, ratios; seed=seed, contamination=contamination)
