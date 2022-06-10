@@ -242,7 +242,7 @@ function load_cocoplaces_raw(imsize=64,selection="all")
 	else
 		error("unknown value $selection")
 	end
-	return (x_tr, y_tr), (x_tst, y_tst)
+	return (x_u, y_u), (x_m, y_m)
 end
 
 """
