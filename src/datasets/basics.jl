@@ -107,6 +107,12 @@ function load_data(dataset::String, ratios=(0.6,0.2,0.2); seed=nothing,
             kwargs = merge(values(kwargs), (normal_class_ind=values(kwargs).anomaly_class_ind, anomaly_class_ind=-1))
         end
         (data_normal, y_normal), (data_anomalous, y_anomalous) = load_wildlife_mnist_data(;kwargs...)
+    elseif dataset == "cocoplaces"
+        method == "leave-one-out" ? error("leave-one-out not implemented for cocoplaces") : nothing
+        if haskey(kwargs, :anomaly_class_ind)
+            kwargs = merge(values(kwargs), (normal_class_ind=values(kwargs).anomaly_class_ind, anomaly_class_ind=-1))
+        end
+        (data_normal, y_normal), (data_anomalous, y_anomalous) = load_cocoplaces_data(;kwargs...)
     elseif dataset =="MNIST-C"
         data_normal, data_anomalous = load_mnist_c_data(; kwargs...)
     elseif dataset == "MVTec-AD"
