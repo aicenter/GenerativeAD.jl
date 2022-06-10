@@ -258,6 +258,37 @@ function load_cocoplaces_raw(imsize=64,selection="all")
 end
 
 """
+	load_cocoplaces_data(;
+	normal_class_ind::Union{Int,Tuple,Vector}=1,
+	anomaly_class_ind::Union{Int,Tuple,Vector}=-1,
+	denormalize = false,
+	kwargs...)
+
+Returns (x_normal, y_normal), (x_anomalous, y_anomalous).
+
+If the class index is an integer, then we draw samples with all fixed factors equal to the index.
+If it is a vector (with values in range [1,10]), then the samples have fixed factors in the given values.
+If it is a tuple of length 3, then the factors are mixed as given. You can input -1 in the place
+of the factor that is not fixed. Factor 1 = digit, factor 2 = background, factor 3 = texture.
+If no anomalous indices are given, then the rest that is left after normal data is constructed is used.
+"""
+function load_cocoplaces_data(; 
+	normal_class_ind::Union{Int,Tuple,Vector}=1,
+	anomaly_class_ind::Union{Int,Tuple,Vector}=-1,
+	kwargs...)
+	# load all data
+	(x_u, y_u), (x_m, y_m) = load_cocoplaces_raw("all")
+	y_u = cat(y_u, y_u[:,1:1],dims=2)
+	y_m = cat(y_m, y_m[:,1:1],dims=2)
+
+	return load_multifactor_data(x_u, y_u, x_m, y_m; 
+		normal_class_ind=normal_class_ind,
+		anomaly_class_ind=anomaly_class_ind,
+		denormalize=false,
+		kwargs...)
+end
+
+"""
 	array_to_img_rgb(arr)	
 
 Converts a 3D array (w,h,c) to an image you can display with display().
