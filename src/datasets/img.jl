@@ -240,17 +240,19 @@ function load_cocoplaces_raw(selection="all";imsize=64)
 	inpath = datadir("cocoplaces")
 	if selection == "uniform"
 		x_u = permutedims(npzread(joinpath(inpath, "uniform_data_$(imsize).npy")), (4,3,2,1))
-		y_u = Array(npzread(joinpath(inpath, "uniform_labels_$(imsize).npy")) .+ 1)
+		y_u = vec(npzread(joinpath(inpath, "uniform_labels_$(imsize).npy"))[:,1] .+ 1)
 		x_m = y_m = nothing
 	elseif selection == "test"
 		x_u = y_u = nothing
 		x_m = permutedims(npzread(joinpath(inpath, "mashed_data_$(imsize).npy")), (4,3,2,1))
 		y_m = Array(npzread(joinpath(inpath, "mashed_labels_$(imsize).npy")) .+ 1)
+		y_m = cat(y_m, y_m[:,1:1],dims=2)
 	elseif selection == "all"
 		x_u = permutedims(npzread(joinpath(inpath, "uniform_data_$(imsize).npy")), (4,3,2,1))
-		y_u = Array(npzread(joinpath(inpath, "uniform_labels_$(imsize).npy")) .+ 1)
+		y_u = vec(npzread(joinpath(inpath, "uniform_labels_$(imsize).npy"))[:,1] .+ 1)
 		x_m = permutedims(npzread(joinpath(inpath, "mashed_data_$(imsize).npy")), (4,3,2,1))
 		y_m = Array(npzread(joinpath(inpath, "mashed_labels_$(imsize).npy")) .+ 1)
+		y_m = cat(y_m, y_m[:,1:1],dims=2)
 	else
 		error("unknown value $selection")
 	end
