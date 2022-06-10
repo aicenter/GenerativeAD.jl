@@ -281,8 +281,6 @@ function load_cocoplaces_data(;
 	kwargs...)
 	# load all data
 	(x_u, y_u), (x_m, y_m) = load_cocoplaces_raw("all", imsize=imsize)
-	y_u = cat(y_u, y_u[:,1:1],dims=2)
-	y_m = cat(y_m, y_m[:,1:1],dims=2)
 
 	return load_multifactor_data(x_u, y_u, x_m, y_m; 
 		normal_class_ind=normal_class_ind,
