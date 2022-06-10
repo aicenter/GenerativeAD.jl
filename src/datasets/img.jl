@@ -232,11 +232,11 @@ function load_wildlife_mnist_data(;
 end
 
 """
-	load_cocoplaces_raw(imsize=64,selection="all")
+	load_cocoplaces_raw(selection="all";imsize=64)
 
 Selection is one of ["all", "uniform", "mashed"].
 """
-function load_cocoplaces_raw(imsize=64,selection="all")
+function load_cocoplaces_raw(selection="all";imsize=64)
 	inpath = datadir("cocoplaces")
 	if selection == "uniform"
 		x_u = permutedims(npzread(joinpath(inpath, "uniform_data_$(imsize).npy")), (4,3,2,1))
@@ -275,9 +275,10 @@ If no anomalous indices are given, then the rest that is left after normal data 
 function load_cocoplaces_data(; 
 	normal_class_ind::Union{Int,Tuple,Vector}=1,
 	anomaly_class_ind::Union{Int,Tuple,Vector}=-1,
+	imsize=64,
 	kwargs...)
 	# load all data
-	(x_u, y_u), (x_m, y_m) = load_cocoplaces_raw("all")
+	(x_u, y_u), (x_m, y_m) = load_cocoplaces_raw("all", imsize=imsize)
 	y_u = cat(y_u, y_u[:,1:1],dims=2)
 	y_m = cat(y_m, y_m[:,1:1],dims=2)
 
