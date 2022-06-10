@@ -98,57 +98,11 @@ function load_mvtec_ad_data_downscaled(;img_size = 256, category::String="bottle
 	return data[:normal], data[:anomalous]
 end
 
-"""
-	load_wildlife_mnist_raw(selection="all")
-
-Selection is one of ["all", "train", "test"].
-"""
-function load_wildlife_mnist_raw(selection="all")
-	inpath = datadir("wildlife_MNIST")
-	if selection == "train"
-		x_tr = permutedims(npzread(joinpath(inpath, "data.npy")), (4,3,2,1))
-		y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
-		x_tst = y_tst = nothing
-	elseif selection == "test"
-		x_tr = y_tr = nothing
-		x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
-		y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
-	elseif selection == "all"
-		x_tr = permutedims(npzread(joinpath(inpath, "data.npy")), (4,3,2,1))
-		y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
-		x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
-		y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
-	else
-		error("unknown value $selection")
-	end
-	return (x_tr, y_tr), (x_tst, y_tst)
-end
-
-"""
-	load_wildlife_mnist_data(;
+function load_multifactor_data(x_tr, y_tr, x_tst, y_tst; 
 	normal_class_ind::Union{Int,Tuple,Vector}=1,
 	anomaly_class_ind::Union{Int,Tuple,Vector}=-1,
 	denormalize = false,
 	kwargs...)
-
-Returns (x_normal, y_normal), (x_anomalous, y_anomalous).
-
-If the class index is an integer, then we draw samples with all fixed factors equal to the index.
-If it is a vector (with values in range [1,10]), then the samples have fixed factors in the given values.
-If it is a tuple of length 3, then the factors are mixed as given. You can input -1 in the place
-of the factor that is not fixed. Factor 1 = digit, factor 2 = background, factor 3 = texture.
-If no anomalous indices are given, then the rest that is left after normal data is constructed is used.
-
-The data are normalized in [-1,1] range by default, but can be denormalized to [0,1].
-"""
-function load_wildlife_mnist_data(; 
-	normal_class_ind::Union{Int,Tuple,Vector}=1,
-	anomaly_class_ind::Union{Int,Tuple,Vector}=-1,
-	denormalize = false,
-	kwargs...)
-	# load all data
-	(x_tr, y_tr), (x_tst, y_tst) = load_wildlife_mnist_raw("all")
-
 	# denormalize
 	if denormalize
 		x_tr = x_tr .* 0.5f0 .+ 0.5f0
@@ -220,6 +174,64 @@ function load_wildlife_mnist_data(;
 end
 
 """
+	load_wildlife_mnist_raw(selection="all")
+
+Selection is one of ["all", "train", "test"].
+"""
+function load_wildlife_mnist_raw(selection="all")
+	inpath = datadir("wildlife_MNIST")
+	if selection == "train"
+		x_tr = permutedims(npzread(joinpath(inpath, "data.npy")), (4,3,2,1))
+		y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
+		x_tst = y_tst = nothing
+	elseif selection == "test"
+		x_tr = y_tr = nothing
+		x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
+		y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
+	elseif selection == "all"
+		x_tr = permutedims(npzread(joinpath(inpath, "data.npy")), (4,3,2,1))
+		y_tr = npzread(joinpath(inpath, "labels.npy")) .+ 1
+		x_tst = permutedims(npzread(joinpath(inpath, "data_test.npy")), (4,3,2,1))
+		y_tst = Array(npzread(joinpath(inpath, "labels_test.npy"))' .+ 1)
+	else
+		error("unknown value $selection")
+	end
+	return (x_tr, y_tr), (x_tst, y_tst)
+end
+
+"""
+	load_wildlife_mnist_data(;
+	normal_class_ind::Union{Int,Tuple,Vector}=1,
+	anomaly_class_ind::Union{Int,Tuple,Vector}=-1,
+	denormalize = false,
+	kwargs...)
+
+Returns (x_normal, y_normal), (x_anomalous, y_anomalous).
+
+If the class index is an integer, then we draw samples with all fixed factors equal to the index.
+If it is a vector (with values in range [1,10]), then the samples have fixed factors in the given values.
+If it is a tuple of length 3, then the factors are mixed as given. You can input -1 in the place
+of the factor that is not fixed. Factor 1 = digit, factor 2 = background, factor 3 = texture.
+If no anomalous indices are given, then the rest that is left after normal data is constructed is used.
+
+The data are normalized in [-1,1] range by default, but can be denormalized to [0,1].
+"""
+function load_wildlife_mnist_data(; 
+	normal_class_ind::Union{Int,Tuple,Vector}=1,
+	anomaly_class_ind::Union{Int,Tuple,Vector}=-1,
+	denormalize = false,
+	kwargs...)
+	# load all data
+	(x_tr, y_tr), (x_tst, y_tst) = load_wildlife_mnist_raw("all")
+
+	return load_multifactor_data(x_tr, y_tr, x_tst, y_tst; 
+		normal_class_ind=normal_class_ind,
+		anomaly_class_ind=anomaly_class_ind,
+		denormalize=denormalize,
+		kwargs...)
+end
+
+"""
 	load_cocoplaces_raw(imsize=64,selection="all")
 
 Selection is one of ["all", "uniform", "mashed"].
@@ -233,12 +245,12 @@ function load_cocoplaces_raw(imsize=64,selection="all")
 	elseif selection == "test"
 		x_u = y_u = nothing
 		x_m = permutedims(npzread(joinpath(inpath, "mashed_data_$(imsize).npy")), (4,3,2,1))
-		y_m = Array(npzread(joinpath(inpath, "uniform_labels_$(imsize).npy")) .+ 1)
+		y_m = Array(npzread(joinpath(inpath, "mashed_labels_$(imsize).npy")) .+ 1)
 	elseif selection == "all"
 		x_u = permutedims(npzread(joinpath(inpath, "uniform_data_$(imsize).npy")), (4,3,2,1))
 		y_u = Array(npzread(joinpath(inpath, "uniform_labels_$(imsize).npy")) .+ 1)
 		x_m = permutedims(npzread(joinpath(inpath, "mashed_data_$(imsize).npy")), (4,3,2,1))
-		y_m = Array(npzread(joinpath(inpath, "uniform_labels_$(imsize).npy")) .+ 1)
+		y_m = Array(npzread(joinpath(inpath, "mashed_labels_$(imsize).npy")) .+ 1)
 	else
 		error("unknown value $selection")
 	end
