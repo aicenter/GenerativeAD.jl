@@ -40,7 +40,7 @@ s = ArgParseSettings()
     	default = "logreg"
     	help = "logreg or probreg or robreg"
     "base_beta"
-    	default = 5.0
+    	default = 1.0
     	arg_type = Float64
     	help = "base beta for robust logistic regression"
     "--force", "-f"
@@ -185,6 +185,10 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	# prepare the data
 	if isnan(ldata[:val_scores][1])
 		@info "Score data not found or corrupted"
+		return
+	end
+	if isnothing(rdata[:val_scores]) || isnothing(rdata[:tst_scores])
+		@info "Normal score data not found"
 		return
 	end
 	val_scores = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
