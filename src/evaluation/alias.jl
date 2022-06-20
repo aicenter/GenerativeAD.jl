@@ -144,6 +144,7 @@ const DATASET_ALIAS = Dict{String, String}(
 	"CIFAR10" 					=> "cifar10",
 	"SVHN2" 					=> "svhn2",
 	"wildlife_MNIST"			=> "wmnist",
+	"cocoplaces"				=> "coco",
 	"MNIST-C_brightness" 		=> "bright",
 	"MNIST-C_canny_edges" 		=> "cannye",
 	"MNIST-C_dotted_line" 		=> "dottedl",
@@ -173,7 +174,8 @@ const AC_CONVERSION = Dict(
 	"svhn2"				=> ["1", "9", "2", "3", "5", "8", "7", "4", "6", "0"],
 	"fmnist" 			=> ["Ankle boot", "T-Shirt", "Dress", "Pullover", "Sneaker", "Sandal", "Trouser", "Shirt", "Coat", "Bag"],
 	"cifar10"			=> ["frog", "truck", "deer", "automobile", "bird", "horse", "ship", "cat", "dog", "airplane"],
-	"wmnist"			=> ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+	"wmnist"			=> ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+	"coco"				=> ["boat", "airplane", "truck", "dog", "zebra", "horse", "bird", "train", "bus", "motorcycle"]
 )
 
 
