@@ -20,13 +20,11 @@ const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha",
-    "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx", "sgvae_alpha_kld"]
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha"]
 sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models]
-sgad_alpha_models = ["sgvae_alpha", "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx", 
-    "sgvae_alpha_kld"]
+sgad_alpha_models = ["sgvae_alpha"]
 
-TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
+TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 
 function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{String, Int}(), )
     agg_names = ["maxmean"]

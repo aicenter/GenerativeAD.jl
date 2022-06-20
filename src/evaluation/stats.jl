@@ -249,7 +249,7 @@ function compute_stats(r::Dict{Symbol,Any}; top_metrics_new=true)
 					for p in prop_ps]
 				row = merge(row, (;zip(_prefix_symbol.(splt, map(x-> "auc_100_$(x)", prop_ps)), auc_prop_100)...))
 			# the old way of splitting the samples
-			elseif splt == "val" 
+			elseif !top_metrics_new
 				pat = [_precision_at(p/100.0, labels, scores) for p in [0.01, 0.1, 1.0, 5.0, 10.0, 20.0]]
 				row = merge(row, (;zip(_prefix_symbol.(splt, PAT_METRICS), pat)...))
 
