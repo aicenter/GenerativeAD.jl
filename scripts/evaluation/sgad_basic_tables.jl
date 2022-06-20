@@ -20,9 +20,9 @@ const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha"]
-sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models]
-sgad_alpha_models = ["sgvae_alpha"]
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae"]
+sgad_models_alpha = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha"]
+sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models_alpha]
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 
@@ -77,6 +77,30 @@ apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS) # rename
 # filter out only the interesting models
 df_images = filter(r->r.modelname in sgad_models, df_images)
 
+# alpha
+#df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
+df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
+apply_aliases!(df_images_alpha, col="dataset", d=DATASET_ALIAS) # rename
+#filter!(r->r.modelname == "sgvae_robreg", df_images_alpha)
+#df_images_alpha.modelname .= "sgvae_alpha"
+
+# here select the best model and glue it to the normal df
+prow = copy(df_images[1:1,:])
+for dataset in unique(df_images_alpha.dataset)
+    for ac in unique(df_images_alpha.anomaly_class)
+        subdf = filter(r->r.dataset==dataset && r.anomaly_class==ac && !isnan(r.tst_auc), df_images_alpha) 
+        imax = argmax(subdf.val_auc)
+        r = subdf[imax,:]
+        prow.modelname = "sgvae_alpha"
+        prow.dataset = dataset
+        prow.anomaly_class = ac
+        prow.tst_auc = r.tst_auc
+        prow.val_auc = r.val_auc
+        prow.seed = 1
+        df_images = vcat(df_images, prow)
+    end
+end
+
 # this generates the overall tables (aggregated by datasets)
 df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
 df_images_target_nonnan = filter(r-> !isnan(r.val_auc), df_images_target)
@@ -86,22 +110,9 @@ rts = basic_summary_table(df_images_target_nonnan, outdir, prefix=prefix, suffix
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
     rts[1], sgad_models_alias)
 
-# this is to be used for further distinguishing performance based on some hyperparam values
-perf_plot_models = ["dsvd", "fano", "fmgn", "vae", "cgn", "sgvae", "sgvae_d", "sgvae_i"]
-
-suffix = "_sgvae_latent_structure"
-subdf = filter(r->r.modelname=="sgvae", df_images_target_nonnan)
-params = map(x->get(parse_savename(x)[2], "latent_structure", ""), subdf.parameters)
-subdf.modelname[params .== "mask"] .= "sgvae_d"
-subdf.modelname[params .!= "mask"] .= "sgvae_i"
-perf_df_images_target = vcat(subdf, df_images_target_nonnan)
-rts = basic_summary_table(perf_df_images_target, outdir, prefix=prefix, suffix=suffix)
-save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
-    rts[1], perf_plot_models)
-
 ##### LOI images per AC
 # this should generate the above tables split by anomaly classes
-for d in Set(["cifar10", "svhn2", "wmnist"])
+for d in Set(TARGET_DATASETS)
     mask = (df_images_target.dataset .== d)
     df_images_target[mask, :dataset] .= df_images_target[mask, :dataset] .* ":" .* convert_anomaly_class.(df_images_target[mask, :anomaly_class], d)
     df_images_target[mask, :anomaly_class] .= 1 # it has to be > 0, because otherwise we get too many warnings from the aggregate_stats_max_mean
@@ -166,6 +177,30 @@ apply_aliases!(df_mvtec, col="dataset", d=DATASET_ALIAS)
 df_mvtec = filter(r->r.modelname in sgad_models, df_mvtec)
 df_mvtec = filter(r->!(r.dataset in ["grid", "wood"]), df_mvtec)
 df_mvtec_nonnan = filter(r-> !isnan(r.val_auc), df_mvtec)
+
+#
+df_mvtec_alpha = load(datadir("sgad_alpha_evaluation_kp/images_mvtec_eval.bson"))[:df];
+apply_aliases!(df_mvtec_alpha, col="dataset", d=DATASET_ALIAS) # rename
+filter!(r->r.modelname == "sgvae_robreg", df_mvtec_alpha)
+df_mvtec_alpha.modelname .= "sgvae_alpha"
+df_mvtec_alpha.dataset[df_mvtec_alpha.dataset .== "metal_nut"] .= "nut"
+
+# here select the best model and glue it to the normal df
+prow = copy(df_mvtec[1:1,:])
+for dataset in unique(df_mvtec_alpha.dataset)
+    for seed in unique(df_mvtec_alpha.seed)
+        subdf = filter(r->r.dataset==dataset && r.seed==seed && !isnan(r.tst_auc), df_mvtec_alpha) 
+        imax = argmax(subdf.val_auc)
+        r = subdf[imax,:]
+        prow.modelname = "sgvae_alpha"
+        prow.dataset = dataset
+        prow.seed = r.seed
+        prow.tst_auc = r.tst_auc
+        prow.val_auc = r.val_auc
+        prow.seed = 1
+        df_mvtec_nonnan = vcat(df_mvtec_nonnan, prow)
+    end
+end
 
 prefix="images_mvtec"
 suffix=""
