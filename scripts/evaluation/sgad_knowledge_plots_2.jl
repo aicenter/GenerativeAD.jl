@@ -23,17 +23,9 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha", "sgvae_probreg",
-"sgvae_robreg", "sgvae_robreg1", "sgvae_robreg5"]
-#, "sgvae_alpha_knn", "sgvae_alpha_normal", 
-# "sgvae_alpha_normal_logpx", "sgvae_alpha_kld", "sgvae_alpha_auc"
-MODEL_ALIAS["sgvae_robreg"] = "sgvaer"
-MODEL_ALIAS["sgvae_robreg1"] = "sgvaer1"
-MODEL_ALIAS["sgvae_robreg5"] = "sgvaer5"
-sgad_alpha_models = ["sgvae_alpha", "sgvae_probreg", "sgvae_robreg", "sgvae_robreg1", "sgvae_robreg5"]
-#, "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx",  "sgvae_alpha_kld", "sgvae_alpha_auc"]
-
-TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha"]
+sgad_alpha_models = ["sgvae_alpha"]
+TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 
 function prepare_alpha_df!(df)
     apply_aliases!(df, col="dataset", d=DATASET_ALIAS) # rename
@@ -56,6 +48,10 @@ df_images_target = filter(r->r.modelname != "sgvae_alpha", df_images_target);
 
 # LOI alpha scores
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
+#df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
+filter!(r->r.modelname == "sgvae_robreg", df_images_alpha)
+filter!(r->r.parameters.beta == 1.0, df_images_alpha)
+df_images_alpha.modelname .= "sgvae_alpha"
 prepare_alpha_df!(df_images_alpha)
 df_images_alpha_target, _ = _split_image_datasets(df_images_alpha, TARGET_DATASETS);
 
@@ -80,6 +76,7 @@ df_mvtec = filter(r->!(r.dataset in ["grid", "wood"]), df_mvtec)
 df_mvtec = filter(r->r.modelname != "sgvae_alpha", df_mvtec);
 # mvtec alpha
 df_mvtec_alpha = load(datadir("sgad_alpha_evaluation_kp/images_mvtec_eval.bson"))[:df];
+df_mvtec_alpha.modelname .= "sgvae_alpha"
 prepare_alpha_df!(df_mvtec_alpha)
 df_mvtec_alpha = filter(r->!(r.dataset in ["grid", "wood"]), df_mvtec_alpha)
 # mvtec clean
@@ -91,24 +88,32 @@ df_images_mvtec_clean[:anomaly_class] = 1
 apply_aliases!(df_images_mvtec_clean, col="dataset", d=DATASET_ALIAS)
 
 # here we want to differentiate sgvae alpha and sgvae alpha with robust logistic regression
-df_images_alpha_robreg = filter(r->r.method == "robreg", df_images_alpha_target)
-inds1 = [x.beta for x in df_images_alpha_robreg.parameters] .== 1.0
-df_images_alpha_robreg.modelname[inds1] .= "sgvae_robreg1"
-df_images_alpha_robreg.modelname[.!inds1] .= "sgvae_robreg5"
-filter!(r->r.method!="robreg", df_images_alpha_target)
-df_images_alpha_target = vcat(df_images_alpha_target, df_images_alpha_robreg)
+#df_images_alpha_robreg = filter(r->r.method == "robreg", df_images_alpha_target)
+##inds1 = [x.beta for x in df_images_alpha_robreg.parameters] .== 1.0
+#df_images_alpha_robreg.modelname[inds1] .= "sgvae_robreg1"
+#df_images_alpha_robreg.modelname[.!inds1] .= "sgvae_robreg5"
+#filter!(r->r.method!="robreg", df_images_alpha_target)
+#df_images_alpha_target = vcat(df_images_alpha_target, df_images_alpha_robreg)
 # and do the same for mvtec as well
-df_mvtec_robreg = filter(r->r.method == "robreg", df_mvtec_alpha)
-inds1 = [x.beta for x in df_mvtec_robreg.parameters] .== 1.0
-df_mvtec_robreg.modelname[inds1] .= "sgvae_robreg1"
-df_mvtec_robreg.modelname[.!inds1] .= "sgvae_robreg5"
-filter!(r->r.method!="robreg", df_mvtec_alpha)
-df_mvtec_alpha = vcat(df_mvtec_alpha, df_mvtec_robreg)
+#df_mvtec_robreg = filter(r->r.method == "robreg", df_mvtec_alpha)
+#inds1 = [x.beta for x in df_mvtec_robreg.parameters] .== 1.0
+#df_mvtec_robreg.modelname[inds1] .= "sgvae_robreg1"
+#df_mvtec_robreg.modelname[.!inds1] .= "sgvae_robreg5"
+#filter!(r->r.method!="robreg", df_mvtec_alpha)
+#df_mvtec_alpha = vcat(df_mvtec_alpha, df_mvtec_robreg)
 
 # now differentiate them
 df_semantic = filter(r->!(occursin("wmnist", r[:dataset])),df_images_target)
 df_semantic_alpha = filter(r->!(occursin("wmnist", r[:dataset])),df_images_alpha_target)
 df_semantic_clean = filter(r->!(occursin("mnist", r[:dataset])),df_images_loi_clean)
+
+df_semantic_0 = filter(r->!(occursin("coco", r[:dataset])),df_semantic)
+df_semantic_alpha_0 = filter(r->!(occursin("coco", r[:dataset])),df_semantic_alpha)
+df_semantic_clean_0 = filter(r->!(occursin("coco", r[:dataset])),df_semantic_clean)
+
+df_coco = filter(r->(occursin("coco", r[:dataset])),df_semantic)
+df_coco_alpha = filter(r->(occursin("coco", r[:dataset])),df_semantic_alpha)
+df_coco_clean = filter(r->(occursin("coco", r[:dataset])),df_semantic_clean)
 
 df_wmnist = filter(r->(occursin("wmnist", r[:dataset])),df_images_target)
 df_wmnist_alpha = filter(r->(occursin("wmnist", r[:dataset])),df_images_alpha_target)
@@ -121,13 +126,15 @@ df_mvtec_clean = filter(r->!(r.dataset in ["wood", "grid"]), df_images_mvtec_cle
 # also, add the clean sgvae alpha lines - these are the same as the ones from sgvae
 function add_alpha_clean(df)
     subdf = filter(r->r.modelname == "sgvae", df)
-    for suffix in ["_alpha", "_robreg", "_robreg1", "_robreg5"]
+    for suffix in ["_alpha"]
         subdf.modelname .= "sgvae" * suffix
         df = vcat(df, copy(subdf))
     end
     df
 end
 df_semantic_clean = add_alpha_clean(df_semantic_clean)
+df_semantic_clean_0 = add_alpha_clean(df_semantic_clean_0)
+df_coco_clean = add_alpha_clean(df_coco_clean)
 df_wmnist_clean = add_alpha_clean(df_wmnist_clean)
 df_mvtec_clean = add_alpha_clean(df_mvtec_clean)
 
@@ -170,9 +177,6 @@ function _incremental_rank_clean(df, criterions, agg)
                 end
             end
 
-            df_agg = add_missing_model!(df_agg, "sgvae_robreg1")
-            df_agg = add_missing_model!(df_agg, "sgvae_robreg5")
-     
             apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
             sort!(df_agg, [:dataset, :modelname])
@@ -229,9 +233,6 @@ function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols)
                     end
                 end
             end
-
-            df_agg = add_missing_model!(df_agg, "sgvae_robreg1")
-            df_agg = add_missing_model!(df_agg, "sgvae_robreg5")
             
             apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
@@ -250,7 +251,7 @@ mn = "AUC"
 metric = :auc
 val_metric = _prefix_symbol("val", metric)
 tst_metric = _prefix_symbol("tst", metric)
-titles = ["semantic", "wmnist", "mvtec"]
+titles = ["semantic", "semantic0", "coco", "wmnist", "mvtec"]
 
 # aggragated cols
 non_agg_cols = ["modelname","dataset","anomaly_class","phash","parameters","seed","npars",
@@ -258,6 +259,41 @@ non_agg_cols = ["modelname","dataset","anomaly_class","phash","parameters","seed
 agg_cols = filter(x->!(x in non_agg_cols), names(df_images))
 maxmean_f(df,crit) = aggregate_stats_max_mean(df, crit; agg_cols=[])
 
+# first create the knowledge plot data for the changing level of anomalies
+# at different percentages of normal data
+cnames = reverse(AUC_METRICS_NAMES)
+
+#################
+level = 100
+criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
+extended_criterions = vcat(criterions, [val_metric])
+extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
+tst_metric = :tst_auc
+df, df_alpha, df_clean = df_semantic, df_semantic_alpha, df_semantic_clean
+df, df_alpha, df_clean = df_coco, df_coco_alpha, df_coco_clean
+ranks_inc, metric_means_inc = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
+            non_agg_cols)
+
+
+criterion = :val_auc_100_100
+autocols = non_agg_cols
+nautocols = [string(criterion), string(tst_metric)]
+subdf = filter(r->!(isnan(r[criterion])), df)
+subdf = subdf[:,vcat(autocols, nautocols)] # only use the actually needed columns
+
+# now construct a simillar df to be appended to the first one from the alpha df
+kp_nautocols = [string(criterion), replace(string(criterion), "val"=>"tst")]
+subdf_alpha = filter(r->!(isnan(r[criterion])), df_alpha)
+subdf_alpha = subdf_alpha[:,vcat(autocols, kp_nautocols)]
+rename!(subdf_alpha, kp_nautocols[2] => string(tst_metric)) 
+
+# now define the agg function and cat it
+agg(df,crit) = aggregate_stats_auto(df, crit; agg_cols=nautocols)
+subdf = vcat(subdf, subdf_alpha)
+df_agg = agg(subdf, criterion)
+
+#################
+        
 @suppress_err begin
 for level in [100, 50, 10]
 	criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
@@ -265,7 +301,10 @@ for level in [100, 50, 10]
 	extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 
 	ranks_dfs = map(enumerate(zip(titles,
-	        [(df_semantic, df_semantic_alpha, df_semantic_clean), 
+	        [
+                (df_semantic, df_semantic_alpha, df_semantic_clean),
+                (df_semantic_0, df_semantic_alpha_0, df_semantic_clean_0),
+                (df_coco, df_coco_alpha, df_coco_clean),
 	            (df_wmnist, df_wmnist_alpha, df_wmnist_clean), 
 	            (df_mvtec, df_mvtec_alpha, df_mvtec_clean)]))) do (i, (title, (df, df_alpha, df_clean)))
 
@@ -304,6 +343,8 @@ extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 @suppress_err begin
     ranks_dfs = map(enumerate(zip(titles,
             [(df_semantic, df_semantic_alpha, df_semantic_clean), 
+                (df_semantic_0, df_semantic_alpha_0, df_semantic_clean_0),
+                (df_coco, df_coco_alpha, df_coco_clean),
                 (df_wmnist, df_wmnist_alpha, df_wmnist_clean), 
                 (df_mvtec, df_mvtec_alpha, df_mvtec_clean)]))) do (i, (title, (df, df_alpha, df_clean)))
 
