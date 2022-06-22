@@ -78,8 +78,8 @@ apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS) # rename
 df_images = filter(r->r.modelname in sgad_models, df_images)
 
 # alpha
-#df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
-df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
+df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
+#df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
 apply_aliases!(df_images_alpha, col="dataset", d=DATASET_ALIAS) # rename
 #filter!(r->r.modelname == "sgvae_robreg", df_images_alpha)
 #df_images_alpha.modelname .= "sgvae_alpha"
