@@ -30,6 +30,7 @@ function copy_latest_reconstructions(model, datatype, dataset)
     end
 end
 
+copy_latest_reconstructions("sgvae", "leave-one-in", "cocoplaces")
 copy_latest_reconstructions("sgvae", "leave-one-in", "wildlife_MNIST")
 copy_latest_reconstructions("sgvae", "leave-one-in", "CIFAR10")
 copy_latest_reconstructions("sgvae", "leave-one-in", "SVHN2")
