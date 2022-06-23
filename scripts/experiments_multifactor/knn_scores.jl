@@ -22,7 +22,7 @@ parsed_args = parse_args(ARGS, s)
 datatype = "leave-one-in"
 acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
 seed = 1
-ks = vcat([1, 31, 61], collect(101:100:2001))
+ks = (dataset == "wildlife_MNIST") ? vcat([1, 31, 61], collect(101:100:2001)) : collect(1:10:201)
 
 for ac in acs
     # outputs
