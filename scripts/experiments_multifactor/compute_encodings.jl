@@ -123,6 +123,11 @@ for ac in acs
         orig_data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=datatype);
         # and also the multifactor dataset
         multifactor_data = GenerativeAD.Datasets.load_wildlife_mnist_raw("test")[2];
+    elseif dataset == "cocoplaces"
+        # load the original train/val/test split
+        orig_data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=datatype);
+        # and also the multifactor dataset
+        multifactor_data = GenerativeAD.Datasets.load_cocoplaces_raw("test")[2];
     else
         error("unkown dataset $(dataset)")
     end
