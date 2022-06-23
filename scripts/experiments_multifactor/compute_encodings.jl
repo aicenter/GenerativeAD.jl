@@ -62,10 +62,12 @@ function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_d
     res_d = load(joinpath(res_dir, res_f))
 
     # decide if we need to normalize the scores
-    gx = model.generate_mean(10); 
-    gx = gx.detach().to("cpu").numpy();
-    if mean(gx) < 0.2 && minimum(gx) < -0.5
-        data = GenerativeAD.Datasets.normalize_data(data);
+    if dataset == "wildlife_MNIST"
+        gx = model.generate_mean(10); 
+        gx = gx.detach().to("cpu").numpy();
+        if mean(gx) < 0.2 && minimum(gx) < -0.5
+            data = GenerativeAD.Datasets.normalize_data(data);
+        end
     end
 
     # compute the results

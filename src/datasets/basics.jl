@@ -146,9 +146,7 @@ vectorize(data) = map(d->(reshape(d[1], :, size(d[1],4)), d[2]),data)
 
 function normalize_data(data)
     if minimum(data[1][1]) == 0 && maximum(data[1][1]) == 1
-        return ((data[1][1] .- 0.5) ./0.5, data[1][2]), 
-            ((data[2][1] .- 0.5) ./0.5, data[2][2]),
-            ((data[3][1] .- 0.5) ./0.5, data[3][2])
+        return Tuple(map(x->((x[1] .- 0.5) ./0.5, x[2]), data))
     else
         return data
     end
