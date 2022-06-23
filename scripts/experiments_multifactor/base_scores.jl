@@ -205,6 +205,8 @@ for ac in acs
     # also load the new data for inference
     if dataset == "wildlife_MNIST"
         multifactor_data = GenerativeAD.Datasets.load_wildlife_mnist_raw("test")[2];
+    elseif dataset == "cocoplaces"
+        multifactor_data = GenerativeAD.Datasets.load_cocoplaces_raw("test")[2];
     else
         error("unkown dataset $(dataset)")
     end
