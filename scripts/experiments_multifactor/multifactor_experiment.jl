@@ -75,7 +75,7 @@ function experiment(sf, score_dir, save_dir, modelname, dataset, seed, train_cla
         )
         
     # this contains the scores
-    df = GenerativeAD.Evaluation.compute_stats(res_dict; top_metrics=false, top_metrics_new=true)
+    df = GenerativeAD.Evaluation.compute_stats(res_dict; ; top_metrics_new=true)
     wsave(target, Dict(:df => df))
     @info "saved evaluation at $target"
 end
