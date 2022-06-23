@@ -15,6 +15,7 @@ fi
 while read MODELNAME; do
     # submit to slurm
     echo $MODELNAME
+    echo $DATASET
     sbatch \
     --output="${LOG_DIR}/${MODELNAME}_${DATASET}_%A.out" \
      ./multifactor_experiment_mf.sh $MODELNAME $DATASET $AF1 $AF2 $AF3
