@@ -26,6 +26,7 @@ outdir = "result_tables"
 sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha"]
 sgad_alpha_models = ["sgvae_alpha"]
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
+round_results = false
 
 function prepare_alpha_df!(df)
     apply_aliases!(df, col="dataset", d=DATASET_ALIAS) # rename
@@ -158,7 +159,7 @@ for model in unique(models)
 end
 df_mvtec_clean = vcat(subdfs...)
 
-function _incremental_rank_clean(df, criterions, agg)
+function _incremental_rank_clean(df, criterions, agg, round_results)
     ranks, metric_means = [], []
     for criterion in criterions
         df_nonnan = filter(r->!(isnan(r[criterion])), df)
@@ -180,7 +181,7 @@ function _incremental_rank_clean(df, criterions, agg)
             apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
             sort!(df_agg, [:dataset, :modelname])
-            rt = rank_table(df_agg, tst_metric)
+            rt = rank_table(df_agg, tst_metric; round_results=round_results)
             mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model]) for model in names(rt)[2:end]])
             push!(ranks, rt[end:end, 2:end])
             push!(metric_means, mm)
@@ -200,7 +201,7 @@ function add_missing_model!(df, modelname)
     df
 end
 
-function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols)
+function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols, round_results)
     ranks, metric_means = [], []
     for criterion in criterions
         
@@ -237,7 +238,7 @@ function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols)
             apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
             apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
             sort!(df_agg, [:dataset, :modelname])
-            rt = rank_table(df_agg, tst_metric)
+            rt = rank_table(df_agg, tst_metric; round_results=round_results)
             mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model]) for model in names(rt)[2:end]])
             push!(ranks, rt[end:end, 2:end])
             push!(metric_means, mm)
@@ -262,37 +263,6 @@ maxmean_f(df,crit) = aggregate_stats_max_mean(df, crit; agg_cols=[])
 # first create the knowledge plot data for the changing level of anomalies
 # at different percentages of normal data
 cnames = reverse(AUC_METRICS_NAMES)
-
-#################
-level = 100
-criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
-extended_criterions = vcat(criterions, [val_metric])
-extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
-tst_metric = :tst_auc
-df, df_alpha, df_clean = df_semantic, df_semantic_alpha, df_semantic_clean
-df, df_alpha, df_clean = df_coco, df_coco_alpha, df_coco_clean
-ranks_inc, metric_means_inc = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
-            non_agg_cols)
-
-
-criterion = :val_auc_100_100
-autocols = non_agg_cols
-nautocols = [string(criterion), string(tst_metric)]
-subdf = filter(r->!(isnan(r[criterion])), df)
-subdf = subdf[:,vcat(autocols, nautocols)] # only use the actually needed columns
-
-# now construct a simillar df to be appended to the first one from the alpha df
-kp_nautocols = [string(criterion), replace(string(criterion), "val"=>"tst")]
-subdf_alpha = filter(r->!(isnan(r[criterion])), df_alpha)
-subdf_alpha = subdf_alpha[:,vcat(autocols, kp_nautocols)]
-rename!(subdf_alpha, kp_nautocols[2] => string(tst_metric)) 
-
-# now define the agg function and cat it
-agg(df,crit) = aggregate_stats_auto(df, crit; agg_cols=nautocols)
-subdf = vcat(subdf, subdf_alpha)
-df_agg = agg(subdf, criterion)
-
-#################
         
 @suppress_err begin
 for level in [100, 50, 10]
@@ -309,9 +279,10 @@ for level in [100, 50, 10]
 	            (df_mvtec, df_mvtec_alpha, df_mvtec_clean)]))) do (i, (title, (df, df_alpha, df_clean)))
 
 	    ranks_inc, metric_means_inc = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
-            non_agg_cols)
+            non_agg_cols, round_results)
 	    if size(df_clean,1) > 0
-	        ranks_clean, metric_means_clean = _incremental_rank_clean(df_clean, [val_metric], maxmean_f)
+	        ranks_clean, metric_means_clean = _incremental_rank_clean(df_clean, [val_metric], maxmean_f, 
+                round_results)
 	        if !("cgn" in names(metric_means_clean))
 	            metric_means_clean[:cgn] = NaN
 	        end
@@ -348,9 +319,11 @@ extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
                 (df_wmnist, df_wmnist_alpha, df_wmnist_clean), 
                 (df_mvtec, df_mvtec_alpha, df_mvtec_clean)]))) do (i, (title, (df, df_alpha, df_clean)))
 
-    ranks_inc, metric_means_inc = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, non_agg_cols)
+    ranks_inc, metric_means_inc = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
+        non_agg_cols, round_results)
     if size(df_clean,1) > 0
-        ranks_clean, metric_means_clean = _incremental_rank_clean(df_clean, [val_metric], maxmean_f)
+        ranks_clean, metric_means_clean = _incremental_rank_clean(df_clean, [val_metric], maxmean_f,
+            round_results)
         if !("cgn" in names(metric_means_clean))
             metric_means_clean[:cgn] = NaN
         end
