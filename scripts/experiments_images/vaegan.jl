@@ -85,7 +85,7 @@ Final parameters is a named tuple of names and parameter values that are used fo
 """
 function fit(data, parameters, save_parameters, ac, seed)
     # construct model - constructor should only accept kwargs
-    input_range = dataset == "wildlife_MNIST" ? [-1,1] : [0,1]
+    input_range = dataset == "wildlife_MNIST" ? (-1,1) : (0,1)
     model = GenerativeAD.Models.VAEGAN(;input_range=input_range, parameters...)
 
     # save intermediate results here
