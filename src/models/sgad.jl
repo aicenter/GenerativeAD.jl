@@ -67,5 +67,5 @@ def VAEGAN_constructor(kwargs):
     return VAEGAN(**kwargs)
     """
 
-    return SVAEGAN(py"VAEGAN_constructor"(kwargs))
+    return VAEGAN(py"VAEGAN_constructor"(kwargs))
 end
