@@ -41,6 +41,7 @@ const MODEL_TYPE = Dict{String, String}(
 	"sgvae_alpha_normal_logpx"	=> "autoencoders",
 	"sgvae_alpha_kld" 	=> "autoencoders",
 	"sgvae_alpha_auc" 	=> "autoencoders",
+	"vaegan"			=> "autoencoders",
 	"aae_ocsvm"			=> "two-stage",
 	"dagmm"				=> "two-stage",
 	"vae_ocsvm" 		=> "two-stage",
@@ -96,6 +97,7 @@ const MODEL_ALIAS = Dict{String, String}(
 	"sgvae_alpha_normal_logpx"	=> "sgvaelpx",
 	"sgvae_alpha_kld" 	=> "sgvaekld",
 	"sgvae_alpha_auc" 	=> "sgvaeaauc",
+	"vaegan"			=> "vgn"
 )
 
 const DATASET_ALIAS = Dict{String, String}(
