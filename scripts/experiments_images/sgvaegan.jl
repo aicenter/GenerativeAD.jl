@@ -70,7 +70,7 @@ function sample_params()
         :weight_binary,
         :weight_mask,
         :tau_mask,
-        :latent_structure,
+        :fixed_mask_epochs,
         :batch_size, 
         :init_type, 
         :init_gain, 
