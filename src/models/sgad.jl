@@ -69,3 +69,19 @@ def VAEGAN_constructor(kwargs):
 
     return VAEGAN(py"VAEGAN_constructor"(kwargs))
 end
+
+mutable struct SGVAEGAN <: SGADModel
+    model
+end
+
+function SGVAEGAN(; kwargs...)
+    py"""
+import sgad
+from sgad.sgvae import SGVAEGAN
+
+def SGVAEGAN_constructor(kwargs):
+    return SGVAEGAN(**kwargs)
+    """
+
+    return SGVAEGAN(py"SGVAEGAN_constructor"(kwargs))
+end

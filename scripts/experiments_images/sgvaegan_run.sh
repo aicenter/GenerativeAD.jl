@@ -18,4 +18,4 @@ source ${HOME}/sgad-env/bin/activate
 export PYTHON="${HOME}/sgad-env/bin/python"
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-julia ./vaegan.jl ${MAX_SEED} $DATASET ${ANOMALY_CLASSES} $METHOD $CONTAMINATION
+julia ./sgvaegan.jl ${MAX_SEED} $DATASET ${ANOMALY_CLASSES} $METHOD $CONTAMINATION
