@@ -264,6 +264,16 @@ maxmean_f(df,crit) = aggregate_stats_max_mean(df, crit; agg_cols=[])
 # at different percentages of normal data
 cnames = reverse(AUC_METRICS_NAMES)
         
+
+df = df_semantic
+df_alpha = df_semantic_alpha
+level = 100
+criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
+extended_criterions = vcat(criterions, [val_metric])
+extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
+
+
+
 @suppress_err begin
 for level in [100, 50, 10]
 	criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
