@@ -23,7 +23,7 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "vaegan", "sgvaegan", "sgvae", "sgvae_alpha"]
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "vaegan", "sgvae", "sgvae_alpha"]
 sgad_alpha_models = ["sgvae_alpha"]
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 round_results = false
@@ -69,39 +69,19 @@ for d in Set(["cifar10", "svhn2", "wmnist"])
     df_images_loi_clean[mask, :anomaly_class] .= 1 # it has to be > 0, because otherwise we get too many warnings from the aggregate_stats_max_mean
 end
 
-# mvtec
-df_mvtec = load(datadir("evaluation_kp/images_mvtec_eval.bson"))[:df];
-apply_aliases!(df_mvtec, col="dataset", d=DATASET_ALIAS)
-df_mvtec = filter(r->r.modelname in sgad_models, df_mvtec)
-df_mvtec = filter(r->!(r.dataset in ["grid", "wood"]), df_mvtec)
-df_mvtec = filter(r->r.modelname != "sgvae_alpha", df_mvtec);
-# mvtec alpha
-df_mvtec_alpha = load(datadir("sgad_alpha_evaluation_kp/images_mvtec_eval.bson"))[:df];
-df_mvtec_alpha.modelname .= "sgvae_alpha"
-prepare_alpha_df!(df_mvtec_alpha)
-df_mvtec_alpha = filter(r->!(r.dataset in ["grid", "wood"]), df_mvtec_alpha)
-# mvtec clean
-df_images_mvtec_clean = load(datadir("evaluation/images_mvtec_clean_val_final_eval_all.bson"))[:df];
-df_images_mvtec_clean = filter(r->r.modelname in sgad_models, df_images_mvtec_clean)
-#load(joinpath(orig_path, "evaluation/images_mvtec_clean_val_final_eval.bson"))[:df];
-df_mvtec[:anomaly_class] = 1
-df_images_mvtec_clean[:anomaly_class] = 1
-apply_aliases!(df_images_mvtec_clean, col="dataset", d=DATASET_ALIAS)
-
-# here we want to differentiate sgvae alpha and sgvae alpha with robust logistic regression
-#df_images_alpha_robreg = filter(r->r.method == "robreg", df_images_alpha_target)
-##inds1 = [x.beta for x in df_images_alpha_robreg.parameters] .== 1.0
-#df_images_alpha_robreg.modelname[inds1] .= "sgvae_robreg1"
-#df_images_alpha_robreg.modelname[.!inds1] .= "sgvae_robreg5"
-#filter!(r->r.method!="robreg", df_images_alpha_target)
-#df_images_alpha_target = vcat(df_images_alpha_target, df_images_alpha_robreg)
-# and do the same for mvtec as well
-#df_mvtec_robreg = filter(r->r.method == "robreg", df_mvtec_alpha)
-#inds1 = [x.beta for x in df_mvtec_robreg.parameters] .== 1.0
-#df_mvtec_robreg.modelname[inds1] .= "sgvae_robreg1"
-#df_mvtec_robreg.modelname[.!inds1] .= "sgvae_robreg5"
-#filter!(r->r.method!="robreg", df_mvtec_alpha)
-#df_mvtec_alpha = vcat(df_mvtec_alpha, df_mvtec_robreg)
+# add the vgn categories
+push!(sgad_models, "vaegan_discriminator")
+push!(sgad_models, "vaegan_feature")
+push!(sgad_models, "vaegan_reconstruction")
+MODEL_ALIAS["vaegan_discriminator"] = "vgndis"
+MODEL_ALIAS["vaegan_feature"] = "vgnfm"
+MODEL_ALIAS["vaegan_reconstruction"] = "vgnrec"
+subdf = filter(r->r.modelname == "vaegan", df_images_target)
+#df_images_target = filter(r->r.modelname != "vaegan", df_images_target)
+subdf["score"] = map(x->parse_savename(x)[2]["score"], subdf.parameters)
+subdf["modelname"] = map(x->x[1]*"_"*x[2], zip(subdf.modelname, subdf.score))
+select!(subdf, Not(:score))
+df_images_target = vcat(df_images_target, subdf)
 
 # now differentiate them
 df_semantic = filter(r->!(occursin("wmnist", r[:dataset])),df_images_target)
@@ -120,10 +100,6 @@ df_wmnist = filter(r->(occursin("wmnist", r[:dataset])),df_images_target)
 df_wmnist_alpha = filter(r->(occursin("wmnist", r[:dataset])),df_images_alpha_target)
 df_wmnist_clean = filter(r->(occursin("wmnist", r[:dataset])),df_images_loi_clean)
 
-df_mvtec = df_mvtec
-df_mvtec_alpha = df_mvtec_alpha
-df_mvtec_clean = filter(r->!(r.dataset in ["wood", "grid"]), df_images_mvtec_clean)
-
 # also, add the clean sgvae alpha lines - these are the same as the ones from sgvae
 function add_alpha_clean(df)
     subdf = filter(r->r.modelname == "sgvae", df)
@@ -137,27 +113,6 @@ df_semantic_clean = add_alpha_clean(df_semantic_clean)
 df_semantic_clean_0 = add_alpha_clean(df_semantic_clean_0)
 df_coco_clean = add_alpha_clean(df_coco_clean)
 df_wmnist_clean = add_alpha_clean(df_wmnist_clean)
-df_mvtec_clean = add_alpha_clean(df_mvtec_clean)
-
-# remove duplicate rows from mvtec clean
-models = df_mvtec_clean.modelname
-seeds = df_mvtec_clean.seed
-datasets = df_mvtec_clean.dataset
-subdfs = []
-for model in unique(models)
-    for dataset in unique(datasets)
-        for seed in unique(seeds)
-            inds = (models .== model) .& (seeds .== seed) .& (datasets .== dataset)
-            if sum(inds) > 0
-                subdf = df_mvtec_clean[inds,:]
-                #subdf = subdf[argmax(subdf.tst_auc), :]
-                subdf = subdf[1, :]
-                push!(subdfs, DataFrame(subdf))
-            end
-        end
-    end
-end
-df_mvtec_clean = vcat(subdfs...)
 
 function _incremental_rank_clean(df, criterions, agg, round_results)
     ranks, metric_means = [], []
@@ -253,6 +208,9 @@ metric = :auc
 val_metric = _prefix_symbol("val", metric)
 tst_metric = _prefix_symbol("tst", metric)
 titles = ["semantic", "semantic0", "coco", "wmnist", "mvtec"]
+level = 100
+criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
+extended_criterions = vcat(criterions, [val_metric])
 
 # aggragated cols
 non_agg_cols = ["modelname","dataset","anomaly_class","phash","parameters","seed","npars",
@@ -263,65 +221,22 @@ maxmean_f(df,crit) = aggregate_stats_max_mean(df, crit; agg_cols=[])
 # first create the knowledge plot data for the changing level of anomalies
 # at different percentages of normal data
 cnames = reverse(AUC_METRICS_NAMES)
-        
-@suppress_err begin
-for level in [100]
-	criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
-	extended_criterions = vcat(criterions, [val_metric])
-	extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
-
-	ranks_dfs = map(enumerate(zip(titles,
-	        [
-                (df_semantic, df_semantic_alpha, df_semantic_clean),
-                (df_semantic_0, df_semantic_alpha_0, df_semantic_clean_0),
-                (df_coco, df_coco_alpha, df_coco_clean),
-	            (df_wmnist, df_wmnist_alpha, df_wmnist_clean), 
-	            (df_mvtec, df_mvtec_alpha, df_mvtec_clean)]))) do (i, (title, (df, df_alpha, df_clean)))
-
-	    ranks_inc, metric_means_inc = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
-            non_agg_cols, round_results)
-	    if size(df_clean,1) > 0
-	        ranks_clean, metric_means_clean = _incremental_rank_clean(df_clean, [val_metric], maxmean_f, 
-                round_results)
-	        if !("cgn" in names(metric_means_clean))
-	            metric_means_clean[:cgn] = NaN
-	        end
-            ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), 
-	        vcat(metric_means_clean, metric_means_inc; cols=:intersect)
-	    else
-	        ranks_all, metric_means_all = ranks_inc, metric_means_inc
-	    end
-
-	    # reorder table on tabular data as there is additional class of models (flows)
-	    # one can do this manually at the end
-	    f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_v2_$(title)_ano_$(level).csv")
-	    println("saving to $f")
-	    CSV.write(f, metric_means_all)
-	    ranks_all, metric_means_all
-	end
-end
-end
-
-# then do it again but for 50/50 anomaly/normal ratios and changing amount of data
-cnames = reverse(AUCP_METRICS_NAMES)
-criterions = reverse(_prefix_symbol.("val", AUCP_METRICS))
-extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
+        
 
 @suppress_err begin
-    ranks_dfs = map(enumerate(zip(titles,
-            [(df_semantic, df_semantic_alpha, df_semantic_clean), 
-                (df_semantic_0, df_semantic_alpha_0, df_semantic_clean_0),
-                (df_coco, df_coco_alpha, df_coco_clean),
-                (df_wmnist, df_wmnist_alpha, df_wmnist_clean), 
-                (df_mvtec, df_mvtec_alpha, df_mvtec_clean)]))) do (i, (title, (df, df_alpha, df_clean)))
+ranks_dfs = map(enumerate(zip(titles,
+        [
+            (df_semantic, df_semantic_alpha, df_semantic_clean),
+            (df_semantic_0, df_semantic_alpha_0, df_semantic_clean_0),
+            (df_coco, df_coco_alpha, df_coco_clean),
+            (df_wmnist, df_wmnist_alpha, df_wmnist_clean)]))) do (i, (title, (df, df_alpha, df_clean)))
 
     ranks_inc, metric_means_inc = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
         non_agg_cols, round_results)
     if size(df_clean,1) > 0
-        ranks_clean, metric_means_clean = _incremental_rank_clean(df_clean, [val_metric], maxmean_f,
+        ranks_clean, metric_means_clean = _incremental_rank_clean(df_clean, [val_metric], maxmean_f, 
             round_results)
-        # this ensures that models w/o the clean df are also included
         for model in sgad_models
             alias = MODEL_ALIAS[model]
             if !(alias in names(metric_means_clean))
@@ -336,9 +251,11 @@ extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 
     # reorder table on tabular data as there is additional class of models (flows)
     # one can do this manually at the end
-    f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_v2_$(title)_prop.csv")
+    f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_vaegan_$(title).csv")
     println("saving to $f")
     CSV.write(f, metric_means_all)
     ranks_all, metric_means_all
 end
 end
+
+means = ans
