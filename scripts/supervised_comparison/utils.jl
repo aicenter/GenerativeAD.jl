@@ -172,7 +172,7 @@ function original_class_split(dataset)
 end
 
 function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta, init_alpha, 
-	scale, method, dataset, rdata, ldata, seed, ac, method, score_type, latent_score_type)
+	scale, dataset, rdata, ldata, seed, ac, method, score_type, latent_score_type)
 	# setup params
 	parameters = merge(ldata[:parameters], (beta=base_beta, init_alpha=init_alpha, scale=scale))
 	save_modelname = modelname*"_$method"
