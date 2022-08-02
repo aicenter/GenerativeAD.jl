@@ -68,10 +68,7 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	# decide the classes that will be used as anomalies
 	# the target + the next 4 = normal data
 	# the rest is anomalous
-	all_acs = repeat(collect(1:10), 3)
-	iac = 10 + ac
-	acsn = all_acs[iac:iac+4]
-	acsa = all_acs[iac-5:iac-1]
+	acsn, acsa = divide_classes(ac)
 	val_inds = map(c->c in acsn, c_val);
 	tst_inds = map(c->c in acsn, c_tst);
 

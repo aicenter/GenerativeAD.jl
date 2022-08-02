@@ -170,6 +170,15 @@ function original_class_split(dataset, ac; seed=1, ratios=(0.6,0.2,0.2))
 	return (c_tr, y_tr), (c_val, y_val), (c_tst, y_tst)
 end
 
+# this splits the 10 classes into two halves - one anomalous, one normal
+function divide_classes(ac)
+	all_acs = repeat(collect(1:10), 3)
+	iac = 10 + ac
+	acsn = all_acs[iac:iac+4]
+	acsa = all_acs[iac-5:iac-1]
+	return acsn, acsa
+end
+
 function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta, init_alpha, 
 	scale, dataset, rdata, ldata, seed, ac, method, score_type, latent_score_type)
 	# setup params
