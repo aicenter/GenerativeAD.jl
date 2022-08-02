@@ -166,7 +166,7 @@ function original_class_split(dataset, ac; seed=1, ratios=(0.6,0.2,0.2))
 		# since the functions for MLDatasets.MNIST, MLDatasets.CIFAR10 are the same
 		sublib = getfield(GenerativeAD.Datasets.MLDatasets, Symbol(dataset))
 		labels = cat(sublib.trainlabels(), sublib.testlabels(), dims=1)
-		c_n, c_a = labels[labels.==ac], labels[labels.!=ac]
+		cn, ca = labels[labels.==ac], labels[labels.!=ac]
 	else
 		throw("Dataset $dataset not implemented")
 	end
