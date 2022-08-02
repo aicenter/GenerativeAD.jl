@@ -58,13 +58,13 @@ init_alpha = [1.0, 0.1, 0.1, 0.1]
 function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	# 
 	outf = prepare_savefile(save_dir, lf, base_beta, method)
-	(outf == "") ? return : nothing
+	(outf == "") ? (return nothing) : nothing
 
 	# load base and latent scores
 	scores_val, scores_tst, y_val, y_tst, ldata, rdata = load_scores(model_id, lf, latent_dir, rfs, res_dir)
 
 	# now exclude some data from the validation dataset
-	(c_tr, y_tr), (c_val, y_val), (c_tst, y_tst) = original_class_split(dataset)
+	(c_tr, y_tr), (c_val, y_val), (c_tst, y_tst) = original_class_split(dataset, ac, seed=seed)
 	# decide the classes that will be used as anomalies
 	# the target + the next 4 = normal data
 	# the rest is anomalous

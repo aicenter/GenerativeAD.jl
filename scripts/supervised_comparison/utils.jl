@@ -158,7 +158,7 @@ function load_scores(model_id, lf, latent_dir, rfs, res_dir)
 	return scores_val, scores_tst, y_val, y_tst, ldata, rdata
 end
 
-function original_class_split(dataset)
+function original_class_split(dataset, ac; seed=1, ratios=(0.6,0.2,0.2))
 	# get the original data with class labels
 	if dataset == "wildlife_MNIST"
 		(xn, yn), (xa, ya) = GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=ac);
@@ -166,7 +166,6 @@ function original_class_split(dataset)
 		throw("Dataset $dataset not implemented")
 	end
 	# then get the original labels in the same splits as we have the scores
-	ratios = (0.6,0.2,0.2)
 	(c_tr, y_tr), (c_val, y_val), (c_tst, y_tst) = GenerativeAD.Datasets.train_val_test_split(yn,ya,ratios; seed=seed)
 	return (c_tr, y_tr), (c_val, y_val), (c_tst, y_tst)
 end
