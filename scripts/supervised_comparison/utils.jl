@@ -183,7 +183,7 @@ function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta,
 		res_df["modelname"] = save_modelname
 		res_df["dataset"] = dataset
 		res_df["phash"] = GenerativeAD.Evaluation.hash(parameters)
-		res_df["parameters"] = parameters
+		res_df["parameters"] = "_"*savename(parameters)
 		res_df["fit_t"] = rdata[:fit_t]
 		res_df["tr_eval_t"] = ldata[:tr_eval_t] + rdata[:tr_eval_t]
 		res_df["val_eval_t"] = ldata[:val_eval_t] + rdata[:val_eval_t]
