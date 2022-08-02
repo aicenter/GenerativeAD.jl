@@ -170,6 +170,8 @@ function original_class_split(dataset, ac; seed=1, ratios=(0.6,0.2,0.2))
 		class_ind = label_list[ac] # this sucks but it has to be here because of old code 
 		# (see GenerativeAD.Datasets.load_mldatasets_data)
 		cn, ca = labels[labels.==class_ind], labels[labels.!=class_ind]
+	elseif dataset == "cocoplaces"
+	 (xn, cn), (xa, ca) = GenerativeAD.Datasets.load_cocoplaces_data(normal_class_ind=ac);
 	else
 		throw("Dataset $dataset not implemented")
 	end
