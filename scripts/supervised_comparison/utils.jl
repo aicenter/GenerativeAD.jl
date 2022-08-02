@@ -120,7 +120,7 @@ end
 
 function prepare_savefile(save_dir, lf, base_beta, method)
 	outf = joinpath(save_dir, split(lf, ".")[1])
-	outf * "_beta=$(base_beta)_method=$(method).bson"
+	outf *= "_beta=$(base_beta)_method=$(method).bson"
 	@info "Working on $outf"
 	if !force && isfile(outf)
 		@info "Already present, skipping."

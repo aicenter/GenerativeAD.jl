@@ -30,7 +30,7 @@ s = ArgParseSettings()
         help = "normal, kld, knn or normal_logpx"
         default = "knn"
     "anomaly_class"
-    	default = 1
+    	default = 0
     	arg_type = Int
     	help = "anomaly class"
     "base_beta"
@@ -46,6 +46,7 @@ parsed_args = parse_args(ARGS, s)
 datatype = occursin("MvTEC", dataset) ? "mvtec" : "leave-one-in"
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
+acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
 
 method = "robreg"
 score_type = "logpx"
@@ -83,7 +84,7 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	tst_c = c_tst
 
 	return basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta, init_alpha, 
-		scale, method, dataset, rdata, ldata, seed, ac, method, score_type, latent_score_type)
+		scale, dataset, rdata, ldata, seed, ac, method, score_type, latent_score_type)
 end	
 
 # this is the part where we load the best models
