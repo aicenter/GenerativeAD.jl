@@ -161,12 +161,18 @@ end
 function original_class_split(dataset, ac; seed=1, ratios=(0.6,0.2,0.2))
 	# get the original data with class labels
 	if dataset == "wildlife_MNIST"
-		(xn, yn), (xa, ya) = GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=ac);
+		(xn, cn), (xa, ca) = GenerativeAD.Datasets.load_wildlife_mnist_data(normal_class_ind=ac);
+	elseif (dataset in GenerativeAD.Datasets.mldatasets)
+		# since the functions for MLDatasets.MNIST, MLDatasets.CIFAR10 are the same
+		sublib = getfield(GenerativeAD.Datasets.MLDatasets, Symbol(dataset))
+		labels = cat(sublib.trainlabels(), sublib.testlabels(), dims=1)
+		c_n, c_a = labels[labels.==ac], labels[labels.!=ac]
 	else
 		throw("Dataset $dataset not implemented")
 	end
 	# then get the original labels in the same splits as we have the scores
-	(c_tr, y_tr), (c_val, y_val), (c_tst, y_tst) = GenerativeAD.Datasets.train_val_test_split(yn,ya,ratios; seed=seed)
+	(c_tr, y_tr), (c_val, y_val), (c_tst, y_tst) = GenerativeAD.Datasets.train_val_test_split(cn,ca,ratios; 
+		seed=seed)
 	return (c_tr, y_tr), (c_val, y_val), (c_tst, y_tst)
 end
 
