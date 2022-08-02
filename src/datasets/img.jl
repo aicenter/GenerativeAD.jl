@@ -25,6 +25,8 @@ function load_mldatasets_data(dataset::String; anomaly_class_ind::Int=1)
 
 	# return the normal and anomalous data
 	label_list = unique(labels)
+	# this next line is so wrong and is a cause for why the indices and the actual digits in the pictures 
+	# do not correspond to each other
 	aclass_inds = labels .== label_list[anomaly_class_ind] # indices of anomalous data
 	data[:,:,:,.!aclass_inds], data[:,:,:,aclass_inds]
 end
