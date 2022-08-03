@@ -1,3 +1,17 @@
+using DrWatson
+@quickactivate
+using GenerativeAD
+using PyCall
+using BSON, FileIO, DataFrames
+using EvalMetrics
+using OrderedCollections
+using ArgParse
+using Suppressor
+using StatsBase
+using Random
+using GenerativeAD.Evaluation: _prefix_symbol, _get_anomaly_class, _subsample_data
+using GenerativeAD.Evaluation: BASE_METRICS, AUC_METRICS
+
 function basic_stats(labels, scores)
 	try
 		roc = EvalMetrics.roccurve(labels, scores)
