@@ -182,10 +182,12 @@ function original_class_split(dataset, ac; seed=1, ratios=(0.6,0.2,0.2))
 		labels = cat(sublib.trainlabels(), sublib.testlabels(), dims=1)
 		label_list = unique(labels)
 		class_ind = label_list[ac] # this sucks but it has to be here because of old code 
+		_labels = deepcopy(labels) # because of that, we also need to relabel the labels
+		map(l->_labels[labels .== l[2]] .= l[1], enumerate(label_list))
 		# (see GenerativeAD.Datasets.load_mldatasets_data)
-		cn, ca = labels[labels.==class_ind], labels[labels.!=class_ind]
+		cn, ca = _labels[labels.==class_ind], _labels[labels.!=class_ind]
 	elseif dataset == "cocoplaces"
-	 (xn, cn), (xa, ca) = GenerativeAD.Datasets.load_cocoplaces_data(normal_class_ind=ac);
+		(xn, cn), (xa, ca) = GenerativeAD.Datasets.load_cocoplaces_data(normal_class_ind=ac);
 	else
 		throw("Dataset $dataset not implemented")
 	end
