@@ -1,4 +1,4 @@
-# this script collects the 
+# this script collects the top models and deltes the rest
 using DrWatson
 @quickactivate
 using GenerativeAD
@@ -58,7 +58,7 @@ end
 
 n_left = 10
 for model in ["vae", "fmgan", "DeepSVDD", "fAnoGAN"]
-    for dataset in ["wildlife_MNIST"]
+    for dataset in ["cocoplaces"]
         for ac in 1:10
             for seed in 1:1
                 modelpath = datadir("experiments/images_$(datatype)/$(model)/$(dataset)/ac=$(ac)/seed=$(seed)")

@@ -283,9 +283,12 @@ for level in [100]
 	    if size(df_clean,1) > 0
 	        ranks_clean, metric_means_clean = _incremental_rank_clean(df_clean, [val_metric], maxmean_f, 
                 round_results)
-	        if !("cgn" in names(metric_means_clean))
-	            metric_means_clean[:cgn] = NaN
-	        end
+            for model in sgad_models
+                alias = MODEL_ALIAS[model]
+                if !(alias in names(metric_means_clean))
+                    metric_means_clean[alias] = NaN
+                end
+            end
             ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), 
 	        vcat(metric_means_clean, metric_means_inc; cols=:intersect)
 	    else

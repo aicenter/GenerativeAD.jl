@@ -60,7 +60,7 @@ function classifier_constructor(;idim=(32,32,3), batchsize = 32, activation = "r
     return Classifier(map, lr, batchsize)
 end
 
-function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters)
+function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters)
 	# cosntruct the model
 	model = classifier_constructor(;parameters...) |> gpu
 
@@ -126,13 +126,12 @@ function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters)
 	end
 
 	# rest of the setup
-	iterations = 2000
 	ps = Flux.params(model);
 	loss = (x,y) -> Flux.logitcrossentropy(model(x), y)
 	opt = ADAM(model.lr)
 
 	# train
-	Flux.Optimise.train!(loss, ps, repeatedly(minibatch, iterations), opt, cb = Flux.throttle(cb, 2))
+	Flux.Optimise.train!(loss, ps, repeatedly(minibatch, niters), opt, cb = Flux.throttle(cb, 2))
 
 	# compute the interesting values - tst and val auc
     testmode!(model)
