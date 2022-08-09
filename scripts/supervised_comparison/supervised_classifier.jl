@@ -35,7 +35,7 @@ max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
 modelname = "classifier"
-niters = 200
+niters = 1000
 max_seed_perf = 10
 
 function experiment(dataset, ac, seed, savedir)
