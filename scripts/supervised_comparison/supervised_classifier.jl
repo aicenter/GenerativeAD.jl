@@ -38,7 +38,7 @@ modelname = "classifier"
 niters = 1000
 max_seed_perf = 10
 
-function experiment(dataset, ac, seed, savedir)
+function experiment(dataset, ac, seed, save_dir)
 	# get the data
 	(tr_x, tr_y), (tst_x, tst_y) = basic_classifier_inputs(dataset, ac, seed)
 
