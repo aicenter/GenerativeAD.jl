@@ -141,6 +141,9 @@ function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters, verb=true)
 	tr_probs, tst_probs = map(probs, (tr_x, tst_x))
     trainmode!(model)
 
+    if verb 
+    	println("")
+    end
 	# return the predicted values
 	return model, history, tr_probs[2,:], tst_probs[2,:]
 end
