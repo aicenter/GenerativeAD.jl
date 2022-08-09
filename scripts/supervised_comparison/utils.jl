@@ -118,7 +118,7 @@ function perf_at_p_new(p, p_normal, tr_x::AbstractArray{T,4}, tr_y, tst_x::Abstr
 	else
 		try
 			parameters = merge(parameters, (batchsize=min(parameters.batchsize, floor(Int,sum(y)/2)*2),))
-			@info "Trying to fit with $(parameters)..."
+			@info "Trying to fit with $(parameters), seed=$seed..."
 			model, history, tr_probs, tst_probs = fit_classifier(x, y, tst_x, tst_y, parameters, niters)
 			@info "Done."
 			return auc_val(y, tr_probs), auc_val(tst_y, tst_probs)
