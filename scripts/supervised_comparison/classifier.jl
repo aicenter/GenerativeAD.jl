@@ -60,21 +60,21 @@ function classifier_constructor(;idim=(32,32,3), batchsize = 32, activation = "r
     return Classifier(map, lr, batchsize)
 end
 
-function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters)
+function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters, verb=true)
 	# cosntruct the model
 	model = classifier_constructor(;parameters...) |> gpu
 
 	# minibatch loader - equal samples from both classes
-	labelnames = unique(val_y)
+	labelnames = unique(tr_y)
 	function minibatch()
 	    nb = Int(model.batchsize/2)
-	    n1 = Int(sum(val_y))
-	    n0 = length(val_y) - n1
+	    n1 = Int(sum(tr_y))
+	    n0 = length(tr_y) - n1
 	    idx1 = sample(1:n1, nb, replace=false)
 	    idx0 = sample(1:n0, nb, replace=false)
-	    T = eltype(val_y)
-	    inds = Bool.(val_y)
-	    x = gpu(cat(val_x[:,:,:, .!inds][:,:,:,idx0], val_x[:,:,:,inds][:,:,:,idx1], dims=4))
+	    T = eltype(tr_y)
+	    inds = Bool.(tr_y)
+	    x = gpu(cat(tr_x[:,:,:, .!inds][:,:,:,idx0], tr_x[:,:,:,inds][:,:,:,idx1], dims=4))
 	    y = gpu(Flux.onehotbatch(vcat(zeros(T, nb), ones(T,nb)), labelnames))
 	    x, y
 	end
@@ -95,9 +95,9 @@ function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters)
 	cb = () -> begin
 		# get scores
 	    testmode!(model)
-		ps = map(probs, (val_x, tst_x))
+		ps = map(probs, (tr_x, tst_x))
 		y_preds = map(predict, ps)
-		y_trues = (val_y, tst_y)
+		y_trues = (tr_y, tst_y)
 	    trainmode!(model)
 
 		# precisions	
@@ -107,10 +107,13 @@ function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters)
 		tr_acc_neg, tst_acc_neg = map(y->round(accuracy(y[1], y[2], 0),digits=3), zip(y_trues, y_preds))
 		tr_auc, tst_auc = map(y->round(auc_val(y[1], predict_scores(y[2])), digits=3), zip(y_trues, ps))
 
-		println("                 acc |prec |TPR  |FPR  |AUC: 
-	        train = $(tr_acc)|$(tr_prec)|$(tr_acc_pos)|$(tr_acc_neg)|$(tr_auc), 
-	        test  = $(tst_acc)|$(tst_prec)|$(tst_acc_pos)|$(tst_acc_neg)|$(tst_auc)")
-	    
+		# verbosity
+		if verb
+			println("                 acc |prec |TPR  |FPR  |AUC: 
+		        train = $(tr_acc)|$(tr_prec)|$(tr_acc_pos)|$(tr_acc_neg)|$(tr_auc), 
+		        test  = $(tst_acc)|$(tst_prec)|$(tst_acc_pos)|$(tst_acc_neg)|$(tst_auc)")
+		end
+			    
 	    # save to history
 	    i += 1
 	    push!(history, :tr_acc, i, tr_acc)
