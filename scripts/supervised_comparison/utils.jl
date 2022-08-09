@@ -143,6 +143,25 @@ function prepare_savefile(save_dir, lf, base_beta, method)
 	return outf
 end
 
+function extended_savename(ps)
+	f(x,y) = "$x-$y"
+	ps = merge(ps, (kernelsizes = reduce(f, ps.kernelsizes),))
+	ps = merge(ps, (scalings = reduce(f, ps.scalings),))
+	ps = merge(ps, (channels = reduce(f, ps.channels),))
+	savename(ps, "bson")
+end
+
+# this is the version for classifier
+function prepare_savefile(save_dir, params)
+	outf = joinpath(save_dir, extended_savename(params))
+	@info "Working on $outf"
+	if !force && isfile(outf)
+		@info "Already present, skipping."
+        return ""
+	end	
+	return outf
+end
+
 function load_scores(model_id, lf, latent_dir, rfs, res_dir)
 	# load the saved scores
 	ldata = load(joinpath(latent_dir, lf))
