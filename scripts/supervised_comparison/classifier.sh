@@ -4,6 +4,8 @@
 #SBATCH --gres=gpu:1
 #SBATCH --partition=gpu
 #SBATCH --mem=40G
+#SBATCH --job-name classifier
+#SBATCH --output /home/skvarvit/logs/classifier/%J.log
 
 DATASET=$1
 
