@@ -142,7 +142,7 @@ function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters, verb=true)
     trainmode!(model)
 
 	# return the predicted values
-	return model, history, tr_probs, tst_probs
+	return model, history, tr_probs[2,:], tst_probs[2,:]
 end
 
 batch_eval(scoref, x, batchsize=512) =
