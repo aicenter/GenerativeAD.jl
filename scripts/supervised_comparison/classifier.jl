@@ -138,8 +138,8 @@ function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters, verb=true)
 
 	# compute the interesting values - tst and val auc
     testmode!(model)
-	ps = map(probs, (val_x, tst_x))
-	y_trues = (val_y, tst_y)
+	ps = map(probs, (tr_x, tst_x))
+	y_trues = (tr_y, tst_y)
     trainmode!(model)
 
 	# precisions	
