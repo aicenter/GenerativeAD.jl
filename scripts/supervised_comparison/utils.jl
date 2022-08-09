@@ -104,6 +104,33 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
 	return val_auc, tst_auc
 end	
 
+# this is the version for the supervised classifier
+function perf_at_p_new(p, p_normal, tr_x::AbstractArray{T,4}, tr_y, tst_x::AbstractArray{T,4}, tst_y, 
+	parameters, niters; seed=nothing, kwargs...) where T
+	x, y, _ = try
+		_subsample_data(p, p_normal, tr_y, tr_x; seed=seed)
+	catch e
+		rethrow(e)
+		return NaN, NaN
+	end
+	# if there are samples only from one class return NaNs
+	if sum(y) == 0 || sum(y) == length(y) 
+		return NaN, NaN
+	else
+		try
+			parameters = merge(parameters, (batchsize=min(parameters.batchsize, floor(Int,sum(y)/2)*2),))
+			model, history, tr_probs, tst_probs = fit_classifier(x, y, tst_x, tst_y, parameters, niters)
+			return auc_val(y, tr_probs), auc_val(tst_y, tst_probs)
+		catch e
+			if  3==4
+				nothing
+			else
+				rethrow(e)
+			end
+		end
+	end
+end	
+
 nanmean(x) = mean(x[.!isnan.(x)])
 
 function perf_at_p_agg(args...; kwargs...)
