@@ -113,7 +113,7 @@ function perf_at_p_new(p, p_normal, tr_x::AbstractArray{T,4}, tr_y, tst_x::Abstr
 		return NaN, NaN
 	end
 	# if there are samples only from one class return NaNs
-	if sum(y) == 0 || sum(y) == length(y) 
+	if sum(y) <= 1 || sum(y) == length(y) 
 		return NaN, NaN
 	else
 		try
