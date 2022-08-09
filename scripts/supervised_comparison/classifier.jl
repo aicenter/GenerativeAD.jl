@@ -134,7 +134,7 @@ function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters, verb=true)
 	opt = ADAM(model.lr)
 
 	# train
-	Flux.Optimise.train!(loss, ps, repeatedly(minibatch, niters), opt, cb = Flux.throttle(cb, 2))
+	Flux.Optimise.train!(loss, ps, repeatedly(minibatch, niters), opt, cb = Flux.throttle(cb, 1))
 
 	# compute the scores
     testmode!(model)
@@ -144,7 +144,7 @@ function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters, verb=true)
     if verb 
     	println("")
     end
-    
+
 	# return the predicted values
 	return model, history, tr_probs[2,:], tst_probs[2,:]
 end
