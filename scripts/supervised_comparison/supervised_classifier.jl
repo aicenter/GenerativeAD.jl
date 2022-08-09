@@ -89,11 +89,6 @@ function experiment(dataset, ac, seed, savedir)
 	res_df
 end	
 
-
-ac = 1
-seed = 1
-
-
 for ac in acs
 	for seed in 1:max_seed
 		save_dir = datadir("supervised_comparison/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
