@@ -110,7 +110,6 @@ function perf_at_p_new(p, p_normal, tr_x::AbstractArray{T,4}, tr_y, tst_x::Abstr
 	x, y, _ = try
 		_subsample_data(p, p_normal, tr_y, tr_x; seed=seed)
 	catch e
-		rethrow(e)
 		return NaN, NaN
 	end
 	# if there are samples only from one class return NaNs
@@ -122,11 +121,7 @@ function perf_at_p_new(p, p_normal, tr_x::AbstractArray{T,4}, tr_y, tst_x::Abstr
 			model, history, tr_probs, tst_probs = fit_classifier(x, y, tst_x, tst_y, parameters, niters)
 			return auc_val(y, tr_probs), auc_val(tst_y, tst_probs)
 		catch e
-			if  3==4
-				nothing
-			else
-				rethrow(e)
-			end
+			rethrow(e)
 		end
 	end
 end	
