@@ -155,10 +155,6 @@ end
 function prepare_savefile(save_dir, params)
 	outf = joinpath(save_dir, extended_savename(params))
 	@info "Working on $outf"
-	if !force && isfile(outf)
-		@info "Already present, skipping."
-        return ""
-	end	
 	return outf
 end
 
