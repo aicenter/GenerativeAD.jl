@@ -22,13 +22,13 @@ Modifies symbol `s` by adding `prefix` with underscore.
 _prefix_symbol(prefix, s) = Symbol("$(prefix)_$(s)")
 
 """
-	_subsample_data(p, p_normal, labels, scores; seed=nothing)
+	_subsample_data(p, p_normal, labels, data; seed=nothing)
 
 p is the amount of anomalies to include in the evaluation
 1.0 means that the same number of normal and anomalous data is used
 p_normal is the amount of normal data to use
 """
-function _subsample_data(p, p_normal, labels, scores; seed=nothing)
+function _subsample_data(p, p_normal, labels, data; seed=nothing)
 	# set seed
 	isnothing(seed) ? nothing : Random.seed!(seed) 
 
@@ -55,10 +55,16 @@ function _subsample_data(p, p_normal, labels, scores; seed=nothing)
 	inds[labels .== 1] .= bin_ainds
 
 	# just return the samples then
-	if ndims(scores) == 1
-		return scores[inds], labels[inds], collect(1:length(labels))[inds]
+	if ndims(data) == 1
+		return data[inds], labels[inds], collect(1:length(labels))[inds]
+	elseif ndims(data) == 2
+		return data[inds,:], labels[inds], collect(1:length(labels))[inds]
+	elseif ndims(data) == 3
+		return data[:,:,inds], labels[inds], collect(1:length(labels))[inds]
+	elseif ndims(data) == 4
+		return data[:,:,:,inds], labels[inds], collect(1:length(labels))[inds]
 	else
-		return scores[inds,:], labels[inds], collect(1:length(labels))[inds]
+		throw("Not implemented for bigger dimension than 4.")
 	end
 end
 
