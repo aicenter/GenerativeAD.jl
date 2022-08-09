@@ -136,17 +136,13 @@ function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters, verb=true)
 	# train
 	Flux.Optimise.train!(loss, ps, repeatedly(minibatch, niters), opt, cb = Flux.throttle(cb, 2))
 
-	# compute the interesting values - tst and val auc
+	# compute the scores
     testmode!(model)
-	ps = map(probs, (tr_x, tst_x))
-	y_trues = (tr_y, tst_y)
+	tr_probs, tst_probs = map(probs, (tr_x, tst_x))
     trainmode!(model)
 
-	# precisions	
-	tr_auc, tst_auc = map(y->auc_val(y[1], predict_scores(y[2])), zip(y_trues, ps))
-
 	# return the predicted values
-	return model, history, tr_auc, tst_auc
+	return model, history, tr_probs, tst_probs
 end
 
 batch_eval(scoref, x, batchsize=512) =
