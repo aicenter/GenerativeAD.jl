@@ -110,8 +110,8 @@ function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters, verb=true)
 		# verbosity
 		if verb
 			println("                 acc |prec |TPR  |FPR  |AUC: 
-		train = $(tr_acc)|$(tr_prec)|$(tr_acc_pos)|$(tr_acc_neg)|$(tr_auc), 
-		test  = $(tst_acc)|$(tst_prec)|$(tst_acc_pos)|$(tst_acc_neg)|$(tst_auc)")
+train = $(tr_acc)|$(tr_prec)|$(tr_acc_pos)|$(tr_acc_neg)|$(tr_auc), 
+test  = $(tst_acc)|$(tst_prec)|$(tst_acc_pos)|$(tst_acc_neg)|$(tst_auc)")
 		end
 
 	    # save to history
