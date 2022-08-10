@@ -85,4 +85,6 @@ for modelname in ["classifier", "sgvaea"]
     end
 end
 
-CSV.write(datadir("evaluation/result_tables/supervised_comparison.csv"), res_df)
+f = datadir("evaluation/result_tables/supervised_comparison.csv")
+CSV.write(f, res_df)
+@info "Written result to $f"
