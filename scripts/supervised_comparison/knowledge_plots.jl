@@ -20,7 +20,7 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$"]
 
 
-include("./utils/ranks.jl")
+include("../evaluation/utils/ranks.jl")
 outdir = "result_tables"
 
 models = ["classifier", "sgvae_alpha"]
