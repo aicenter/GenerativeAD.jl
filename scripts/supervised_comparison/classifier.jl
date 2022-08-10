@@ -61,8 +61,8 @@ function classifier_constructor(;idim=(32,32,3), batchsize = 32, activation = "r
 end
 
 function fit_classifier(tr_x, tr_y, tst_x, tst_y, parameters, niters, verb=true)
-	# cosntruct the model
-	model = classifier_constructor(;parameters...) |> gpu
+	# construct the model
+	model = classifier_constructor(;idim=size(tr_x)[1:3], parameters...) |> gpu
 
 	# minibatch loader - equal samples from both classes
 	labelnames = unique(tr_y)
