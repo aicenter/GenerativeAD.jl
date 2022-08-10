@@ -43,6 +43,7 @@ s = ArgParseSettings()
 end
 parsed_args = parse_args(ARGS, s)
 @unpack modelname, dataset, latent_score_type, anomaly_class, base_beta, force = parsed_args
+@info "running with these params: $(parsed_args)"
 datatype = occursin("MvTEC", dataset) ? "mvtec" : "leave-one-in"
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
