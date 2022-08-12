@@ -1,11 +1,12 @@
 #!/bin/bash
 
-DATASET_FILE=$1
-DATATYPE=$2
-AC=$3
-FORCE=$4
+MODEL=$1
+DATASET_FILE=$2
+DATATYPE=$3
+AC=$4
+FORCE=$5
 
-LOG_DIR="${HOME}/logs/sgvae_knn_scores"
+LOG_DIR="${HOME}/logs/knn_scores"
 
 if [ ! -d "$LOG_DIR" ]; then
     mkdir $LOG_DIR
@@ -15,5 +16,5 @@ while read d; do
     # submit to slurm
     sbatch \
     --output="${LOG_DIR}/${d}_${AC}_%A.out" \
-     ./compute_knn_scores_per_class.sh $d $DATATYPE $AC $FORCE
+     ./compute_knn_scores_per_class.sh $MODEL $d $DATATYPE $AC $FORCE
 done < ${DATASET_FILE}

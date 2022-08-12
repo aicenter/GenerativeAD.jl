@@ -3,9 +3,10 @@
 #SBATCH --nodes=1 --ntasks-per-node=2 --cpus-per-task=2
 #SBATCH --mem=20G
 
-DATASET=$1
-DATATYPE=$2
-FORCE=$3
+MODEL=$1
+DATASET=$2
+DATATYPE=$3
+FORCE=$4
 
 module load Julia/1.5.3-linux-x86_64
 module load Python/3.9.6-GCCcore-11.2.0
@@ -14,4 +15,4 @@ source ${HOME}/sgad-env/bin/activate
 export PYTHON="${HOME}/sgad-env/bin/python"
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-julia ./compute_knn_scores.jl sgvae ${DATASET} ${DATATYPE} $FORCE
+julia ./compute_knn_scores.jl $MODEL ${DATASET} ${DATATYPE} $FORCE
