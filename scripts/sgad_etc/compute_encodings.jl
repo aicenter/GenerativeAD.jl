@@ -6,8 +6,6 @@ using BSON, FileIO, DataFrames
 using ArgParse, StatsBase
 include("../pyutils.jl")
 
-println(ARGS)
-
 s = ArgParseSettings()
 @add_arg_table! s begin
    "modelname"
@@ -50,7 +48,13 @@ function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_d
         @info "Model weights not found in $md."
         return
     end    
-    model = load_sgvae_model(md, device);
+    model = if modelname == !"sgvae"
+        load_sgvae_model(md, device);
+    elseif modelname == !"sgvaegan"
+        load_sgvaegan_model(md, device);
+    else
+        error("Unknown model type $modelname, don't know how to load it.")
+    end
     model.eval();
 
     # load the original result file for this model
