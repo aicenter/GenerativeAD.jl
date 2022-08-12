@@ -6,6 +6,8 @@ using BSON, FileIO, DataFrames
 using ArgParse, StatsBase
 include("../pyutils.jl")
 
+println(ARGS)
+
 s = ArgParseSettings()
 @add_arg_table! s begin
    "modelname"
