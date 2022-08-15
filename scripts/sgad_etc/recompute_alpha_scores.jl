@@ -55,16 +55,6 @@ max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
 
-modelname = "sgvaegan"
-ac = 1
-seed = 1
-method = "robreg"
-
-# this is the part where we load the best models
-bestf = datadir("sgad_alpha_evaluation_kp/best_models_$(datatype).bson")
-best_models = load(bestf)
-
-
 score_type = if modelname == "sgvae"
 	"logpx"
 elseif modelname == "sgvaegan"
@@ -83,52 +73,6 @@ alpha0 = if modelname == "sgvae"
 elseif modelname == "sgvaegan"
 	[1, 1, 1, 0, 0, 0]
 end
-
-latent_dir = datadir("sgad_latent_scores/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-lfs = readdir(latent_dir)
-ltypes = map(lf->split(split(lf, "score=")[2], ".")[1], lfs)
-lfs = lfs[ltypes .== latent_score_type]
-model_ids = map(x->Meta.parse(split(split(x, "=")[2], "_")[1]), lfs)
-
-# make the save dir
-save_dir = datadir("sgad_alpha_evaluation_kp/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-mkpath(save_dir)
-@info "Saving data to $(save_dir)..."
-
-# top score files
-res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-rfs = readdir(res_dir)
-rfs = if modelname == "sgvae" 
-	filter(x->occursin(score_type, x), rfs)
-elseif modelname == "sgvaegan"
-	rfs
-end
-
-# this is where we select the files of best models
-# now add the best models to the mix
-inds = (best_models[:anomaly_class] .== ac) .& (best_models[:seed] .== seed) .& 
-	(best_models[:dataset] .== dataset) .& (occursin.(modelname, best_models[:modelname]))
-best_params = best_models[:parameters][inds]
-
-# from these params extract the correct model_ids and lfs
-parsed_params = map(x->parse_savename("s_$x")[2], best_params)
-best_model_ids = [x["init_seed"] for x in parsed_params]
-best_lfs = map(x->get_latent_file(x, lfs), parsed_params)
-
-# use only those that are not nothing - in agreement with the latent_score_type
-used_inds = .!map(isnothing, best_lfs)
-
-# also, scramble the rest of the models
-n = length(model_ids)
-rand_inds = sample(1:n, n, replace=false)
-
-# this is what will be iterated over
-final_model_ids = vcat(best_model_ids[used_inds], model_ids[rand_inds])
-final_lfs = vcat(best_lfs[used_inds], lfs[rand_inds])
-
-i = 1
-lf = final_lfs[i]
-model_id = final_model_ids[i]
 
 function basic_stats(labels, scores)
 	try
@@ -250,8 +194,8 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	end
 
 	# setup params
-	parameters = merge(ldata[:parameters], (beta=base_beta, init_alpha=init_alpha, scale=scale,
-		score = score_type))
+	parameters = merge(ldata[:parameters], (beta=base_beta, init_alpha=init_alpha, alpha0=alpha0, 
+		scale=scale, score = score_type))
 	save_modelname = (method == "logreg") ? modelname : modelname*"_$method"
 
 	res_df = @suppress begin
@@ -281,13 +225,14 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 		val_scores = val_scores[inds, :]
 		val_y = val_y[inds]
 
-        # get the ligistic regression model
+        # get the logistic regression model
         model = if method == "logreg"
             LogReg()
         elseif method == "probreg"
             ProbReg()
         elseif method == "robreg"
-            RobReg(input_dim = size(val_scores,2), alpha=init_alpha, beta=base_beta/sum(val_y))
+            RobReg(input_dim = size(val_scores,2), alpha=init_alpha, alpha0=alpha0, 
+            	beta=base_beta/sum(val_y))
         else
             error("unknown method $method")
         end
