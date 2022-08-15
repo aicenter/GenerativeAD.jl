@@ -89,16 +89,24 @@ apply_aliases!(df_images_alpha, col="dataset", d=DATASET_ALIAS) # rename
 prow = copy(df_images[1:1,:])
 for dataset in unique(df_images_alpha.dataset)
     for ac in unique(df_images_alpha.anomaly_class)
-        subdf = filter(r->r.dataset==dataset && r.anomaly_class==ac && !isnan(r.tst_auc), df_images_alpha) 
-        imax = argmax(subdf.val_auc)
-        r = subdf[imax,:]
-        prow.modelname = "sgvae_alpha"
-        prow.dataset = dataset
-        prow.anomaly_class = ac
-        prow.tst_auc = r.tst_auc
-        prow.val_auc = r.val_auc
-        prow.seed = 1
-        df_images = vcat(df_images, prow)
+        for model in ["sgvae_", "sgvaegan_"]
+            subdf = filter(r->r.dataset==dataset && 
+                r.anomaly_class==ac && 
+                !isnan(r.tst_auc) &&
+                occursin(model, r.modelname), df_images_alpha) 
+            if size(subdf, 1) == 0
+                continue
+            end
+            imax = argmax(subdf.val_auc)
+            r = subdf[imax,:]
+            prow.modelname = model*"alpha"
+            prow.dataset = dataset
+            prow.anomaly_class = ac
+            prow.tst_auc = r.tst_auc
+            prow.val_auc = r.val_auc
+            prow.seed = 1
+            df_images = vcat(df_images, prow)
+        end
     end
 end
 

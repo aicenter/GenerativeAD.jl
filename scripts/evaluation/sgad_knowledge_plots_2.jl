@@ -23,15 +23,14 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "vaegan", "sgvaegan", "sgvae", "sgvae_alpha"]
-sgad_alpha_models = ["sgvae_alpha"]
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "vaegan", "sgvaegan", "sgvae", "sgvae_alpha",
+    "sgvaegan_alpha"]
+sgad_alpha_models = ["sgvae_alpha", "sgvaegan_alpha"]
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 round_results = false
 
 function prepare_alpha_df!(df)
     apply_aliases!(df, col="dataset", d=DATASET_ALIAS) # rename
-    filter!(r->r.modelname in sgad_models, df)
-    df.modelname = "sgvae_alpha"
     df.dataset[df.dataset .== "metal_nut"] .= "nut"
     df["fs_fit_t"] = NaN
     df["fs_eval_t"] = NaN
@@ -50,9 +49,11 @@ df_images_target = filter(r->r.modelname != "sgvae_alpha", df_images_target);
 # LOI alpha scores
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
 #df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
-filter!(r->r.modelname == "sgvae_robreg", df_images_alpha)
-filter!(r->r.parameters.beta == 1.0, df_images_alpha)
-df_images_alpha.modelname .= "sgvae_alpha"
+filter!(r->occursin("_robreg", r.modelname), df_images_alpha)
+filter!(r->get(r.parameters, :beta, 1.0) == 1.0, df_images_alpha)
+for model in ["sgvae_", "sgvaegan_"]
+    df_images_alpha.modelname[map(r->occursin(model, r.modelname), eachrow(df_images_alpha))] .= model*"alpha"
+end
 prepare_alpha_df!(df_images_alpha)
 df_images_alpha_target, _ = _split_image_datasets(df_images_alpha, TARGET_DATASETS);
 
@@ -168,6 +169,7 @@ function _incremental_rank_clean(df, criterions, agg, round_results)
 
             
             # some model might be missing
+#            add_missiong_model!(df_agg, "sgvae_alpha")
             nr = size(df_agg,2)
             modelnames = df_agg.modelname
             if !("sgvae_alpha" in modelnames)
