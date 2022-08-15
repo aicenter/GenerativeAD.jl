@@ -75,7 +75,8 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	(outf == "") ? (return nothing) : nothing
 
 	# load base and latent scores
-	scores_val, scores_tst, y_val, y_tst, ldata, rdata = load_scores(model_id, lf, latent_dir, rfs, res_dir)
+	scores_val, scores_tst, y_val, y_tst, ldata, rdata = load_scores(model_id, lf, latent_dir, rfs, res_dir,
+		modelname)
 
 	# now exclude some data from the validation dataset
 	(c_tr, y_tr), (c_val, y_val), (c_tst, y_tst) = original_class_split(dataset, ac, seed=seed)
@@ -94,7 +95,7 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	tst_y = y_tst
 	tst_c = c_tst
 
-	return basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta, init_alpha, 
+	return basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta, init_alpha, alpha0, 
 		scale, dataset, rdata, ldata, seed, ac, method, score_type, latent_score_type)
 end	
 

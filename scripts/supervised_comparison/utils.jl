@@ -36,7 +36,7 @@ end
 
 auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
 
-function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_alpha, base_beta; 
+function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_alpha, alpha0, base_beta; 
 	seed=nothing, scale=true, kwargs...)
 	scores, labels, _ = try
 		_subsample_data(p, p_normal, val_y, val_scores; seed=seed)
@@ -63,7 +63,8 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
             elseif method == "probreg"
                 ProbReg()
             elseif method == "robreg"
-                RobReg(alpha=init_alpha, beta=base_beta/sum(labels))
+                RobReg(input_dim = size(scores,2), alpha=init_alpha, alpha0=alpha0, 
+                	beta=base_beta/sum(labels))
             else
                 error("unknown method $method")
             end
@@ -334,7 +335,7 @@ function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta,
 		# then do the same on a small section of the data
 		ps = [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]
 		auc_ano_100 = [perf_at_p_agg(p/100, 1.0, val_scores, val_y, tst_scores, tst_y, init_alpha, 
-            base_beta; scale=scale) for p in ps]
+            alpha0, base_beta; scale=scale) for p in ps]
 		for (k,v) in zip(map(x->x * "_100", AUC_METRICS), auc_ano_100)
 			res_df["val_"*k] = v[1]
 			res_df["tst_"*k] = v[2]
@@ -346,6 +347,6 @@ function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta,
 	# then save it
 	res_df = DataFrame(res_df)
 	save(outf, Dict(:df => res_df))
-	#@info "Saved $outf."
+	@info "Saved $outf."
 	res_df
 end
