@@ -308,7 +308,7 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	# then save it
 	res_df = DataFrame(res_df)
 	save(outf, Dict(:df => res_df))
-	#@info "Saved $outf."
+	@info "Saved $outf."
 	res_df
 end
 
