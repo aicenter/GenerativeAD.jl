@@ -266,10 +266,10 @@ function divide_classes(ac)
 	return acsn, acsa
 end
 
-function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta, init_alpha, 
+function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta, init_alpha, alpha0, 
 	scale, dataset, rdata, ldata, seed, ac, method, score_type, latent_score_type)
 	# setup params
-	parameters = merge(ldata[:parameters], (beta=base_beta, init_alpha=init_alpha, scale=scale))
+	parameters = merge(ldata[:parameters], (beta=base_beta, init_alpha=init_alpha, alpha0=alpha0, scale=scale))
 	save_modelname = modelname*"_$method"
 
 	res_df = @suppress begin
@@ -300,7 +300,8 @@ function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta,
 		val_y = val_y[inds]
 
         # get the logistic regression model - scale beta by the number of anomalies
-        model = RobReg(alpha=init_alpha, beta=base_beta/sum(val_y))
+        model = RobReg(input_dim = size(val_scores,2), alpha=init_alpha, beta=base_beta/sum(val_y), 
+        	alpha0=alpha0)
         
         # fit
         converged = true

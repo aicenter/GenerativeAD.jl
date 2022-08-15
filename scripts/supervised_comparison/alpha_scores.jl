@@ -50,11 +50,24 @@ max_seed = (datatype == "mvtec") ? 5 : 1
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
 
 method = "robreg"
-score_type = "logpx"
 device = "cpu"
 max_seed_perf = 10
 scale = true
-init_alpha = [1.0, 0.1, 0.1, 0.1]
+score_type = if modelname == "sgvae"
+	"logpx"
+elseif modelname == "sgvaegan"
+	"all"
+end
+init_alpha = if modelname == "sgvae"
+	[1.0, 0.1, 0.1, 0.1]
+elseif modelname == "sgvaegan"
+	[1.0, 1.0, 1.0, 0.1, 0.1, 0.1]
+end
+alpha0 = if modelname == "sgvae"
+	[1, 0, 0, 0]
+elseif modelname == "sgvaegan"
+	[1, 1, 1, 0, 0, 0]
+end
 
 function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	# 

@@ -55,14 +55,14 @@ max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
 
+device = "cpu"
+max_seed_perf = 10
+scale = true
 score_type = if modelname == "sgvae"
 	"logpx"
 elseif modelname == "sgvaegan"
 	"all"
 end
-device = "cpu"
-max_seed_perf = 10
-scale = true
 init_alpha = if modelname == "sgvae"
 	[1.0, 0.1, 0.1, 0.1]
 elseif modelname == "sgvaegan"
@@ -125,7 +125,8 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
             elseif method == "probreg"
                 ProbReg()
             elseif method == "robreg"
-                RobReg(alpha=init_alpha, alpha0=alpha0, beta=base_beta/sum(labels))
+                RobReg(input_dim = size(scores,2), alpha=init_alpha, alpha0=alpha0, 
+                	beta=base_beta/sum(labels))
             else
                 error("unknown method $method")
             end
