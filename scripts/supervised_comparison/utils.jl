@@ -182,7 +182,7 @@ function prepare_savefile(save_dir, params)
 	return outf
 end
 
-function load_scores(model_id, lf, latent_dir, rfs, res_dir, modelname=="sgvae")
+function load_scores(model_id, lf, latent_dir, rfs, res_dir, modelname="sgvae")
 	# load the saved scores
 	ldata = load(joinpath(latent_dir, lf))
 	if isnan(ldata[:val_scores][1])
