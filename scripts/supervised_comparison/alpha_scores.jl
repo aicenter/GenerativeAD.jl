@@ -77,6 +77,9 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	# load base and latent scores
 	scores_val, scores_tst, y_val, y_tst, ldata, rdata = load_scores(model_id, lf, latent_dir, rfs, res_dir,
 		modelname)
+	if isnothing(rdata) && isnothing(ldata)
+		return
+	end
 
 	# now exclude some data from the validation dataset
 	(c_tr, y_tr), (c_val, y_val), (c_tst, y_tst) = original_class_split(dataset, ac, seed=seed)
@@ -123,7 +126,11 @@ for ac in acs
 		# top score files
 		res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
 		rfs = readdir(res_dir)
-		rfs = filter(x->occursin(score_type, x), rfs)
+		rfs = if modelname == "sgvae" 
+			filter(x->occursin(score_type, x), rfs)
+		elseif modelname == "sgvaegan"
+			rfs
+		end
 
 		# this is where we select the files of best models
 		# now add the best models to the mix

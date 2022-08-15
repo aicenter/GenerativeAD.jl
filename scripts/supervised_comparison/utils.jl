@@ -151,8 +151,10 @@ function get_latent_file(_params, lfs)
 	else
 		_lfs
 	end
-	if length(_lfs) != 1
+	if length(_lfs) >= 1
 		error("something wrong when processing $(_params)")
+	elseif length(_lfs) == 0
+		return
 	end
 	return _lfs[1]
 end

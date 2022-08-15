@@ -16,6 +16,6 @@ fi
 while read d; do
     # submit to slurm
     sbatch \
-    --output="${LOG_DIR}/${d}_${MODEL}_${LATENT_SCORE}_%A.out" \
+    --output="${LOG_DIR}/${d}_${MODEL}_${LATENT_SCORE}_${ANOMALY_CLASS}_%A.out" \
      ./alpha_scores.sh $MODEL $d ${LATENT_SCORE} ${ANOMALY_CLASS} ${BASE_BETA} $FORCE
 done < ${DATASET_FILE}
