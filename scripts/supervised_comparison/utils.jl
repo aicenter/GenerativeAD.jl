@@ -182,31 +182,52 @@ function prepare_savefile(save_dir, params)
 	return outf
 end
 
-function load_scores(model_id, lf, latent_dir, rfs, res_dir)
+function load_scores(model_id, lf, latent_dir, rfs, res_dir, modelname=="sgvae")
 	# load the saved scores
 	ldata = load(joinpath(latent_dir, lf))
-	rf = filter(x->occursin("$(model_id)", x), rfs)
-	if length(rf) < 1
-		@info "Something is wrong, original score file for $lf not found"
-		return
-	end
-	rf = rf[1]
-	rdata = load(joinpath(res_dir, rf))
-
-	# prepare the data
 	if isnan(ldata[:val_scores][1])
-		@info "Score data not found or corrupted"
-		return
+		@info "Latent score data not found or corrupted"
+		return nothing, nothing, nothing, nothing, nothing, nothing
 	end
-	if isnothing(rdata[:val_scores]) || isnothing(rdata[:tst_scores])
-		@info "Normal score data not found"
-		return
-	end
-
-	scores_val = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
-	scores_tst = cat(rdata[:tst_scores], transpose(ldata[:tst_scores]), dims=2);
 	y_val = ldata[:val_labels];
 	y_tst = ldata[:tst_labels];
+	
+	if modelname == "sgvae"
+		rf = filter(x->occursin("$(model_id)", x), rfs)
+		if length(rf) < 1
+			@info "Something is wrong, original score file for $lf not found"
+			return nothing, nothing, nothing, nothing, nothing, nothing
+		end
+		rf = rf[1]
+		rdata = load(joinpath(res_dir, rf))
+
+		# prepare the data
+		if isnothing(rdata[:val_scores]) || isnothing(rdata[:tst_scores])
+			@info "Normal score data not available."
+			return nothing, nothing, nothing, nothing, nothing, nothing
+		end
+
+		scores_val = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
+		scores_tst = cat(rdata[:tst_scores], transpose(ldata[:tst_scores]), dims=2);
+	elseif modelname == "sgvaegan"
+		rf = filter(x->occursin("$(model_id)", x), rfs)
+		rf = filter(x->!occursin("model", x), rf)
+		if length(rf) != 3
+			@info "Something is wrong, found $(length(rf)) score files instead of 3 for score file $lf."
+			return nothing, nothing, nothing, nothing, nothing, nothing
+		end
+		rdata = map(r->load(joinpath(res_dir, r)), rf)
+
+		if any(map(r->isnothing(r[:val_scores]), rdata)) || any(map(r->isnothing(r[:tst_scores]), rdata))
+			@info "Normal score data not available."
+			return nothing, nothing, nothing, nothing, nothing, nothing
+		end
+		
+		scores_val = cat(map(r->r[:val_scores], rdata)..., transpose(ldata[:val_scores]), dims=2);
+		scores_tst = cat(map(r->r[:tst_scores], rdata)..., transpose(ldata[:tst_scores]), dims=2);
+
+		rdata = rdata[1]
+	end
 
 	return scores_val, scores_tst, y_val, y_tst, ldata, rdata
 end

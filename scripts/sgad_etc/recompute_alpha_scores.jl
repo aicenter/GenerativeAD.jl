@@ -13,6 +13,7 @@ using Random
 using GenerativeAD.Evaluation: _prefix_symbol, _get_anomaly_class, _subsample_data
 using GenerativeAD.Evaluation: BASE_METRICS, AUC_METRICS
 include("../pyutils.jl")
+include("../supervised_comparison/utils.jl")
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -54,11 +55,80 @@ max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
 
-score_type = "logpx"
+modelname = "sgvaegan"
+ac = 1
+seed = 1
+method = "robreg"
+
+# this is the part where we load the best models
+bestf = datadir("sgad_alpha_evaluation_kp/best_models_$(datatype).bson")
+best_models = load(bestf)
+
+
+score_type = if modelname == "sgvae"
+	"logpx"
+elseif modelname == "sgvaegan"
+	"all"
+end
 device = "cpu"
 max_seed_perf = 10
 scale = true
-init_alpha = [1.0, 0.1, 0.1, 0.1]
+init_alpha = if modelname == "sgvae"
+	[1.0, 0.1, 0.1, 0.1]
+elseif modelname == "sgvaegan"
+	[1.0, 1.0, 1.0, 0.1, 0.1, 0.1]
+end
+alpha0 = if modelname == "sgvae"
+	[1, 0, 0, 0]
+elseif modelname == "sgvaegan"
+	[1, 1, 1, 0, 0, 0]
+end
+
+latent_dir = datadir("sgad_latent_scores/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+lfs = readdir(latent_dir)
+ltypes = map(lf->split(split(lf, "score=")[2], ".")[1], lfs)
+lfs = lfs[ltypes .== latent_score_type]
+model_ids = map(x->Meta.parse(split(split(x, "=")[2], "_")[1]), lfs)
+
+# make the save dir
+save_dir = datadir("sgad_alpha_evaluation_kp/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+mkpath(save_dir)
+@info "Saving data to $(save_dir)..."
+
+# top score files
+res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+rfs = readdir(res_dir)
+rfs = if modelname == "sgvae" 
+	filter(x->occursin(score_type, x), rfs)
+elseif modelname == "sgvaegan"
+	rfs
+end
+
+# this is where we select the files of best models
+# now add the best models to the mix
+inds = (best_models[:anomaly_class] .== ac) .& (best_models[:seed] .== seed) .& 
+	(best_models[:dataset] .== dataset) .& (occursin.(modelname, best_models[:modelname]))
+best_params = best_models[:parameters][inds]
+
+# from these params extract the correct model_ids and lfs
+parsed_params = map(x->parse_savename("s_$x")[2], best_params)
+best_model_ids = [x["init_seed"] for x in parsed_params]
+best_lfs = map(x->get_latent_file(x, lfs), parsed_params)
+
+# use only those that are not nothing - in agreement with the latent_score_type
+used_inds = .!map(isnothing, best_lfs)
+
+# also, scramble the rest of the models
+n = length(model_ids)
+rand_inds = sample(1:n, n, replace=false)
+
+# this is what will be iterated over
+final_model_ids = vcat(best_model_ids[used_inds], model_ids[rand_inds])
+final_lfs = vcat(best_lfs[used_inds], lfs[rand_inds])
+
+i = 1
+lf = final_lfs[i]
+model_id = final_model_ids[i]
 
 function basic_stats(labels, scores)
 	try
@@ -84,7 +154,7 @@ end
 
 auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
 
-function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_alpha, base_beta; 
+function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_alpha, alpha0, base_beta; 
 	seed=nothing, scale=true, kwargs...)
 	scores, labels, _ = try
 		_subsample_data(p, p_normal, val_y, val_scores; seed=seed)
@@ -111,7 +181,7 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
             elseif method == "probreg"
                 ProbReg()
             elseif method == "robreg"
-                RobReg(alpha=init_alpha, beta=base_beta/sum(labels))
+                RobReg(alpha=init_alpha, alpha0=alpha0, beta=base_beta/sum(labels))
             else
                 error("unknown method $method")
             end
@@ -173,32 +243,15 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	end	
 
 	# load the saved scores
-	ldata = load(joinpath(latent_dir, lf))
-	rf = filter(x->occursin("$(model_id)", x), rfs)
-	if length(rf) < 1
-		@info "Something is wrong, original score file for $lf not found"
+	val_scores, tst_scores, val_y, tst_y, ldata, rdata = 
+		load_scores(model_id, lf, latent_dir, rfs, res_dir, modelname)
+	if isnothing(rdata) && isnothing(ldata)
 		return
 	end
-	rf = rf[1]
-	rdata = load(joinpath(res_dir, rf))
-
-	# prepare the data
-	if isnan(ldata[:val_scores][1])
-		@info "Score data not found or corrupted"
-		return
-	end
-	if isnothing(rdata[:val_scores]) || isnothing(rdata[:tst_scores])
-		@info "Normal score data not found"
-		return
-	end
-	val_scores = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
-	tst_scores = cat(rdata[:tst_scores], transpose(ldata[:tst_scores]), dims=2);
-	tr_y = ldata[:tr_labels];
-	val_y = ldata[:val_labels];
-	tst_y = ldata[:tst_labels];
 
 	# setup params
-	parameters = merge(ldata[:parameters], (beta=base_beta, init_alpha=init_alpha, scale=scale))
+	parameters = merge(ldata[:parameters], (beta=base_beta, init_alpha=init_alpha, scale=scale,
+		score = score_type))
 	save_modelname = (method == "logreg") ? modelname : modelname*"_$method"
 
 	res_df = @suppress begin
@@ -234,7 +287,7 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
         elseif method == "probreg"
             ProbReg()
         elseif method == "robreg"
-            RobReg(alpha=init_alpha, beta=base_beta/sum(val_y))
+            RobReg(input_dim = size(val_scores,2), alpha=init_alpha, beta=base_beta/sum(val_y))
         else
             error("unknown method $method")
         end
@@ -276,14 +329,14 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 		# then do the same on a small section of the data
 		ps = [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]
 		auc_ano_50 = (method == "logreg") ? [perf_at_p_agg(p/100, 0.5, val_scores, val_y, 
-				tst_scores, tst_y, init_alpha, base_beta; scale=scale) for p in ps] : repeat([(NaN, NaN)], length(ps))
+				tst_scores, tst_y, init_alpha, alpha0, base_beta; scale=scale) for p in ps] : repeat([(NaN, NaN)], length(ps))
 		for (k,v) in zip(map(x->x * "_50", AUC_METRICS), auc_ano_50)
 			res_df["val_"*k] = v[1]
 			res_df["tst_"*k] = v[2]
 		end
 
 		auc_ano_10 = (method == "logreg") ? [perf_at_p_agg(p/100, 0.1, val_scores, val_y, 
-				tst_scores, tst_y, init_alpha, base_beta; scale=scale) for p in ps] : repeat([(NaN, NaN)], length(ps))
+				tst_scores, tst_y, init_alpha, alpha0, base_beta; scale=scale) for p in ps] : repeat([(NaN, NaN)], length(ps))
 		for (k,v) in zip(map(x->x * "_10", AUC_METRICS), auc_ano_10)
 			res_df["val_"*k] = v[1]
 			res_df["tst_"*k] = v[2]
@@ -291,13 +344,13 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 
 		prop_ps = [100, 50, 20, 10, 5, 2, 1]
 		auc_prop_100 = (method == "logreg") ? [perf_at_p_agg(1.0, p/100, val_scores, val_y, 
-			tst_scores, tst_y, init_alpha, base_beta; scale=scale) for p in prop_ps] : repeat([(NaN, NaN)], 7)
+			tst_scores, tst_y, init_alpha, alpha0, base_beta; scale=scale) for p in prop_ps] : repeat([(NaN, NaN)], 7)
 		for (k,v) in zip(map(x-> "auc_100_$(x)", prop_ps), auc_prop_100)
 			res_df["val_"*k] = v[1]
 			res_df["tst_"*k] = v[2]
 		end
 
-		auc_ano_100 = [perf_at_p_agg(p/100, 1.0, val_scores, val_y, tst_scores, tst_y, init_alpha, 
+		auc_ano_100 = [perf_at_p_agg(p/100, 1.0, val_scores, val_y, tst_scores, tst_y, init_alpha, alpha0,
             base_beta; scale=scale) for p in ps]
 		for (k,v) in zip(map(x->x * "_100", AUC_METRICS), auc_ano_100)
 			res_df["val_"*k] = v[1]
@@ -359,12 +412,16 @@ for ac in acs
 		# top score files
 		res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
 		rfs = readdir(res_dir)
-		rfs = filter(x->occursin(score_type, x), rfs)
+		rfs = if modelname == "sgvae" 
+			filter(x->occursin(score_type, x), rfs)
+		elseif modelname == "sgvaegan"
+			rfs
+		end
 
 		# this is where we select the files of best models
 		# now add the best models to the mix
 		inds = (best_models[:anomaly_class] .== ac) .& (best_models[:seed] .== seed) .& 
-			(best_models[:dataset] .== dataset)
+			(best_models[:dataset] .== dataset) .& (occursin.(modelname, best_models[:modelname]))
 		best_params = best_models[:parameters][inds]
 
 		# from these params extract the correct model_ids and lfs

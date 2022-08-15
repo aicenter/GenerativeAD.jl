@@ -99,11 +99,11 @@ mutable struct RobReg
     alpha
 end
 
-function RobReg(;alpha=[1,1,1,1], alpha0=[1,0,0,0], beta=1.0)
+function RobReg(;input_dim=4, alpha=[1,1,1,1], alpha0=[1,0,0,0], beta=1.0)
 	py"""
 from sgad.sgvae import RobustLogisticRegression
 	"""
-	m = RobReg(py"RobustLogisticRegression(alpha=$(alpha), beta=$(beta),alpha0=$(alpha0))", nothing)
+	m = RobReg(py"RobustLogisticRegression(input_dim=$(input_dim), alpha=$(alpha), beta=$(beta),alpha0=$(alpha0))", nothing)
 	return m
 end
 
