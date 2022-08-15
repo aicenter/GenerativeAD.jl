@@ -18,6 +18,6 @@ fi
 while read d; do
     # submit to slurm
     sbatch \
-    --output="${LOG_DIR}/${d}_${LATENT_SCORE}_%A.out" \
+    --output="${LOG_DIR}/${d}_${MODEL}_${LATENT_SCORE}_%A.out" \
      ./recompute_alpha_scores_per_class.sh $MODEL $d $DATATYPE ${LATENT_SCORE} ${ANOMALY_CLASS} ${METHOD} ${BASE_BETA} $FORCE
 done < ${DATASET_FILE}

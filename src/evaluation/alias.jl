@@ -43,6 +43,7 @@ const MODEL_TYPE = Dict{String, String}(
 	"sgvae_alpha_auc" 	=> "autoencoders",
 	"vaegan"			=> "autoencoders",
 	"sgvaegan"			=> "autoencoders",
+	"sgvaegan_alpha"	=> "autoencoder",
 	"aae_ocsvm"			=> "two-stage",
 	"dagmm"				=> "two-stage",
 	"vae_ocsvm" 		=> "two-stage",
@@ -99,7 +100,8 @@ const MODEL_ALIAS = Dict{String, String}(
 	"sgvae_alpha_kld" 	=> "sgvaekld",
 	"sgvae_alpha_auc" 	=> "sgvaeaauc",
 	"vaegan"			=> "vgn",
-	"sgvaegan"			=> "sgvgn"
+	"sgvaegan"			=> "sgvgn",
+	"sgvaegan_alpha"	=> "sgvgna",
 )
 
 const DATASET_ALIAS = Dict{String, String}(

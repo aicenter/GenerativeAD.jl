@@ -22,7 +22,7 @@ outdir = "result_tables"
 
 sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "vaegan", "sgvaegan"]
 sgad_models_alpha = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "vaegan", "sgvaegan", 
-    "sgvae_alpha"]
+    "sgvae_alpha", "sgvaegan_alpha"]
 sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models_alpha]
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
