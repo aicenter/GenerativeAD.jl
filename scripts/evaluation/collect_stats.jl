@@ -20,7 +20,7 @@ s = ArgParseSettings()
 		arg_type = String
 		default = "evaluation/images_eval.bson"
 		help = "Where to store the cached DataFrame."
-	"--stringify"
+	"--postprocess"
 		action = :store_true
 		help = "convert tuple parameters to strings for faster loading times"
 	"-f", "--force"
@@ -51,7 +51,8 @@ function collect_stats(source_prefix::String)
 	df = reduce(vcat, frames)
 end
 
-function stringify!(df)
+# this is mainyl used for alpha evaluation results
+function postprocess(df)
 	parameters = df.parameters
 	df.parameters = savename.(parameters)
 	df.weights_texture = [get(p, :weights_texture, NaN) for p in parameters]
@@ -69,7 +70,7 @@ end
 
 function main(args)
 	df = collect_stats(args["source_prefix"])
-	args["stringify"] ? stringify!(df) : nothing
+	df = args["postprocess"] ? postprocess(df) : df
 	f = datadir(args["filename"])
 	if (isfile(f) && args["force"]) || ~isfile(f)
 		@info "Saving $(nrow(df)) rows to $f."
