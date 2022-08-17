@@ -52,7 +52,18 @@ function collect_stats(source_prefix::String)
 end
 
 function stringify!(df)
-	df.parameters = savename.(df.parameters)
+	parameters = df.parameters
+	df.parameters = savename.(parameters)
+	df.weights_texture = [get(p, :weights_texture, NaN) for p in parameters]
+	df.init_alpha = [get(p, :init_alpha, NaN) for p in parameters]
+	df.alpha0 = [get(p, :alpha0, NaN) for p in parameters]
+
+	# delete nan columns
+	for col in names(df)
+		if occursin("auc", col) && all(isnan.(df[col]))
+			df = df[:,[p for p in names(df) if p != col]]
+		end
+	end
 	df
 end
 
