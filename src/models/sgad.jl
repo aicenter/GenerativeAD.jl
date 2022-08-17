@@ -86,11 +86,11 @@ def SGVAEGAN_constructor(kwargs):
     return SGVAEGAN(py"SGVAEGAN_constructor"(kwargs))
 end
 
-mutable struct GAN <: SGADModel
+mutable struct pyGAN <: SGADModel
     model
 end
 
-function GAN(; kwargs...)
+function pyGAN(; kwargs...)
     py"""
 import sgad
 from sgad.sgvae import GAN
@@ -99,5 +99,5 @@ def GAN_constructor(kwargs):
     return GAN(**kwargs)
     """
 
-    return GAN(py"GAN_constructor"(kwargs))
+    return pyGAN(py"GAN_constructor"(kwargs))
 end
