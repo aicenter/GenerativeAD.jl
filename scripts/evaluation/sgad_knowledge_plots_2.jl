@@ -50,7 +50,7 @@ df_images_target = filter(r->r.modelname != "sgvae_alpha", df_images_target);
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
 #df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
 filter!(r->occursin("_robreg", r.modelname), df_images_alpha)
-filter!(r->get(r.parameters, :beta, 1.0) == 1.0, df_images_alpha)
+filter!(r->get(parse_savename(r.parameters)[2], "beta", 1.0) == 1.0, df_images_alpha)
 for model in ["sgvae_", "sgvaegan_"]
     df_images_alpha.modelname[map(r->occursin(model, r.modelname), eachrow(df_images_alpha))] .= model*"alpha"
 end
@@ -265,13 +265,12 @@ maxmean_f(df,crit) = aggregate_stats_max_mean(df, crit; agg_cols=[])
 # first create the knowledge plot data for the changing level of anomalies
 # at different percentages of normal data
 cnames = reverse(AUC_METRICS_NAMES)
-        
-@suppress_err begin
-for level in [100]
-	criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
-	extended_criterions = vcat(criterions, [val_metric])
-	extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
+level = 100
+criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
+extended_criterions = vcat(criterions, [val_metric])
+extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 
+@suppress_err begin
 	ranks_dfs = map(enumerate(zip(titles,
 	        [
                 (df_semantic, df_semantic_alpha, df_semantic_clean),
@@ -304,46 +303,4 @@ for level in [100]
 	    CSV.write(f, metric_means_all)
 	    ranks_all, metric_means_all
 	end
-end
-end
-
-# then do it again but for 50/50 anomaly/normal ratios and changing amount of data
-cnames = reverse(AUCP_METRICS_NAMES)
-criterions = reverse(_prefix_symbol.("val", AUCP_METRICS))
-extended_criterions = vcat(criterions, [val_metric])
-extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
-
-@suppress_err begin
-    ranks_dfs = map(enumerate(zip(titles,
-            [(df_semantic, df_semantic_alpha, df_semantic_clean), 
-                (df_semantic_0, df_semantic_alpha_0, df_semantic_clean_0),
-                (df_coco, df_coco_alpha, df_coco_clean),
-                (df_wmnist, df_wmnist_alpha, df_wmnist_clean), 
-                (df_mvtec, df_mvtec_alpha, df_mvtec_clean)]))) do (i, (title, (df, df_alpha, df_clean)))
-
-    ranks_inc, metric_means_inc = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
-        non_agg_cols, round_results)
-    if size(df_clean,1) > 0
-        ranks_clean, metric_means_clean = _incremental_rank_clean(df_clean, [val_metric], maxmean_f,
-            round_results)
-        # this ensures that models w/o the clean df are also included
-        for model in sgad_models
-            alias = MODEL_ALIAS[model]
-            if !(alias in names(metric_means_clean))
-                metric_means_clean[alias] = NaN
-            end
-        end
-        ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), 
-        vcat(metric_means_clean, metric_means_inc; cols=:intersect)
-    else
-        ranks_all, metric_means_all = ranks_inc, metric_means_inc
-    end
-
-    # reorder table on tabular data as there is additional class of models (flows)
-    # one can do this manually at the end
-    f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_v2_$(title)_prop.csv")
-    println("saving to $f")
-    CSV.write(f, metric_means_all)
-    ranks_all, metric_means_all
-end
 end
