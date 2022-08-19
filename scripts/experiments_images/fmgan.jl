@@ -78,32 +78,32 @@ function fit(data, parameters)
 	
 	# setup the loss functions
 	function gloss(m, x)
-	        # move x to gpu
-        	x = gpu(Array(x))
-	        z = gpu(rand(cpu(m.prior), size(x,ndims(x))))
+		# move x to gpu
+		x = gpu(Array(x))
+		z = gpu(rand(cpu(m.prior), size(x,ndims(x))))
 
-        	# generator loss
-	        gl = GenerativeAD.Models.gloss(m.discriminator.mapping,
-        	        m.generator.mapping,z)
+			# generator loss
+		gl = GenerativeAD.Models.gloss(m.discriminator.mapping,
+			      m.generator.mapping,z)
 
-	        # fm loss
-        	h = m.discriminator.mapping[1:end-3]
-	        hx = h(x)
-        	hz = h(m.generator.mapping(z))
-	        fml = Flux.mse(hx, hz)
+		# fm loss
+		h = m.discriminator.mapping[1:end-3]
+		hx = h(x)
+		hz = h(m.generator.mapping(z))
+		fml = Flux.mse(hx, hz)
 
-        	parameters.alpha*gl + fml
+		parameters.alpha*gl + fml
 	end
 	gloss(m, x, batchsize::Int) =
-        	mean(map(y->gloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
+			mean(map(y->gloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
 	function dloss(m, x)
-        	x = gpu(Array(x))
-	        z = gpu(rand(cpu(m.prior), size(x,ndims(x))))
-        	GenerativeAD.Models.dloss(m.discriminator.mapping,m.generator.mapping,x,z)
+		x = gpu(Array(x))
+		z = gpu(rand(cpu(m.prior), size(x,ndims(x))))
+			GenerativeAD.Models.dloss(m.discriminator.mapping,m.generator.mapping,x,z)
 	end
 	dloss(m, x, batchsize::Int) =
-        	mean(map(y->dloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
-	
+		mean(map(y->dloss(m,y), Flux.Data.DataLoader(x, batchsize=batchsize)))
+
 	# set number of max iterations apropriately
 	max_iter = 5000 # this should be enough
 

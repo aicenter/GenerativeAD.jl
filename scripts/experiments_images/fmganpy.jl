@@ -39,11 +39,6 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 modelname = "fmganpy"
 version = 0.1
 
-
-dataset = "CIFAR10"
-seed = 1
-i = ac = 3
-
 function sample_params()
     weights_texture = (0.01, 0.05, 0.0, 0.01)
     par_vec = (
