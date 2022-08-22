@@ -105,7 +105,7 @@ function fit(data, parameters, save_parameters, ac, seed)
         fit_t = fit_t,
         history = info.history,
         npars = info.npars,
-        model = model,
+        model = info.best_model.to("cuda"),
         best_epoch = info.best_epoch,
         tr_encodings = nothing,
         val_encodings = nothing,
@@ -113,6 +113,7 @@ function fit(data, parameters, save_parameters, ac, seed)
         )
 
     # save the final model
+    model = GenerativeAD.Models.pyGAN(training_info.model)
     model.model.eval()
     max_iters = length(info.history["iter"])
     mkpath(joinpath(res_save_path, "weights"))
@@ -126,11 +127,6 @@ function fit(data, parameters, save_parameters, ac, seed)
         (x-> predict(model, x, workers=4), merge(save_parameters, (score = "discriminator",))),
         ]
 end
-
-#dataset = "cocoplaces"
-#ac = i = 1
-#seed = 1
-
 
 ####################################################################
 ################ THIS PART IS COMMON FOR ALL MODELS ################
