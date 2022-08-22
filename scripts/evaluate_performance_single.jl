@@ -21,17 +21,18 @@ function compute_stats(f::String)
 
 	results = []
 	for (scores, labels) in scores_labels
-		scores = vec(scores)
-		roc = EvalMetrics.roccurve(labels, scores)
-		auc = EvalMetrics.auc_trapezoidal(roc...)
-		prc = EvalMetrics.prcurve(labels, scores)
-		auprc = EvalMetrics.auc_trapezoidal(prc...)
+		@suppress begin
+			scores = vec(scores)
+			roc = EvalMetrics.roccurve(labels, scores)
+			auc = EvalMetrics.auc_trapezoidal(roc...)
+			prc = EvalMetrics.prcurve(labels, scores)
+			auprc = EvalMetrics.auc_trapezoidal(prc...)
 
-		t5 = EvalMetrics.threshold_at_fpr(labels, scores, 0.05)
-		cm5 = ConfusionMatrix(labels, scores, t5)
-		tpr5 = EvalMetrics.true_positive_rate(cm5)
-		f5 = EvalMetrics.f1_score(cm5)
-
+			t5 = EvalMetrics.threshold_at_fpr(labels, scores, 0.05)
+			cm5 = ConfusionMatrix(labels, scores, t5)
+			tpr5 = EvalMetrics.true_positive_rate(cm5)
+			f5 = EvalMetrics.f1_score(cm5)
+		end
 		push!(results, [auc, auprc, tpr5, f5])
 	end
 
@@ -41,9 +42,7 @@ end
 function query_stats(target::String)
 	if isfile(target)
 		try
-			@suppress begin
-				println(compute_stats(target))
-			end
+			println(compute_stats(target))
 		catch e
 			@info "$target not compatible"
 		end
