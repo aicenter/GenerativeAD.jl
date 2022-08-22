@@ -63,7 +63,7 @@ function sample_params()
         )
     parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
-function edit_params(data, parameters)
+function GenerativeAD.edit_params(data, parameters)
     idim = size(data[1][1])
     parameters = merge(parameters, (img_dim=idim[1],))
     parameters
@@ -126,6 +126,11 @@ function fit(data, parameters, save_parameters, ac, seed)
         (x-> predict(model, x, workers=4), merge(save_parameters, (score = "discriminator",))),
         ]
 end
+
+#dataset = "cocoplaces"
+#ac = i = 1
+#seed = 1
+
 
 ####################################################################
 ################ THIS PART IS COMMON FOR ALL MODELS ################

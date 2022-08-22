@@ -10,6 +10,7 @@ using BSON
 using DataFrames
 using ValueHistories
 using LinearAlgebra
+using Suppressor
 
 function compute_stats(f::String)
 	data = load(f)
@@ -40,7 +41,9 @@ end
 function query_stats(target::String)
 	if isfile(target)
 		try
-			println(compute_stats(target))
+			@suppress begin
+				println(compute_stats(target))
+			end
 		catch e
 			@info "$target not compatible"
 		end
