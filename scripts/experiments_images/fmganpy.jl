@@ -101,11 +101,12 @@ function fit(data, parameters, save_parameters, ac, seed)
     end
     
     # construct return information - put e.g. the model structure here for generative models
+    model = GenerativeAD.Models.pyGAN(info.best_model.to("cuda"))
     training_info = (
         fit_t = fit_t,
         history = info.history,
         npars = info.npars,
-        model = info.best_model.to("cuda"),
+        model = model,
         best_epoch = info.best_epoch,
         tr_encodings = nothing,
         val_encodings = nothing,
@@ -113,7 +114,6 @@ function fit(data, parameters, save_parameters, ac, seed)
         )
 
     # save the final model
-    model = GenerativeAD.Models.pyGAN(training_info.model)
     model.model.eval()
     max_iters = length(info.history["iter"])
     mkpath(joinpath(res_save_path, "weights"))
