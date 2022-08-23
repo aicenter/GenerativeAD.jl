@@ -37,7 +37,7 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "fmganpy"
-version = 0.1
+version = 0.3
 
 function sample_params()
     weights_texture = (0.01, 0.05, 0.0, 0.01)
@@ -45,23 +45,35 @@ function sample_params()
         2 .^(3:8), 
         2 .^(3:6), 
         2 .^(4:7), 
+        [3, 4],
+        [true, false],
+        ["leakyrelu", "tanh"],
         ["orthogonal", "normal"], 
         0.01:0.01:0.1, 
         1:Int(1e8), 
         10f0 .^(-4:0.1:-3),
-        10f0 .^ (-2:3)
+        10f0 .^ (-3:3),
         )
     argnames = (
         :z_dim, 
         :h_channels,
-        :batch_size, 
+        :batch_size,
+        :n_layers,
+        :batch_norm, 
+        :activation,
         :init_type, 
         :init_gain, 
         :init_seed, 
         :lr,
-        :alpha
+        :alpha,
         )
     parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
+    fm_depth = if parameters.batch_norm
+        sample([2,5,8,11][1:parameters.n_layers])
+    else
+        sample([2,4,6,8][1:parameters.n_layers])
+    end
+    merge(parameters, (fm_depth=fm_depth,))     
 end
 function GenerativeAD.edit_params(data, parameters)
     idim = size(data[1][1])
@@ -87,7 +99,7 @@ function fit(data, parameters, save_parameters, ac, seed)
     mkpath(res_save_path)
 
     # fit train data
-    n_epochs = 200
+    n_epochs = 100
     epoch_iters = ceil(Int, length(data[1][2])/parameters.batch_size)
     save_iter = epoch_iters*10
     try
