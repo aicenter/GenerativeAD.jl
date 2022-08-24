@@ -48,7 +48,8 @@ function sample_params()
         [3, 4],
         [true, false],
         ["leakyrelu", "tanh"],
-        ["orthogonal", "normal"], 
+        ["orthogonal", "normal"],
+        ["adam", "rmsprop"] 
         0.01:0.01:0.1, 
         1:Int(1e8), 
         10f0 .^(-4:0.1:-3),
@@ -62,6 +63,7 @@ function sample_params()
         :batch_norm, 
         :activation,
         :init_type, 
+        :optimizer,
         :init_gain, 
         :init_seed, 
         :lr,
@@ -80,7 +82,6 @@ function GenerativeAD.edit_params(data, parameters)
     parameters = merge(parameters, (img_dim=idim[1],))
     parameters
 end
-
 
 """
     fit(data, parameters)
@@ -102,8 +103,11 @@ function fit(data, parameters, save_parameters, ac, seed)
     n_epochs = 100
     epoch_iters = ceil(Int, length(data[1][2])/parameters.batch_size)
     save_iter = epoch_iters*10
+    X_val = Array(permutedims(data[2][1], [4,3,2,1]))
+    y_val = data[2][2]
     try
          global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
+            X_val=X_val, y_val=y_val,
             max_train_time=20*3600/max_seed/anomaly_classes, workers=4,
             n_epochs = n_epochs, save_iter = save_iter, save_weights = false, save_path = res_save_path)
     catch e
@@ -129,7 +133,7 @@ function fit(data, parameters, save_parameters, ac, seed)
     model.model.eval()
     max_iters = length(info.history["iter"])
     mkpath(joinpath(res_save_path, "weights"))
-    training_info.model.model.save_weights(
+    model.model.save_weights(
         joinpath(res_save_path, "weights", "$(max_iters).pth")
         )
 
