@@ -49,7 +49,7 @@ function sample_params()
         [true, false],
         ["leakyrelu", "tanh"],
         ["orthogonal", "normal"],
-        ["adam", "rmsprop"] 
+        ["adam", "rmsprop"], 
         0.01:0.01:0.1, 
         1:Int(1e8), 
         10f0 .^(-4:0.1:-3),
