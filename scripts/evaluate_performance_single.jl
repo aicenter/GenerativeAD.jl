@@ -15,7 +15,6 @@ using Suppressor
 function compute_stats(f::String)
 	@suppress begin
 		data = load(f)
-		println(abspath(f))
 		#map(p->println("$(p[1]) = $(p[2])"), collect(pairs(data[:parameters])))
 		scores_labels = [(data[:val_scores], data[:val_labels]), (data[:tst_scores], data[:tst_labels])]
 		setnames = ["validation", "test"]
@@ -42,8 +41,9 @@ end
 
 function query_stats(target::String)
 	if isfile(target)
+		println(abspath(target))
 		try
-			println(compute_stats(target))
+			println(compute_stats(target))	
 		catch e
 			@info "$target not compatible"
 		end
