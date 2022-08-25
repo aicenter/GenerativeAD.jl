@@ -40,7 +40,6 @@ modelname = "fmganpy"
 version = 0.3
 
 function sample_params()
-    weights_texture = (0.01, 0.05, 0.0, 0.01)
     par_vec = (
         2 .^(3:8), 
         2 .^(3:6), 

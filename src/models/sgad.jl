@@ -100,3 +100,19 @@ def GAN_constructor(kwargs):
 
     return pyGAN(py"GAN_constructor"(kwargs))
 end
+
+mutable struct pyVAE <: SGADModel
+    model
+end
+
+function pyVAE(; kwargs...)
+    py"""
+import sgad
+from sgad.sgvae import VAE
+
+def VAE_constructor(kwargs):
+    return VAE(**kwargs)
+    """
+
+    return pyVAE(py"VAE_constructor"(kwargs))
+end
