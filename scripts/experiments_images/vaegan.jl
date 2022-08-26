@@ -105,7 +105,7 @@ function fit(data, parameters, save_parameters, ac, seed)
     mkpath(res_save_path)
 
     # fit train data
-    n_epochs = 200
+    n_epochs = 100
     epoch_iters = ceil(Int, length(data[1][2])/parameters.batch_size)
     save_iter = epoch_iters*10
     X_val = Array(permutedims(data[2][1], [4,3,2,1]));
