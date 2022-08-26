@@ -37,7 +37,7 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "sgvaegan"
-version = 0.1
+version = 0.3
 
 # sample parameters, should return a Dict of model kwargs 
 """

@@ -37,7 +37,7 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "vaegan"
-version = 0.2
+version = 0.3
 
 # sample parameters, should return a Dict of model kwargs 
 """
@@ -50,25 +50,37 @@ function sample_params()
         2 .^(3:8), 
         2 .^(3:6), 
         2 .^(4:7), 
-        ["orthogonal", "normal"], 
+        [3, 4],
+        [true, false],
+        ["leakyrelu", "tanh"],
+        ["orthogonal", "normal"],
+        ["adam", "rmsprop"], 
         0.01:0.01:0.1, 
         1:Int(1e8), 
         10f0 .^(-4:0.1:-3),
-        10f0 .^(-2:1.0:3.0),
-        [0, 2, 5, 8],
+        10f0 .^(-3:1.0:3.0),
         )
     argnames = (
         :z_dim, 
         :h_channels,
         :batch_size, 
+        :n_layers,
+        :batch_norm, 
+        :activation,
         :init_type, 
+        :optimizer,
         :init_gain, 
         :init_seed, 
         :lr,
         :fm_alpha,
-        :fm_depth,
         )
     parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
+    fm_depth = if parameters.batch_norm
+        sample([2,5,8,11][1:parameters.n_layers])
+    else
+        sample([2,4,6,8][1:parameters.n_layers])
+    end
+    merge(parameters, (fm_depth=fm_depth,))     
 end
 function GenerativeAD.edit_params(data, parameters)
     idim = size(data[1][1])
@@ -96,8 +108,10 @@ function fit(data, parameters, save_parameters, ac, seed)
     n_epochs = 200
     epoch_iters = ceil(Int, length(data[1][2])/parameters.batch_size)
     save_iter = epoch_iters*10
+    X_val = Array(permutedims(data[2][1], [4,3,2,1]));
+    y_val = data[2][2];
     try
-         global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
+         global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; X_val=X_val, y_val=y_val,
             max_train_time=20*3600/max_seed/anomaly_classes, workers=4,
             n_epochs = n_epochs, save_iter = save_iter, save_weights = false, save_path = res_save_path)
     catch e
@@ -107,21 +121,25 @@ function fit(data, parameters, save_parameters, ac, seed)
     end
     
     # construct return information - put e.g. the model structure here for generative models
+    # construct return information - put e.g. the model structure here for generative models
+    model = GenerativeAD.Models.VAEGAN(info.best_model)
+    model.model.eval()
+    model.model.move_to("cuda")
     training_info = (
         fit_t = fit_t,
         history = info.history,
         npars = info.npars,
         model = model,
+        best_epoch = info.best_epoch,
         tr_encodings = nothing,
         val_encodings = nothing,
         tst_encodings = nothing
         )
 
     # save the final model
-    model.model.eval()
     max_iters = length(info.history["iter"])
     mkpath(joinpath(res_save_path, "weights"))
-    training_info.model.model.save_weights(
+    model.model.save_weights(
         joinpath(res_save_path, "weights", "$(max_iters).pth")
         )
 
