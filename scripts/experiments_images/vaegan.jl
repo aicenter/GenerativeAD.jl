@@ -121,7 +121,6 @@ function fit(data, parameters, save_parameters, ac, seed)
     end
     
     # construct return information - put e.g. the model structure here for generative models
-    # construct return information - put e.g. the model structure here for generative models
     model = GenerativeAD.Models.VAEGAN(info.best_model)
     model.model.eval()
     model.model.move_to("cuda")

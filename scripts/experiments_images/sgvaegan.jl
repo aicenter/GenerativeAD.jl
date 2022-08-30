@@ -56,12 +56,15 @@ function sample_params()
         0.1:0.1:0.3,
         0:3,
         2 .^(4:7), 
-        ["orthogonal", "normal"], 
+        [3, 4],
+        [true, false],
+        ["leakyrelu", "tanh"],
+        ["orthogonal", "normal"],
+        ["adam", "rmsprop"], 
         0.01:0.01:0.1, 
         1:Int(1e8), 
         10f0 .^(-4:0.1:-3),
         10f0 .^(-2:1.0:3.0),
-        [0, 2, 5, 8],
         )
     argnames = (
         :z_dim, 
@@ -72,14 +75,23 @@ function sample_params()
         :tau_mask,
         :fixed_mask_epochs,
         :batch_size, 
+        :n_layers,
+        :batch_norm, 
+        :activation,
         :init_type, 
+        :optimizer,
         :init_gain, 
         :init_seed, 
         :lr,
         :fm_alpha,
-        :fm_depth,
         )
     parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
+    fm_depth = if parameters.batch_norm
+        sample([2,5,8,11][1:parameters.n_layers])
+    else
+        sample([2,4,6,8][1:parameters.n_layers])
+    end
+    merge(parameters, (fm_depth=fm_depth,))     
 end
 function GenerativeAD.edit_params(data, parameters)
     idim = size(data[1][1])
@@ -104,12 +116,14 @@ function fit(data, parameters, save_parameters, ac, seed)
     mkpath(res_save_path)
 
     # fit train data
-    n_epochs = 200
+    n_epochs = 100
     epoch_iters = ceil(Int, length(data[1][2])/parameters.batch_size)
     save_iter = epoch_iters*10
+    X_val = Array(permutedims(data[2][1], [4,3,2,1]));
+    y_val = data[2][2];
     try
-         global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
-            max_train_time=20*3600/max_seed/anomaly_classes, workers=4,
+         global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; X_val=X_val, y_val=y_val, 
+            max_train_time=20*3600/max_seed/anomaly_classes, workers=4, val_samples=1000,
             n_epochs = n_epochs, save_iter = save_iter, save_weights = false, save_path = res_save_path)
     catch e
         # return an empty array if fit fails so nothing is computed
@@ -118,18 +132,21 @@ function fit(data, parameters, save_parameters, ac, seed)
     end
     
     # construct return information - put e.g. the model structure here for generative models
+    model = GenerativeAD.Models.SGVAEGAN(info.best_model)
+    model.model.eval()
+    model.model.move_to("cuda")
     training_info = (
         fit_t = fit_t,
         history = info.history,
         npars = info.npars,
         model = model,
+        best_score_type = model.model.best_score_type
         tr_encodings = nothing,
         val_encodings = nothing,
         tst_encodings = nothing
         )
 
     # save the final model
-    model.model.eval()
     max_iters = length(info.history["iter"])
     mkpath(joinpath(res_save_path, "weights"))
     training_info.model.model.save_weights(
@@ -195,7 +212,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
                                  "tr_encodings"=>training_info.tr_encodings,
                                  "val_encodings"=>training_info.val_encodings,
                                  "tst_encodings"=>training_info.tst_encodings,
-                                 "version"=>version
+                                 "version"=>version,
+                                 "best_score_type"=>training_info.best_score_type
                                  ), 
                             safe = true)
                         training_info = merge(training_info, 

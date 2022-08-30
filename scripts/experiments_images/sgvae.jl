@@ -37,7 +37,7 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "sgvae"
-version = 0.2
+version = 0.3
 
 # sample parameters, should return a Dict of model kwargs 
 """
@@ -54,10 +54,13 @@ function sample_params()
         vcat(10 .^(-1.0:3.0), 0.5 .* 10 .^(-1.0:3.0)),
         vcat(10 .^(-1.0:3.0), 0.5 .* 10 .^(-1.0:3.0)),
         0.1:0.1:0.3,
-        ["independent", "mask_dependent"],
         0:3,
         2 .^(4:7), 
-        ["orthogonal", "normal"], 
+        [3, 4],
+        [true, false],
+        ["leakyrelu", "tanh"],
+        ["orthogonal", "normal"],
+        ["adam", "rmsprop"], 
         0.01:0.01:0.1, 
         1:Int(1e8), 
         10f0 .^(-4:0.1:-3),
@@ -70,10 +73,13 @@ function sample_params()
         :weight_binary,
         :weight_mask,
         :tau_mask,
-        :latent_structure,
         :fixed_mask_epochs,
         :batch_size, 
+        :n_layers,
+        :batch_norm, 
+        :activation,
         :init_type, 
+        :optimizer,
         :init_gain, 
         :init_seed, 
         :lr,
