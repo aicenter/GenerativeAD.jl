@@ -97,8 +97,7 @@ Final parameters is a named tuple of names and parameter values that are used fo
 """
 function fit(data, parameters, save_parameters, ac, seed)
     # construct model - constructor should only accept kwargs
-    input_range = (-1,1)
-    model = GenerativeAD.Models.VAEGAN(;input_range=input_range, parameters...)
+    model = GenerativeAD.Models.VAEGAN(; parameters...)
 
     # save intermediate results here
     res_save_path = datadir("sgad_models/images_$(method)$cont_string/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)/model_id=$(parameters.init_seed)")

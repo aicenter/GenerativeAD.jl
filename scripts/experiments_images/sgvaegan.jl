@@ -61,6 +61,7 @@ function sample_params()
         ["leakyrelu", "tanh"],
         ["orthogonal", "normal"],
         ["adam", "rmsprop"], 
+        ["global", "conv_net"],
         0.01:0.01:0.1, 
         1:Int(1e8), 
         10f0 .^(-4:0.1:-3),
@@ -80,6 +81,7 @@ function sample_params()
         :activation,
         :init_type, 
         :optimizer,
+        :log_var_x_estimate_top,
         :init_gain, 
         :init_seed, 
         :lr,
@@ -108,8 +110,7 @@ Final parameters is a named tuple of names and parameter values that are used fo
 """
 function fit(data, parameters, save_parameters, ac, seed)
     # construct model - constructor should only accept kwargs
-    input_range = (-1,1)
-    model = GenerativeAD.Models.SGVAEGAN(;input_range=input_range, parameters...)
+    model = GenerativeAD.Models.SGVAEGAN(; parameters...)
 
     # save intermediate results here
     res_save_path = datadir("sgad_models/images_$(method)$cont_string/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)/model_id=$(parameters.init_seed)")
