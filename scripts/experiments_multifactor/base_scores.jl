@@ -37,7 +37,8 @@ method = "leave-one-in"
 acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
 seed = 1
 
-if modelname in ["sgvae", "cgn", "fmganpy", "vaegan", "sgvaegan"]
+sgad_models = ["sgvae", "cgn", "fmganpy", "vaegan", "sgvaegan"]
+if modelname in sgad_models
     # so the we dont get the "too many open files" os error
     torch = pyimport("torch")
     torch.multiprocessing.set_sharing_strategy("file_system")
@@ -115,6 +116,12 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         model = GenerativeAD.Models.SGVAE(load_sgvae_model(mf, device))
     elseif modelname == "cgn"
         model = GenerativeAD.Models.CGNAnomaly(load_cgn_model(mf, device))
+    elseif modelname == "fmganpy"
+        model = GenerativeAD.Models.pyGAN(load_gan_model(mf, device))
+    elseif modelname == "vaegan"
+        model = GenerativeAD.Models.VAEGAN(load_vaegan_model(mf, device))
+    elseif modelname == "sgvaegan"
+        model = GenerativeAD.Models.SGVAEGAN(load_sgvaegan_model(mf, device))
     elseif modelname in ["vae", "fmgan"]
         model = expdata["model"]
     elseif modelname in ["DeepSVDD", "fAnoGAN"]
@@ -228,7 +235,7 @@ for ac in acs
     end
 
     # setup paths
-    if modelname in ["sgvae", "cgn"]
+    if modelname in sgad_models
     	main_modelpath = datadir("sgad_models/images_$(method)/$(modelname)/$(dataset)")
     else
         main_modelpath = datadir("experiments/images_$(method)/$(modelname)/$(dataset)")
@@ -246,7 +253,7 @@ for ac in acs
     modelpath = joinpath(main_modelpath, "ac=$(ac)/seed=$(seed)")
     mfs = readdir(modelpath, join=true)
     mfs = filter(x->occursin("model", x), mfs)
-    if modelname in ["sgvae", "cgn"]
+    if modelname in sgad_models
         model_ids = map(x->Meta.parse(split(x, "model_id=")[2]), mfs)
     else
         model_ids = map(x->Meta.parse(split(split(x, "init_seed=")[2], "_")[1]), mfs)

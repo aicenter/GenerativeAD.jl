@@ -39,6 +39,32 @@ def model(dir, device):
     return py"model"(dir, device)
 end
 
+function load_gan_model(dir, device)
+    py"""
+import sgad
+from sgad.sgvae import GAN
+from sgad.utils import load_model
+
+def model(dir, device):
+    return load_model(GAN, dir, device=device)
+    """
+
+    return py"model"(dir, device)
+end
+
+function load_vaegan_model(dir, device)
+    py"""
+import sgad
+from sgad.sgvae import VAEGAN
+from sgad.utils import load_model
+
+def model(dir, device):
+    return load_model(VAEGAN, dir, device=device)
+    """
+
+    return py"model"(dir, device)
+end
+
 # this is for fitting the logistic regression
 mutable struct LogReg
 	alpha
