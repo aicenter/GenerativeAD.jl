@@ -141,7 +141,7 @@ function fit(data, parameters, save_parameters, ac, seed)
         history = info.history,
         npars = info.npars,
         model = model,
-        best_score_type = model.model.best_score_type
+        best_score_type = model.model.best_score_type,
         tr_encodings = nothing,
         val_encodings = nothing,
         tst_encodings = nothing
