@@ -43,7 +43,7 @@ function _subsample_data(p, p_normal, labels, data; seed=nothing)
 	na = Int(sum(labels))
 	pna = floor(Int, p*pnn)
 	if pna > na
-		error(DomainError, " There is not enough anomalies on threshold $p.")
+		throw(DomainError(p, " not enough anomalies on this threshold - $pna requested, $na available."))
 	end
 	ainds = sample(1:na, pna, replace=false)
 	bin_ainds = Bool.(zeros(na))
