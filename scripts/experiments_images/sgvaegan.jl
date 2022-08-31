@@ -197,10 +197,13 @@ if abspath(PROGRAM_FILE) == @__FILE__
                 # check if a combination of parameters and seed alread exists
                 if GenerativeAD.check_params(savepath, edited_parameters)
                     # fit
+                    # these parameters will be used in teh savename
                     save_parameters = merge(edited_parameters, (version=version,))
                     save_parameters = dropnames(save_parameters, (
                         :log_var_x_estimate_top, 
-                        :latent_structure
+                        :latent_structure,
+                        :fixed_mask_epochs,
+                        :batch_norm
                         ))
                     training_info, results = fit(data, edited_parameters, save_parameters, i, seed)
 

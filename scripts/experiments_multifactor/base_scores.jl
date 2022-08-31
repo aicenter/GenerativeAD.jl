@@ -37,7 +37,7 @@ method = "leave-one-in"
 acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
 seed = 1
 
-if modelname in ["sgvae", "cgn"]
+if modelname in ["sgvae", "cgn", "fmganpy", "vaegan", "sgvaegan"]
     # so the we dont get the "too many open files" os error
     torch = pyimport("torch")
     torch.multiprocessing.set_sharing_strategy("file_system")
@@ -163,6 +163,22 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         [
         (x-> StatsBase.predict(model, x, score_type="discriminator"), merge(save_parameters, (score = "discriminator",))),
         (x-> StatsBase.predict(model, x, score_type="perceptual"), merge(save_parameters, (score = "perceptual",)))
+        ]
+    elseif modelname == "fmganpy"
+        [
+        (x-> predict(model, x, workers=4), merge(save_parameters, (score = "discriminator",))),
+        ]
+    elseif modelname == "vaegan"
+        [
+        (x-> predict(model, x, score_type="discriminator", workers=4), merge(save_parameters, (score = "discriminator",))),
+        (x-> predict(model, x, score_type="feature_matching", n=10, workers=4), merge(save_parameters, (score = "feature_matching",))),
+        (x-> predict(model, x, score_type="reconstruction", n=10, workers=4), merge(save_parameters, (score = "reconstruction",))),
+        ]
+    elseif modelname == "sgvaegan"
+        [
+        (x-> predict(model, x, score_type="discriminator", workers=4), merge(save_parameters, (score = "discriminator",))),
+        (x-> predict(model, x, score_type="feature_matching", n=10, workers=4), merge(save_parameters, (score = "feature_matching",))),
+        (x-> predict(model, x, score_type="reconstruction", n=10, workers=4), merge(save_parameters, (score = "reconstruction",))),
         ]
     elseif modelname == "vae"
         [
