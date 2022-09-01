@@ -23,8 +23,8 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "vaegan", "sgvaegan", "sgvae", "sgvae_alpha",
-    "sgvaegan_alpha"]
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "vae", "cgn", "vaegan", "sgvaegan", "sgvae", 
+    "sgvae_alpha", "sgvaegan_alpha"]
 sgad_alpha_models = ["sgvae_alpha", "sgvaegan_alpha"]
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 round_results = false

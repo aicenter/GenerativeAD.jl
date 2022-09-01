@@ -20,8 +20,8 @@ const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "vaegan", "sgvaegan"]
-sgad_models_alpha = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "vaegan", "sgvaegan", 
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy","vae", "cgn", "sgvae", "vaegan", "sgvaegan"]
+sgad_models_alpha = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "vae", "cgn", "sgvae", "vaegan", "sgvaegan", 
     "sgvae_alpha", "sgvaegan_alpha"]
 sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models_alpha]
 
@@ -62,6 +62,7 @@ function save_selection(f, rt, plot_models)
     try
         model_cols = vcat([:dataset], Symbol.(plot_models))
         CSV.write(f, rt[model_cols])
+        @info "Saved $f \n"
     catch e
         if typeof(e) == ArgumentError
             @info "One of the models is not present in the DataFrame to be saved into $f"
