@@ -34,6 +34,9 @@ parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes, method, contamination = parsed_args
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 
+# delete this later
+anomaly_classes = 1
+
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "cgn"
@@ -123,7 +126,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
         parameters = sample_params()
 
         for seed in 1:max_seed
-            for i in 2:anomaly_classes
+            for i in 1:anomaly_classes
                 savepath = datadir("experiments/images_$(method)$cont_string/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
                 mkpath(savepath)
 

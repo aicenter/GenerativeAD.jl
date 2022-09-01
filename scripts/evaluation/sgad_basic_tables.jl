@@ -37,6 +37,8 @@ function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{Stri
             tst_metric = _prefix_symbol("tst", metric)    
             
             _, rt = sorted_rank(df, agg, val_metric, tst_metric, downsample)
+            sorted_models = vcat(["dataset"], [x for x in sgad_models_alias if x in names(rt)])
+            rt = rt[!,sorted_models]
 
             rt[end-2, 1] = "\$\\sigma_1\$"
             rt[end-1, 1] = "\$\\sigma_{10}\$"
@@ -136,6 +138,8 @@ function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Di
         tst_metric = _prefix_symbol("tst", metric)    
 
         _, rt = sorted_rank(df, aggregate_stats_auto, val_metric, tst_metric, downsample)
+        sorted_models = vcat(["dataset"], [x for x in sgad_models_alias if x in names(rt)])
+        rt = rt[!,sorted_models]
 
         rt[end-2, 1] = "\$\\sigma_1\$"
         rt[end-1, 1] = "\$\\sigma_{10}\$"
