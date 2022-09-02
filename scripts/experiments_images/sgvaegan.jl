@@ -203,7 +203,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
                         :log_var_x_estimate_top, 
                         :latent_structure,
                         :fixed_mask_epochs,
-                        :batch_norm
+                        :batch_norm,
+                        :init_type,
+                        :tau_mask
                         ))
                     training_info, results = fit(data, edited_parameters, save_parameters, i, seed)
 

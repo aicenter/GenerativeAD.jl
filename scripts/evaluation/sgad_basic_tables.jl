@@ -24,6 +24,7 @@ sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy","vae", "cgn", "sgvae", 
 sgad_models_alpha = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "vae", "cgn", "vaegan", "sgvae", "sgvaegan", 
     "sgvae_alpha", "sgvaegan_alpha"]
 sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models_alpha]
+DOWNSAMPLE = 50
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 
@@ -118,7 +119,10 @@ df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
 df_images_target_nonnan = filter(r-> !isnan(r.val_auc), df_images_target)
 prefix="images_loi"
 suffix=""
-rts = basic_summary_table(df_images_target_nonnan, outdir, prefix=prefix, suffix=suffix)
+modelnames = unique(df_images_target_nonnan.modelname)
+downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
+rts = basic_summary_table(df_images_target_nonnan, outdir, prefix=prefix, suffix=suffix,
+    downsample=downsample)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
     rts[1], sgad_models_alias)
 
@@ -162,7 +166,10 @@ end
 
 prefix="images_loi"
 suffix="_per_ac"
-rts = basic_summary_table_per_ac(df_images_target_nonnan, outdir, prefix=prefix, suffix=suffix)
+modelnames = unique(df_images_target_nonnan.modelname)
+downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
+rts = basic_summary_table_per_ac(df_images_target_nonnan, outdir, prefix=prefix, suffix=suffix,
+    downsample=downsample)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
     rts[1], sgad_models_alias)
 
@@ -218,23 +225,11 @@ end
 
 prefix="images_mvtec"
 suffix=""
-rts = basic_summary_table(df_mvtec_nonnan, outdir, prefix=prefix, suffix=suffix)
+modelnames = unique(df_mvtec_nonnan.modelname)
+downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
+rts = basic_summary_table(df_mvtec_nonnan, outdir, prefix=prefix, suffix=suffix,
+    downsample=downsample)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
     rts[1], sgad_models_alias)
-
-# do this for the different sgvae params
-"""
-prefix="images_mvtec"
-suffix = "_sgvae_latent_structure"
-
-subdf = filter(r->r.modelname=="sgvae", df_mvtec)
-params = map(x->get(parse_savename(x)[2], "latent_structure", ""), subdf.parameters)
-subdf.modelname[params .== "mask"] .= "sgvae_d"
-subdf.modelname[params .!= "mask"] .= "sgvae_i"
-perf_df_mvtec = vcat(subdf, df_mvtec)
-rts = basic_summary_table(perf_df_mvtec, outdir, prefix=prefix, suffix=suffix)
-save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
-    rts[1], perf_plot_models)
-"""
 
 end

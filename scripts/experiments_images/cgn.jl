@@ -34,9 +34,6 @@ parsed_args = parse_args(ARGS, s)
 @unpack dataset, max_seed, anomaly_classes, method, contamination = parsed_args
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 
-# delete this later
-anomaly_classes = 1
-
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "cgn"
