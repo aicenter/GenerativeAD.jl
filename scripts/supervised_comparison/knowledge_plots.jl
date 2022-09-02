@@ -23,13 +23,16 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("../evaluation/utils/ranks.jl")
 outdir = "result_tables"
 
-models = ["classifier", "sgvae_alpha"]
+models = ["classifier", "sgvae_robreg", "sgvaegan_robreg"]
+models_alias = ["classifier", "sgvaea", "sgvgna"]
 round_results = false
 
 # LOI basic tables
 df_images = load(datadir("supervised_comparison/images_leave-one-in_eval.bson"))[:df];
 apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS) # rename
-df_images.modelname[df_images.modelname .== "sgvae_robreg"] .= "sgvaea"
+for (m,a) in zip(models, models_alias)
+    df_images.modelname[df_images.modelname .== m] .= a
+end
 
 # metric definition
 val_metrics = [:val_auc_01_100, :val_auc_02_100, :val_auc_05_100, :val_auc_1_100, :val_auc_2_100,
@@ -58,7 +61,7 @@ function collect_plot_points(modelname, dataset, ac, seed, df, val_metrics, tst_
             push!(res, NaN)
         else
             imax = argmax(_subdf[val_metric])
-            push!(res, subdf[tst_metric][imax])
+            push!(res, _subdf[tst_metric][imax])
         end
     end
     return res
@@ -74,7 +77,7 @@ for m in tst_metrics
     res_df[:,m] = Float32[]
 end
 
-for modelname in ["classifier", "sgvaea"]
+for modelname in models_alias
     for dataset in ["cifar10", "svhn2", "wmnist", "coco"]
         for ac in 1:10
             for seed in 1:1
