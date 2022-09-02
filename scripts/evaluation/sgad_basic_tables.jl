@@ -173,24 +173,6 @@ rts = basic_summary_table_per_ac(df_images_target_nonnan, outdir, prefix=prefix,
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
     rts[1], sgad_models_alias)
 
-
-# this is to be used for further distinguishing performance based on some hyperparam values
-"""
-for d in Set(["cifar10", "svhn2", "wmnist"])
-    mask = (perf_df_images_target.dataset .== d)
-    perf_df_images_target[mask, :dataset] .= perf_df_images_target[mask, :dataset] .* ":" .* convert_anomaly_class.(perf_df_images_target[mask, :anomaly_class], d)
-    perf_df_images_target[mask, :anomaly_class] .= 1 # it has to be > 0, because otherwise we get too many warnings from the aggregate_stats_max_mean
-end
-
-prefix="images_loi"
-suffix = "_sgvae_latent_structure_per_ac"
-rts = basic_summary_table_per_ac(perf_df_images_target, outdir, prefix=prefix, suffix=suffix)
-save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
-    rts[1], perf_plot_models)
-"""
-
-
-
 ##### MVTEC
 # now let's do the same for mvtec results
 df_mvtec = load(datadir("evaluation/images_mvtec_eval_all.bson"))[:df];
