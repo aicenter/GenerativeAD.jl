@@ -119,7 +119,7 @@ for ac in acs
 		model_ids = map(x->Meta.parse(split(split(x, "=")[2], "_")[1]), lfs)
 
 		# make the save dir
-		save_dir = datadir("supervised_comparison/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+		save_dir = datadir("supervised_comparison/images_$(datatype)/$(modelname)_alpha/$(dataset)/ac=$(ac)/seed=$(seed)")
 		mkpath(save_dir)
 		@info "Saving data to $(save_dir)..."
 
