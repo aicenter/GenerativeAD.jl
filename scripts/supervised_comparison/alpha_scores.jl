@@ -102,6 +102,10 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 		scale, dataset, rdata, ldata, seed, ac, method, score_type, latent_score_type)
 end	
 
+# this is the part where we load the best models
+bestf = datadir("sgad_alpha_evaluation_kp/best_models_$(datatype).bson")
+best_models = load(bestf)
+
 for ac in acs
 	for seed in 1:max_seed
 		# we will go over the models that have the latent scores computed - for them we can be sure that 
