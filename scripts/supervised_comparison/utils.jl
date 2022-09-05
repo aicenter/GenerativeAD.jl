@@ -36,6 +36,37 @@ end
 
 auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
 
+function perf_at_p_basic(p, p_normal, val_scores, val_y, tst_scores, tst_y; seed=nothing)
+	scores, labels, _ = try
+		_subsample_data(p, p_normal, val_y, val_scores; seed=seed)
+	catch e
+		return NaN, NaN
+	end
+	# if there are no positive samples return NaNs
+	if sum(labels) == 0
+		val_auc = NaN
+		tst_auc = auc_val(tst_y, tst_scores[:,1])
+	# if top samples are only positive
+	# we cannot train alphas
+	# therefore we return the default val performance
+	elseif sum(labels) == length(labels) 
+		val_auc = NaN
+		tst_auc = auc_val(tst_y, tst_scores[:,1])
+	# if they are not only positive, then we train alphas and use them to compute 
+	# new scores - auc vals on the partial validation and full test dataset
+	else
+        # predict
+		val_auc = auc_val(labels, scores)
+		tst_auc = auc_val(tst_y, tst_scores)
+	end
+	return val_auc, tst_auc
+end
+
+function perf_at_p_basic_agg(args...; kwargs...)
+	results = [perf_at_p_basic(args...;seed=seed, kwargs...) for seed in 1:max_seed_perf]
+	return nanmean([x[1] for x in results]), nanmean([x[2] for x in results])
+end
+
 function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_alpha, alpha0, base_beta; 
 	seed=nothing, scale=true, kwargs...)
 	scores, labels, _ = try
@@ -346,6 +377,55 @@ function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta,
 		res_df
 	end
 	
+	# then save it
+	res_df = DataFrame(res_df)
+	save(outf, Dict(:df => res_df))
+	@info "Saved $outf."
+	res_df
+end
+
+function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, dataset, data, seed, ac)
+	# setup params
+	parameters = data[:parameters]
+
+	res_df = OrderedDict()
+	res_df["modelname"] = modelname
+	res_df["dataset"] = dataset
+	res_df["phash"] = GenerativeAD.Evaluation.hash(parameters)
+	res_df["parameters"] = "_"*savename(parameters)
+	res_df["fit_t"] = NaN
+	res_df["tr_eval_t"] = NaN
+	res_df["val_eval_t"] = NaN
+	res_df["tst_eval_t"] = NaN
+	res_df["seed"] = seed
+	res_df["npars"] = NaN
+	res_df["anomaly_class"] = ac
+	res_df["method"] = nothing
+	res_df["score_type"] = nothing
+	res_df["latent_score_type"] = nothing
+
+	# first, filter out NaNs and Infs
+	inds = val_scores .!= Inf
+	val_scores = val_scores[inds]
+	val_y = val_y[inds]
+	inds =  .! isnan.(val_scores)
+	val_scores = val_scores[inds]
+	val_y = val_y[inds]
+
+	# now fill in the values
+	res_df["val_auc"], res_df["val_auprc"], res_df["val_tpr_5"], res_df["val_f1_5"] = 
+		basic_stats(val_y, val_scores)
+	res_df["tst_auc"], res_df["tst_auprc"], res_df["tst_tpr_5"], res_df["tst_f1_5"] = 
+		basic_stats(tst_y, tst_scores)
+
+	# then do the same on a small section of the data
+	ps = [100.0, 50.0, 20.0, 10.0, 5.0, 2.0, 1.0, 0.5, 0.2, 0.1]
+	auc_ano_100 = [perf_at_p_basic_agg(p/100, 1.0, val_scores, val_y, tst_scores, tst_y) for p in ps]
+	for (k,v) in zip(map(x->x * "_100", AUC_METRICS), auc_ano_100)
+		res_df["val_"*k] = v[1]
+		res_df["tst_"*k] = v[2]
+	end
+
 	# then save it
 	res_df = DataFrame(res_df)
 	save(outf, Dict(:df => res_df))
