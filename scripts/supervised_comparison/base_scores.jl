@@ -10,6 +10,7 @@ using ArgParse
 using Suppressor
 using StatsBase
 using Random
+using ValueHistories
 using GenerativeAD.Evaluation: _prefix_symbol, _get_anomaly_class, _subsample_data
 using GenerativeAD.Evaluation: BASE_METRICS, AUC_METRICS
 include("../pyutils.jl")
@@ -85,7 +86,12 @@ for ac in acs
 		@info "Saving data to $(save_dir)..."
 
 		# score files
-		res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+		_res_dir = "experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)"
+		res_dir = if modelname in ["vae", "DeepSVDD", "fAnoGAN"] && dataset in ["CIFAR10", "SVHN2"]
+			"/home/skvarvit/generativead/GenerativeAD.jl/data/" * _res_dir
+		else
+			datadir(_res_dir)
+		end
 		rfs = readdir(res_dir)
 		rfs = filter(x->!occursin("model", x), rfs)
 		model_ids = map(x->Meta.parse(split(split(x, "init_seed=")[2], "_")[1]), rfs)
