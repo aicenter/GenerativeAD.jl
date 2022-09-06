@@ -67,13 +67,6 @@ function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_d
     res_f = res_f[1]
     res_d = load(joinpath(res_dir, res_f))
 
-    # decide if we need to normalize the scores
-    gx = model.generate_mean(10); 
-    gx = gx.detach().to("cpu").numpy();
-    if mean(gx) < 0.2 && minimum(gx) < -0.5
-        data = GenerativeAD.Datasets.normalize_data(data);
-    end
-
     # compute the results
     (tr_X, tr_y), (val_X, val_y), (tst_X, tst_y) = data
     tr_X = Array(permutedims(tr_X, [4,3,2,1]));
@@ -125,6 +118,7 @@ for ac in 1:max_ac
         else
             data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=datatype);
         end
+        data = GenerativeAD.Datasets.normalize_data(data);
 
         # outputs
         out_dir = datadir("sgad_encodings/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
