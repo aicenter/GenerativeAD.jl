@@ -23,8 +23,10 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("../evaluation/utils/ranks.jl")
 outdir = "result_tables"
 
-models = ["classifier", "sgvae_robreg", "sgvaegan_robreg"]
-models_alias = ["classifier", "sgvaea", "sgvgna"]
+models = ["classifier", "DeepSVDD", "fAnoGAN", "fmganpy", "vae", "cgn", "vaegan", "sgvae", "sgvaegan",
+ "sgvae_robreg", "sgvaegan_robreg"]
+models_alias = ["classifier", "dsvd", "fano", "fmgn", "vae", "cgn", "vgn", "sgvae", "sgvgn", "sgvaea", 
+    "sgvgna"]
 round_results = false
 
 # LOI basic tables

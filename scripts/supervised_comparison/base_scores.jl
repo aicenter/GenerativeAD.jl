@@ -80,7 +80,7 @@ end
 for ac in acs
 	for seed in 1:max_seed
 		# make the save dir
-		save_dir = datadir("supervised_comparison/images_$(datatype)/$(modelname)_alpha/$(dataset)/ac=$(ac)/seed=$(seed)")
+		save_dir = datadir("supervised_comparison/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
 		mkpath(save_dir)
 		@info "Saving data to $(save_dir)..."
 
