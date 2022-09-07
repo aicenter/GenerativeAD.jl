@@ -261,8 +261,8 @@ function load_scores(model_id, lf, latent_dir, rfs, res_dir, modelname="sgvae")
 		score_types = ["discriminator", "feature_matching", "reconstruction"]
 		rscores = Dict()
 		for rd in rdata
-			rscores[rd[:paramaters].score * "_val"] = rd[:val_scores]
-			rscores[rd[:paramaters].score * "_tst"] = rd[:tst_scores] 
+			rscores[rd[:parameters].score * "_val"] = rd[:val_scores]
+			rscores[rd[:parameters].score * "_tst"] = rd[:tst_scores] 
 		end
 		rscores_val = cat(map(st->rscores[m * "_val"], score_types)..., dims=2)
 		rscores_tst = cat(map(st->rscores[m * "_val"], score_types)..., dims=2)
