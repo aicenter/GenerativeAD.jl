@@ -256,9 +256,19 @@ function load_scores(model_id, lf, latent_dir, rfs, res_dir, modelname="sgvae")
 			@info "Normal score data not available."
 			return nothing, nothing, nothing, nothing, nothing, nothing
 		end
+
+		# make sure that the score are always in the same order
+		score_types = ["discriminator", "feature_matching", "reconstruction"]
+		rscores = Dict()
+		for rd in rdata
+			rscores[rd[:paramaters].score * "_val"] = rd[:val_scores]
+			rscores[rd[:paramaters].score * "_tst"] = rd[:tst_scores] 
+		end
+		rscores_val = cat(map(st->rscores[m * "_val"], score_types)..., dims=2)
+		rscores_tst = cat(map(st->rscores[m * "_val"], score_types)..., dims=2)
 		
-		scores_val = cat(map(r->r[:val_scores], rdata)..., transpose(ldata[:val_scores]), dims=2);
-		scores_tst = cat(map(r->r[:tst_scores], rdata)..., transpose(ldata[:tst_scores]), dims=2);
+		scores_val = cat(rscores_val, transpose(ldata[:val_scores]), dims=2);
+		scores_tst = cat(rscores_tst, transpose(ldata[:tst_scores]), dims=2);
 	end
 
 	return scores_val, scores_tst, y_val, y_tst, ldata, rdata
