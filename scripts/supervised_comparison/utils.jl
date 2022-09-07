@@ -264,8 +264,8 @@ function load_scores(model_id, lf, latent_dir, rfs, res_dir, modelname="sgvae")
 			rscores[rd[:parameters].score * "_val"] = rd[:val_scores]
 			rscores[rd[:parameters].score * "_tst"] = rd[:tst_scores] 
 		end
-		rscores_val = cat(map(st->rscores[m * "_val"], score_types)..., dims=2)
-		rscores_tst = cat(map(st->rscores[m * "_val"], score_types)..., dims=2)
+		rscores_val = cat(map(st->rscores[st * "_val"], score_types)..., dims=2)
+		rscores_tst = cat(map(st->rscores[st * "_val"], score_types)..., dims=2)
 		
 		scores_val = cat(rscores_val, transpose(ldata[:val_scores]), dims=2);
 		scores_tst = cat(rscores_tst, transpose(ldata[:tst_scores]), dims=2);
