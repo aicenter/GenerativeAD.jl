@@ -80,6 +80,11 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	if isnothing(rdata) && isnothing(ldata)
 		return
 	end
+	rdata = if modelname == "sgvaegan"
+		rdata[1]
+	else
+		rdata
+	end
 
 	# now exclude some data from the validation dataset
 	(c_tr, y_tr), (c_val, y_val), (c_tst, y_tst) = original_class_split(dataset, ac, seed=seed)

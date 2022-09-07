@@ -259,8 +259,6 @@ function load_scores(model_id, lf, latent_dir, rfs, res_dir, modelname="sgvae")
 		
 		scores_val = cat(map(r->r[:val_scores], rdata)..., transpose(ldata[:val_scores]), dims=2);
 		scores_tst = cat(map(r->r[:tst_scores], rdata)..., transpose(ldata[:tst_scores]), dims=2);
-
-		rdata = rdata[1]
 	end
 
 	return scores_val, scores_tst, y_val, y_tst, ldata, rdata

@@ -193,6 +193,11 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	if isnothing(rdata) && isnothing(ldata)
 		return
 	end
+	rdata = if modelname == "sgvaegan"
+		rdata[1]
+	else
+		rdata
+	end
 
 	# setup params
 	parameters = merge(ldata[:parameters], (beta=base_beta, init_alpha=init_alpha, alpha0=alpha0, 
