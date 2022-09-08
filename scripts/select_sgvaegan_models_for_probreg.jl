@@ -16,14 +16,12 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$"]
 
 # setup
-modelname = "sgvae_alpha"
-sgad_models = ["sgvae","sgvae_alpha"]
+sgad_models = ["sgvae_robreg", "sgvaegan_robreg"]
 n_models = 10
 
 # functions
 function prepare_alpha_df!(df)
     filter!(r->r.modelname in sgad_models, df)
-    df.modelname = "sgvaegan_alpha"
     df.dataset[df.dataset .== "metal_nut"] .= "nut"
     df["fs_fit_t"] = NaN
     df["fs_eval_t"] = NaN
