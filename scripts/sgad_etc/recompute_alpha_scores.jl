@@ -319,28 +319,13 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 end
 
 # get the right lf when using a selection of best models
-function get_latent_file(_params, lfs)
-	if _params["latent_score_type"] != latent_score_type
-		return nothing
-	end
-
-	model_id = _params["init_seed"]
+function get_random_latent_files(model_id, lfs, n=10)
 	_lfs = filter(x->occursin("$(model_id)",x), lfs)
-	_lfs = if _params["latent_score_type"] == "knn"
-		k = _params["k"]
-		v = _params["v"]
-		filter(x->occursin("k=$(k)_",x) && occursin("v=$v",x), _lfs)
-	else
-		_lfs
-	end
-	if length(_lfs) != 1
-		error("something wrong when processing $(_params)")
-	end
-	return _lfs[1]
+	sample(_lfs, min(n, length(_lfs)), replace=false)
 end
 
 # this is the part where we load the best models
-bestf = datadir("sgad_alpha_evaluation_kp/best_models_$(datatype).bson")
+bestf = datadir("sgad_alpha_evaluation_kp/best_models_orig_$(datatype).bson")
 best_models = load(bestf)
 
 for ac in acs
@@ -378,18 +363,17 @@ for ac in acs
 		# from these params extract the correct model_ids and lfs
 		parsed_params = map(x->parse_savename("s_$x")[2], best_params)
 		best_model_ids = [x["init_seed"] for x in parsed_params]
-		best_lfs = map(x->get_latent_file(x, lfs), parsed_params)
-
-		# use only those that are not nothing - in agreement with the latent_score_type
-		used_inds = .!map(isnothing, best_lfs)
+		best_lfs = map(x->get_random_latent_files(x, lfs), best_model_ids)
+		best_model_ids = vcat(map(x->repeat([x[1]], length(x[2])), zip(best_model_ids, best_lfs))...)
+		best_lfs = vcat(best_lfs...)
 
 		# also, scramble the rest of the models
 		n = length(model_ids)
 		rand_inds = sample(1:n, n, replace=false)
 
 		# this is what will be iterated over
-		final_model_ids = vcat(best_model_ids[used_inds], model_ids[rand_inds])
-		final_lfs = vcat(best_lfs[used_inds], lfs[rand_inds])
+		final_model_ids = vcat(best_model_ids, model_ids[rand_inds])
+		final_lfs = vcat(best_lfs, lfs[rand_inds])
 		
 		for (model_id, lf) in zip(final_model_ids, final_lfs)
 			experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
