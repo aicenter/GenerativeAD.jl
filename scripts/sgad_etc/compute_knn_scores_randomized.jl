@@ -41,7 +41,7 @@ while true # run this over and over until the job time limit is exhausted
 
         # model dir
         model_ids = map(x-> Meta.parse(split(split(x, "=")[2], ".")[1]), readdir(in_dir))
-        for model_id in model_ids
+        for model_id in sample(model_ids, length(model_ids), replace=false) 
             res = nothing
             ntries = 1
             while isnothing(res) && ntries <= max_tries # the script might get stuck here
