@@ -125,7 +125,12 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
             elseif method == "probreg"
                 ProbReg()
             elseif method == "robreg"
-                RobReg(input_dim = size(scores,2), alpha=init_alpha, alpha0=alpha0, 
+			    _init_alpha, _alpha0 = if modelname == "sgvaegan"
+			    	compute_alphas(scores, labels) # determine them based on the best score
+			    else 
+			    	init_alpha, alpha0 # global values
+			    end
+                RobReg(input_dim = size(scores,2), alpha=_init_alpha, alpha0=_alpha0, 
                 	beta=base_beta/sum(labels))
             else
                 error("unknown method $method")
@@ -237,7 +242,12 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
         elseif method == "probreg"
             ProbReg()
         elseif method == "robreg"
-            RobReg(input_dim = size(val_scores,2), alpha=init_alpha, alpha0=alpha0, 
+        	_init_alpha, _alpha0 = if modelname == "sgvaegan"
+		    	compute_alphas(scores, labels) # determine them based on the best score
+		    else 
+		    	init_alpha, alpha0 # global values
+		    end
+            RobReg(input_dim = size(val_scores,2), alpha=_init_alpha, alpha0=_alpha0, 
             	beta=base_beta/sum(val_y))
         else
             error("unknown method $method")

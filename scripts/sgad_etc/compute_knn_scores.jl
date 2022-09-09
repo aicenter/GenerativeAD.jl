@@ -22,7 +22,7 @@ parsed_args = parse_args(ARGS, s)
 @unpack modelname, dataset, datatype, force = parsed_args
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
-ks = (datatype == "mvtec") ? collect(1:4:151) : vcat([1, 31, 61], collect(101:100:2001))
+ks = (datatype == "mvtec") ? collect(1:4:151) : vcat([1, 31, 61], collect(101:200:2001))
 ks = (dataset == "cocoplaces") ? collect(1:10:201) : ks
 
 for ac in 1:max_ac

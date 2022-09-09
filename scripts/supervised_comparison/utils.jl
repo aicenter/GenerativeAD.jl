@@ -440,3 +440,17 @@ function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, dataset, d
 	@info "Saved $outf."
 	res_df
 end
+
+# for sgvaegan alpha
+function compute_alphas(scores, labels)
+    # first determine which is the most important base score
+    base_aucs = map(i->auc_val(labels, scores[:,i]), 1:3)
+    ibest = argmax(base_aucs)
+    
+    # create the robust logistic regression
+    init_alpha = ones(Float32, 6)*0.1
+    alpha0 = zeros(Float32, 6)
+    init_alpha[ibest] = 1.0
+    alpha0[ibest] = 1.0
+    init_alpha, alpha0
+end
