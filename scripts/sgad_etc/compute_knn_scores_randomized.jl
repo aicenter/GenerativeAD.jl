@@ -14,18 +14,22 @@ s = ArgParseSettings()
         default = "leave-one-in"
         arg_type = String
         help = "leave-one-in or mvtec"
+    "anomaly_class"
+        default = 1
+        arg_type = Int
+        help = "anomaly class"
     "--force", "-f"
         action = :store_true
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, datatype, force = parsed_args
-max_ac = (datatype == "mvtec") ? 1 : 10
+@unpack modelname, dataset, datatype, force, anomaly_class = parsed_args
 max_seed = (datatype == "mvtec") ? 5 : 1 
 ks = (datatype == "mvtec") ? collect(1:4:151) : vcat([1, 31, 61], collect(101:100:2001))
 ks = (dataset == "cocoplaces") ? collect(1:10:201) : ks
+ac = anomaly_class
 
-for ac in 1:max_ac
+while true # run this over and over until the job time limit is exhausted
     for seed in 1:max_seed
         # outputs
         in_dir = datadir("sgad_encodings/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
@@ -36,12 +40,13 @@ for ac in 1:max_ac
 
         # model dir
         model_ids = map(x-> Meta.parse(split(split(x, "=")[2], ".")[1]), readdir(in_dir))
-
         for model_id in model_ids
-            for k in ks
-                for v in [:delta, :kappa, :gamma]
-                    compute_knn_score(model_id, in_dir, k, v, out_dir, seed, ac, dataset, modelname; 
-                        force=force)
+            res = nothing
+            while isnothing(res) # the script might get stuck here
+                k = sample(ks, 1)[1]
+                v = sample([:delta, :kappa, :gamma], 1)[1]
+                res = compute_knn_score(model_id, in_dir, k, v, out_dir, seed, ac, dataset, modelname; 
+                    force=force)                    
                 end
             end
         end
