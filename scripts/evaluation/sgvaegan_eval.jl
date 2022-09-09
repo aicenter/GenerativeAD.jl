@@ -51,7 +51,7 @@ df_images_target = filter(r->r.modelname != "sgvae_alpha", df_images_target);
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
 #df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
 filter!(r->r.modelname == "sgvae_robreg", df_images_alpha)
-filter!(r->r.parameters.beta == 1.0, df_images_alpha)
+filter!(r->occursin("beta=1", r.parameters), df_images_alpha)
 df_images_alpha.modelname .= "sgvae_alpha"
 prepare_alpha_df!(df_images_alpha)
 df_images_alpha_target, _ = _split_image_datasets(df_images_alpha, TARGET_DATASETS);
