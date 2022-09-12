@@ -21,9 +21,10 @@ include("./utils/ranks.jl")
 outdir = "result_tables10"
 mkpath(datadir("evaluation/$(outdir)"))
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy10", "vae", "cgn", "sgvae", "vaegan10", "sgvaegan10"]
-sgad_models_alpha = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy10", "vae", "cgn", "vaegan10", "sgvae", 
-"sgvaegan10", "sgvae_alpha", "sgvaegan_alpha"]
+sgad_models_alpha = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy10", "fmganpy", "vae", "cgn", "vaegan", 
+"vaegan10", "sgvae", "sgvaegan", 
+#"sgvaegan10", 
+"sgvae_alpha", "sgvaegan_alpha"]
 sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models_alpha]
 DOWNSAMPLE = 50
 
@@ -71,7 +72,7 @@ end
 df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
 apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS) # rename
 # filter out only the interesting models
-df_images = filter(r->r.modelname in sgad_models, df_images)
+df_images = filter(r->r.modelname in sgad_models_alpha, df_images)
 
 # alpha
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
@@ -140,16 +141,6 @@ function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Di
         rt[end-1, 1] = "\$\\sigma_{10}\$"
         rt[end, 1] = "rnk"
 
-        file = "$(datadir())/evaluation/$(dir)/$(prefix)_$(metric)_$(metric)_autoagg$(suffix).txt"
-        open(file, "w") do io
-            print_rank_table(io, rt; backend=:txt)
-        end
-        @info "saved to $file"
-        file = "$(datadir())/evaluation/$(dir)/$(prefix)_$(metric)_$(metric)_autoagg$(suffix).tex"
-        open(file, "w") do io
-            print_rank_table(io, rt; backend=:tex)
-        end
-        @info "saved to $file"
         push!(rts, rt)
     end
     rts

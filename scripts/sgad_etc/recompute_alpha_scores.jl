@@ -243,7 +243,7 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
             ProbReg()
         elseif method == "robreg"
         	_init_alpha, _alpha0 = if modelname == "sgvaegan"
-		    	compute_alphas(scores, labels) # determine them based on the best score
+		    	compute_alphas(val_scores, val_y) # determine them based on the best score
 		    else 
 		    	init_alpha, alpha0 # global values
 		    end
