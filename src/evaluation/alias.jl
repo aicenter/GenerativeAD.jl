@@ -104,6 +104,9 @@ const MODEL_ALIAS = Dict{String, String}(
 	"vaegan"			=> "vgn",
 	"sgvaegan"			=> "sgvgn",
 	"sgvaegan_alpha"	=> "sgvgna",
+	"fmganpy10"			=> "fmgn10",
+	"vaegan10"			=> "vgn10",
+	"sgvaegan10"			=> "sgvgn10",
 )
 
 const DATASET_ALIAS = Dict{String, String}(

@@ -122,7 +122,7 @@ function fit(data, parameters, save_parameters, ac, seed)
     save_iter = epoch_iters*10
     try
          global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
-            max_train_time=20*3600/max_seed/anomaly_classes, workers=4, val_samples=1000,
+            max_train_time=20*3600/max_seed/anomaly_classes, workers=4, 
             n_epochs = n_epochs, save_iter = save_iter, save_weights = false, save_path = res_save_path)
     catch e
         # return an empty array if fit fails so nothing is computed
