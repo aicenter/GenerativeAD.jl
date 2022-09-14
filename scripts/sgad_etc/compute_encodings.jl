@@ -50,7 +50,7 @@ function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_d
     end    
     model = if modelname == "sgvae"
         load_sgvae_model(md, device);
-    elseif modelname == "sgvaegan"
+    elseif occursin("sgvaegan", modelname)
         load_sgvaegan_model(md, device);
     else
         error("Unknown model type $modelname, don't know how to load it.")
