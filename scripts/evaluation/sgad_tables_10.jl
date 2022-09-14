@@ -22,8 +22,7 @@ outdir = "result_tables10"
 mkpath(datadir("evaluation/$(outdir)"))
 
 sgad_models_alpha = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy10", "fmganpy", "vae", "cgn", "vaegan", 
-"vaegan10", "sgvae", "sgvaegan", 
-#"sgvaegan10", 
+"vaegan10", "sgvae", "sgvaegan", "sgvaegan10", 
 "sgvae_alpha", "sgvaegan_alpha"]
 sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models_alpha]
 DOWNSAMPLE = 50

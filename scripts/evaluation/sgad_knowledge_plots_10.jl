@@ -24,7 +24,7 @@ include("./utils/ranks.jl")
 outdir = "result_tables10"
 
 sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "vaegan", "vaegan10", 
-"sgvaegan", "sgvae", "sgvae_alpha", "sgvaegan_alpha"]
+"sgvaegan", "sgvaegan10", "sgvae", "sgvae_alpha", "sgvaegan_alpha"]
 sgad_alpha_models = ["sgvae_alpha", "sgvaegan_alpha"]
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 round_results = false
