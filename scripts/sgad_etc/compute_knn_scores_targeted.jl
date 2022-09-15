@@ -1,3 +1,5 @@
+# this only computes knn scores for the best models saved in datadir("sgad_alpha_evaluation_kp/best_models_orig_$(datatype).bson")
+# you need to run the basic evaluation scripts nad select_sgvaegan_models_for_probreg.jl 
 include("knn_utils.jl")
 
 s = ArgParseSettings()
@@ -30,6 +32,9 @@ ks = (dataset == "cocoplaces") ? collect(1:10:201) : ks
 ac = anomaly_class
 max_tries = 20
 
+bestf = datadir("sgad_alpha_evaluation_kp/best_models_orig_$(datatype).bson")
+best_models = load(bestf)
+
 while true # run this over and over until the job time limit is exhausted
     for seed in 1:max_seed
         # outputs
@@ -40,9 +45,15 @@ while true # run this over and over until the job time limit is exhausted
         mkpath(out_dir)
 
         # model dir
-        model_ids = map(x-> Meta.parse(split(split(x, "=")[2], ".")[1]), readdir(in_dir))
+        inds = (best_models[:anomaly_class] .== anomaly_class) .& (best_models[:seed] .== seed) .& 
+            (best_models[:dataset] .== dataset) .& (best_models[:modelname] .== modelname)
+        best_params = best_models[:parameters][inds]
+
+        # from these params extract the correct model_ids and lfs
+        parsed_params = map(x->parse_savename("s_$x")[2], best_params)
+        best_model_ids = unique([x["init_seed"] for x in parsed_params])
         
-        for model_id in sample(model_ids, length(model_ids), replace=false)
+        for model_id in best_model_ids
             res = nothing
             ntries = 1
             while isnothing(res) && ntries <= max_tries # the script might get stuck here

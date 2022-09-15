@@ -16,8 +16,8 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$"]
 
 # setup
-sgad_models = ["sgvae", "sgvaegan"]
-n_models = 10
+sgad_models = ["sgvae", "sgvaegan", "sgvaegan10"]
+n_models = 1
 
 # functions
 function prepare_alpha_df!(df)
@@ -70,10 +70,20 @@ end
 # criterions
 criterions = (
 	(:val_auc, :tst_auc),
+	(:val_auc_100_100, :tst_auc),
+	(:val_auc_50_100, :tst_auc),
+	(:val_auc_20_100, :tst_auc),
+	(:val_auc_10_100, :tst_auc),
+	(:val_auc_5_100, :tst_auc),
+	(:val_auc_2_100, :tst_auc),
+	(:val_auc_1_100, :tst_auc),
+	(:val_auc_05_100, :tst_auc),
+	(:val_auc_02_100, :tst_auc),
+	(:val_auc_01_100, :tst_auc),
 	)
 
 # LOI
-df_images = load(datadir("evaluation/images_leave-one-in_eval.bson"))[:df];
+df_images = load(datadir("evaluation_kp/images_leave-one-in_eval.bson"))[:df];
 prepare_alpha_df!(df_images)
 modelnames = unique(df_images.modelname) 
 datasets = unique(df_images.dataset)
