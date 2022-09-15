@@ -173,11 +173,22 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
 end	
 
 nanmean(x) = mean(x[.!isnan.(x)])
+function topn_mean(vs, ts, n)
+    inds = .!isnan.(vs) .& .!isnan.(ts)
+    vs, ts = vs[inds], ts[inds]
+    _n = min(n, length(vs))
+    if _n > 0
+        inds = sortperm(vs, rev=true)
+        return mean(vs[inds][1:_n]), mean(ts[inds][1:_n])
+    else
+        return NaN, NaN
+    end
+end
 
 function perf_at_p_agg(args...; kwargs...)
 	results = [perf_at_p_new(args...;seed=seed, kwargs...) for seed in 1:max_seed_perf]
 	results = results[.!map(x->any(isnan.(x)), results)]
-	return nanmean([x[1] for x in results]), nanmean([x[2] for x in results])
+	return topn_mean([x[1] for x in results], [x[2] for x in results], 4)
 end
 
 function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
