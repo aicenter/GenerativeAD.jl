@@ -35,7 +35,7 @@ max_tries = 20
 bestf = datadir("sgad_alpha_evaluation_kp/best_models_orig_$(datatype).bson")
 best_models = load(bestf)
 
-while true # run this over and over until the job time limit is exhausted
+for i in 1:100 # run this over and over until the job time limit is exhausted
     for seed in 1:max_seed
         # outputs
         in_dir = datadir("sgad_encodings/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")

@@ -37,7 +37,7 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "fmganpy"
-version = 0.3
+version = 0.4
 
 function sample_params()
     par_vec = (
@@ -106,7 +106,7 @@ function fit(data, parameters, save_parameters, ac, seed)
     y_val = data[2][2]
     try
          global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
-            X_val=X_val, y_val=y_val,
+            X_val=X_val, y_val=y_val, val_samples=10,
             max_train_time=20*3600/max_seed/anomaly_classes, workers=4,
             n_epochs = n_epochs, save_iter = save_iter, save_weights = false, save_path = res_save_path)
     catch e
