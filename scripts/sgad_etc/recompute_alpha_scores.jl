@@ -60,17 +60,17 @@ max_seed_perf = 10
 scale = true
 score_type = if modelname == "sgvae"
 	"logpx"
-elseif modelname == "sgvaegan"
+elseif occursin("sgvaegan", modelname)
 	"all"
 end
 init_alpha = if modelname == "sgvae"
 	[1.0, 0.1, 0.1, 0.1]
-elseif modelname == "sgvaegan"
+elseif occursin("sgvaegan", modelname)
 	[1.0, 1.0, 1.0, 0.1, 0.1, 0.1]
 end
 alpha0 = if modelname == "sgvae"
 	[1, 0, 0, 0]
-elseif modelname == "sgvaegan"
+elseif occursin("sgvaegan", modelname)
 	[1, 1, 1, 0, 0, 0]
 end
 
@@ -125,7 +125,7 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
             elseif method == "probreg"
                 ProbReg()
             elseif method == "robreg"
-			    _init_alpha, _alpha0 = if modelname == "sgvaegan"
+			    _init_alpha, _alpha0 = if occursin("sgvaegan", modelname)
 			    	compute_alphas(scores, labels) # determine them based on the best score
 			    else 
 			    	init_alpha, alpha0 # global values
@@ -210,7 +210,7 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	if isnothing(rdata) && isnothing(ldata)
 		return
 	end
-	rdata = if modelname == "sgvaegan"
+	rdata = if occursin("sgvaegan", modelname)
 		rdata[1]
 	else
 		rdata
@@ -254,7 +254,7 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
         elseif method == "probreg"
             ProbReg()
         elseif method == "robreg"
-        	_init_alpha, _alpha0 = if modelname == "sgvaegan"
+        	_init_alpha, _alpha0 = if occursin("sgvaegan", modelname)
 		    	compute_alphas(val_scores, val_y) # determine them based on the best score
 		    else 
 		    	init_alpha, alpha0 # global values
@@ -372,7 +372,7 @@ for ac in acs
 		rfs = readdir(res_dir)
 		rfs = if modelname == "sgvae" 
 			filter(x->occursin(score_type, x), rfs)
-		elseif modelname == "sgvaegan"
+		elseif occursin("sgvaegan", modelname)
 			rfs
 		end
 
