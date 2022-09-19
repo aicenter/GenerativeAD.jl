@@ -243,7 +243,7 @@ function load_scores(model_id, lf, latent_dir, rfs, res_dir, modelname="sgvae")
 
 		scores_val = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
 		scores_tst = cat(rdata[:tst_scores], transpose(ldata[:tst_scores]), dims=2);
-	elseif modelname == "sgvaegan"
+	elseif occursin("sgvaegan", modelname)
 		rf = filter(x->occursin("$(model_id)", x), rfs)
 		rf = filter(x->!occursin("model", x), rf)
 		if length(rf) != 3
