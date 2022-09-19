@@ -52,12 +52,28 @@ df_images_target = filter(r->r.modelname != "sgvae_alpha", df_images_target);
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
 #df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
 filter!(r->occursin("_robreg", r.modelname), df_images_alpha)
-filter!(r->get(parse_savename(r.parameters)[2], "beta", 1.0) in [1.0, 10.], df_images_alpha)
+filter!(r->get(parse_savename(r.parameters)[2], "beta", 1.0) in [1.0, 10.0], df_images_alpha)
 for model in ["sgvae_", "sgvaegan_"]
     df_images_alpha.modelname[map(r->occursin(model, r.modelname), eachrow(df_images_alpha))] .= model*"alpha"
 end
 prepare_alpha_df!(df_images_alpha)
 df_images_alpha_target, _ = _split_image_datasets(df_images_alpha, TARGET_DATASETS);
+
+# now add the models we are interested in
+# sgvaeganalpha - beta=1/10
+subdfa = filter(r->r.modelname == "sgvaegan_alpha", df_images_alpha_target)
+parametersa = map(x->parse_savename(x)[2], subdfa.parameters)
+subdfa.modelname[[x["beta"] for x in parametersa] .== 1.0] .= "sgvaegan_alpha_1"
+subdfa.modelname[[x["beta"] for x in parametersa] .== 10.0] .= "sgvaegan_alpha_10"
+df_images_alpha_target = vcat(df_images_alpha_target, subdfa)
+
+# sgvaegan/vaegan/fmganpy - 1000 or 10 early stopping anomalies
+subdf = filter(r->r.modelname in ["sgvaegan", "vaegan", "fmganpy"], df_images_target)
+parameters = map(x->parse_savename(x)[2], subdf.parameters)
+vs = [get(x, "version", 0.3) for x in parameters]
+subdf.modelname[vs .== 0.3] .= subdf.modelname[vs .== 0.3] .* "_0.3"
+subdf.modelname[vs .== 0.4] = subdf.modelname[vs .== 0.4] .* "_0.4"
+df_images_target = vcat(df_images_target, subdf)
 
 # now differentiate them
 df_svhn = filter(r->r[:dataset] == "svhn2",df_images_target)
@@ -164,7 +180,7 @@ extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 	    
 	    # reorder table on tabular data as there is additional class of models (flows)
 	    # one can do this manually at the end
-	    f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title).csv")
+	    f = joinpath(datadir(), "evaluation", outdir, "kp_complex_$(title).csv")
 	    println("saving to $f")
 	    CSV.write(f, metric_means)
 	    ranks, metric_means
@@ -185,7 +201,7 @@ DOWNSAMPLE = 50
         
         # reorder table on tabular data as there is additional class of models (flows)
         # one can do this manually at the end
-        f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title)_downsampled.csv")
+        f = joinpath(datadir(), "evaluation", outdir, "kp_complex_$(title)_downsampled.csv")
         println("saving to $f")
         CSV.write(f, metric_means)
         ranks, metric_means
