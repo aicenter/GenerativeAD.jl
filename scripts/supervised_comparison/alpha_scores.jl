@@ -146,7 +146,7 @@ for ac in acs
 		# from these params extract the correct model_ids and lfs
 		parsed_params = map(x->parse_savename("s_$x")[2], best_params)
 		best_model_ids = [x["init_seed"] for x in parsed_params]
-		best_lfs = map(x->get_latent_file(x, lfs), parsed_params)
+		best_lfs = map(x->get_latent_file(x, lfs, latent_score_type), parsed_params)
 
 		# use only those that are not nothing - in agreement with the latent_score_type
 		used_inds = .!map(isnothing, best_lfs)

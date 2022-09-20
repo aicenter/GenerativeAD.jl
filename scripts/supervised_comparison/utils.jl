@@ -185,7 +185,7 @@ function perf_at_p_agg(args...; kwargs...)
 end
 
 # get the right lf when using a selection of best models
-function get_latent_file(_params, lfs)
+function get_latent_file(_params, lfs, latent_score_type)
 	if _params["latent_score_type"] != latent_score_type
 		return nothing
 	end
