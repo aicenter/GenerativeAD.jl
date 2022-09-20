@@ -11,3 +11,6 @@ DATASET=$1
 ./base_scores_parallel.sh fmganpy $DATASET -f
 ./base_scores_parallel.sh vaegan $DATASET -f
 ./base_scores_parallel.sh sgvaegan $DATASET -f
+./base_scores_parallel.sh sgvaegan10 $DATASET -f
+./base_scores_parallel.sh vaegan10 $DATASET -f
+./base_scores_parallel.sh fmganpy $DATASET -f
