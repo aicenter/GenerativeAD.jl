@@ -26,7 +26,6 @@ outdir = "result_tables"
 sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "vae", "cgn", "vaegan", "sgvaegan", "sgvae", 
     "sgvae_alpha", "sgvaegan_alpha"]
 sgad_alpha_models = ["sgvae_alpha", "sgvaegan_alpha"]
-MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 round_results = false
 DOWNSAMPLE = 150
@@ -54,7 +53,7 @@ df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eva
 #df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
 filter!(r->occursin("_robreg", r.modelname), df_images_alpha)
 filter!(r->get(parse_savename(r.parameters)[2], "beta", 1.0) in [1.0, 10.], df_images_alpha)
-for model in ["sgvae_", "sgvaegan_", "sgvaegan10_"]
+for model in ["sgvae_", "sgvaegan_"]
     df_images_alpha.modelname[map(r->occursin(model, r.modelname), eachrow(df_images_alpha))] .= model*"alpha"
 end
 prepare_alpha_df!(df_images_alpha)
