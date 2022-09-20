@@ -54,6 +54,7 @@ parsed_args = parse_args(ARGS, s)
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
+version = 0.4
 
 device = "cpu"
 max_seed_perf = 10
@@ -366,7 +367,8 @@ for ac in acs
 		# this is where we select the files of best models
 		# now add the best models to the mix
 		inds = (best_models[:anomaly_class] .== ac) .& (best_models[:seed] .== seed) .& 
-			(best_models[:dataset] .== dataset) .& (occursin.(modelname, best_models[:modelname]))
+			(best_models[:dataset] .== dataset) .& (occursin.(modelname, best_models[:modelname]) .& 
+				occursin.("version=$version", best_models[:parameters]))
 		best_params = best_models[:parameters][inds]
 
 		# from these params extract the correct model_ids and lfs
