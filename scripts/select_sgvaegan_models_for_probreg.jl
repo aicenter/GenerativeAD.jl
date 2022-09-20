@@ -67,6 +67,38 @@ function best_models(df, modelnames, datasets, seeds, acs, criterions)
 	return outd
 end
 
+
+function add_more(df, outd, modelnames, datasets, seeds, acs, criterions)
+	for modelname in modelnames
+		for dataset in datasets
+			for seed in seeds
+				for ac in acs
+					for crit in criterions
+						val_crit, tst_crit = crit;
+						# now select the best hyperparams
+						subdf = filter(r->r.modelname == modelname && r.dataset == dataset && 
+							r.seed == seed && r.anomaly_class == ac && !isnan(r[val_crit]), df);
+						if size(subdf, 1) > 0
+							imaxs = sortperm(subdf[val_crit], rev=true);
+							# write it into the dict
+							n_max = min(n_models, size(subdf,1))
+							for imax in imaxs[1:n_max]
+								bestdf = subdf[imax,:]
+								push!(outd[:seed], seed)
+								push!(outd[:anomaly_class], ac)
+								push!(outd[:dataset], dataset)
+								push!(outd[:modelname], modelname)
+								push!(outd[:parameters], bestdf.parameters)
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	return outd
+end
+
 # criterions
 criterions = (
 	(:val_auc, :tst_auc),
@@ -90,8 +122,14 @@ datasets = unique(df_images.dataset)
 seeds = 1:1
 acs = 1:10
 
-outf = datadir("sgad_alpha_evaluation_kp/best_models_orig_leave-one-in.bson") 
+outf = datadir("sgad_alpha_evaluation_kp/best_models_orig_leave-one-in.bson")
 outd = best_models(df_images, modelnames, datasets, seeds, acs, criterions)
+# add sgvaegan v 0.4
+subdf = filter(r->
+	r.modelname=="sgvaegan" && 
+	get(parse_savename(r.parameters)[2], "version", 0.3) == 0.4, 
+	df_images)
+outd = add_more(subdf, outd, unique(subdf.modelname), datasets, seeds, acs, criterions)
 save(outf, outd)
 @info "saved $outf"
 
