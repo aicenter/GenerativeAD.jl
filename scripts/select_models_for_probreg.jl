@@ -16,15 +16,16 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$"]
 
 # setup
-modelname = "sgvae_alpha"
-sgad_models = ["sgvae","sgvae_alpha"]
-n_models = 10
+sgad_models = ["sgvae_robreg","sgvaegan_robreg", "sgvaegan10_robreg"]
+n_models = 2
 
 # functions
 function prepare_alpha_df!(df)
     filter!(r->r.modelname in sgad_models, df)
-    df.modelname = "sgvae_alpha"
-    df.dataset[df.dataset .== "metal_nut"] .= "nut"
+    for model in ["sgvae_", "sgvaegan_", "sgvaegan10_"]
+    	df.modelname[map(r->occursin(model, r.modelname), eachrow(df))] .= model*"alpha"
+	end
+	df.dataset[df.dataset .== "metal_nut"] .= "nut"
     df["fs_fit_t"] = NaN
     df["fs_eval_t"] = NaN
     df
@@ -40,6 +41,41 @@ function best_models(df, modelnames, datasets, seeds, acs, criterions, latent_sc
 	outd[:parameters] = []
 	outd[:latent_score_type] = []
 
+	for modelname in modelnames
+		for latent_score_type in latent_score_types
+			for dataset in datasets
+				for seed in seeds
+					for ac in acs
+						for crit in criterions
+							val_crit, tst_crit = crit;
+							# now select the best hyperparams
+							subdf = filter(r->r.modelname == modelname && r.dataset == dataset && 
+								r.seed == seed && r.anomaly_class == ac && !isnan(r[val_crit]) &&
+								r.latent_score_type == latent_score_type, df);
+							if size(subdf, 1) > 0
+								imaxs = sortperm(subdf[val_crit], rev=true);
+								# write it into the dict
+								n_max = min(n_models, size(subdf,1))
+								for imax in imaxs[1:n_max]
+									bestdf = subdf[imax,:]
+									push!(outd[:seed], seed)
+									push!(outd[:anomaly_class], ac)
+									push!(outd[:dataset], dataset)
+									push!(outd[:modelname], modelname)
+									push!(outd[:parameters], bestdf.parameters)
+									push!(outd[:latent_score_type], latent_score_type)
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	return outd
+end
+
+function add_more(df, outd, modelnames, datasets, seeds, acs, criterions, latent_score_types)
 	for modelname in modelnames
 		for latent_score_type in latent_score_types
 			for dataset in datasets
@@ -100,6 +136,13 @@ acs = 1:10
 
 outf = datadir("sgad_alpha_evaluation_kp/best_models_leave-one-in.bson") 
 outd = best_models(df_images_alpha, modelnames, datasets, seeds, acs, criterions, latent_score_types)
+# add sgvaegan v 0.4
+subdf = filter(r->
+	r.modelname=="sgvaegan_alpha" && 
+	get(parse_savename(r.parameters)[2], "version", 0.3) == 0.4, 
+	df_images_alpha)
+outd = add_more(subdf, outd, unique(subdf.modelname), datasets, seeds, acs, criterions)
+
 save(outf, outd)
 @info "saved $outf"
 
