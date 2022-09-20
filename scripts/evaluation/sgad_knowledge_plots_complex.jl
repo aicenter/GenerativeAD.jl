@@ -67,6 +67,8 @@ parametersa = map(x->parse_savename(x)[2], subdfa.parameters)
 subdfa.modelname[[x["beta"] for x in parametersa] .== 1.0] .= "sgvaegan_alpha_1"
 subdfa.modelname[[x["beta"] for x in parametersa] .== 10.0] .= "sgvaegan_alpha_10"
 df_images_alpha_target = vcat(df_images_alpha_target, subdfa)
+MODEL_ALIAS["sgvaegan_alpha_1"] = "sgvgna1"
+MODEL_ALIAS["sgvaegan_alpha_10"] = "sgvgna10"
 
 # sgvaegan/vaegan/fmganpy - 1000 or 10 early stopping anomalies
 subdf = filter(r->r.modelname in ["sgvaegan", "vaegan", "fmganpy"], df_images_target)
@@ -75,6 +77,38 @@ vs = [get(x, "version", 0.3) for x in parameters]
 subdf.modelname[vs .== 0.3] .= subdf.modelname[vs .== 0.3] .* "_0.3"
 subdf.modelname[vs .== 0.4] = subdf.modelname[vs .== 0.4] .* "_0.4"
 df_images_target = vcat(df_images_target, subdf)
+MODEL_ALIAS["sgvaegan_0.3"] = "sgvgn1000"
+MODEL_ALIAS["vaegan_0.3"] = "vgn1000"
+MODEL_ALIAS["fmganpy_0.3"] = "fmgn1000"
+MODEL_ALIAS["sgvaegan_0.4"] = "sgvgn10"
+MODEL_ALIAS["vaegan_0.4"] = "vgn10"
+MODEL_ALIAS[23645901"fmganpy_0.4"] = "fmgn10"
+
+subdfa = filter(r->r.modelname == "sgvaegan_alpha", df_images_alpha_target)
+parametersa = map(x->parse_savename(x)[2], subdfa.parameters)
+subdfa.modelname[[get(x, "version", 0.3) for x in parametersa] .== 0.3] .= "sgvaegan_alpha_0.3"
+subdfa.modelname[[get(x, "version", 0.3) for x in parametersa] .== 0.4] .= "sgvaegan_alpha_0.4"
+
+
+#########šššš
+subdf = filter(r->r-modelname == "sgvaegan_0.4")
+
+outf = datadir("sgad_alpha_evaluation_kp/best_models_orig_leave-one-in.bson")
+d = load(outf)
+i = 1540
+for k in keys(d)
+    println(d[k][i])
+end
+
+1
+wildlife_MNIST
+sgvaegan
+activation=leakyrelu_batch_size=16_fm_alpha=1000_fm_depth=6_h_channels=32_img_dim=32_init_gain=0.03_init_seed=23645901_lr=0.000398_n_layers=4_optimizer=adam_score=discriminator_version=0.4_weight_binary=100_weight_mask=0.05_z_dim=128
+1
+
+ps = parameters[[x["init_seed"] for x in parameters] .== 23645901]
+ps = parametersa[[x["init_seed"] for x in parametersa] .== 23645901]
+#########šššš
 
 # now differentiate them
 df_svhn = filter(r->r[:dataset] == "svhn2",df_images_target)

@@ -94,7 +94,12 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
             elseif method == "probreg"
                 ProbReg()
             elseif method == "robreg"
-                RobReg(input_dim = size(scores,2), alpha=init_alpha, alpha0=alpha0, 
+               	_init_alpha, _alpha0 = if occursin("sgvaegan", modelname)
+			    	compute_alphas(scores, labels) # determine them based on the best score
+			    else 
+			    	init_alpha, alpha0 # global values
+			    end
+                RobReg(input_dim = size(scores,2), alpha=_init_alpha, alpha0=_alpha0, 
                 	beta=base_beta/sum(labels))
             else
                 error("unknown method $method")
@@ -161,10 +166,22 @@ function perf_at_p_new(p, p_normal, tr_x::AbstractArray{T,4}, tr_y, tst_x::Abstr
 end	
 
 nanmean(x) = mean(x[.!isnan.(x)])
+function topn_mean(vs, ts, n)
+    inds = .!isnan.(vs) .& .!isnan.(ts)
+    vs, ts = vs[inds], ts[inds]
+    _n = min(n, length(vs))
+    if _n > 0
+        inds = sortperm(vs, rev=true)
+        return mean(vs[inds][1:_n]), mean(ts[inds][1:_n])
+    else
+        return NaN, NaN
+    end
+end
 
 function perf_at_p_agg(args...; kwargs...)
 	results = [perf_at_p_new(args...;seed=seed, kwargs...) for seed in 1:max_seed_perf]
-	return nanmean([x[1] for x in results]), nanmean([x[2] for x in results])
+	results = results[.!map(x->any(isnan.(x)), results)]
+	return topn_mean([x[1] for x in results], [x[2] for x in results], 4)
 end
 
 # get the right lf when using a selection of best models
@@ -342,8 +359,13 @@ function basic_experiment(val_scores, val_y, tst_scores, tst_y, outf, base_beta,
 		val_y = val_y[inds]
 
         # get the logistic regression model - scale beta by the number of anomalies
-        model = RobReg(input_dim = size(val_scores,2), alpha=init_alpha, beta=base_beta/sum(val_y), 
-        	alpha0=alpha0)
+      	_init_alpha, _alpha0 = if occursin("sgvaegan", modelname)
+	    	compute_alphas(val_scores, val_y) # determine them based on the best score
+	    else 
+	    	init_alpha, alpha0 # global values
+	    end
+		model = RobReg(input_dim = size(val_scores,2), alpha=_init_alpha, beta=base_beta/sum(val_y), 
+        	alpha0=_alpha0)
         
         # fit
         converged = true
