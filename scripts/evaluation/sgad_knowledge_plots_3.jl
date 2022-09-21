@@ -19,18 +19,18 @@ AUCP_METRICS = map(x-> "auc_100_$(x)", [100, 50, 20, 10, 5, 2, 1])
 AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC@\\%10\$", "\$AUC@\\%5\$", 
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$"]
 
-
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "vae", "cgn", "vaegan", "sgvaegan", "sgvae", 
-    "sgvae_alpha", "sgvaegan_alpha"]
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "vaegan", "vaegan10", 
+    "sgvaegan", "sgvaegan10", "sgvae", "sgvae_alpha", "sgvaegan_alpha"]
 sgad_alpha_models = ["sgvae_alpha", "sgvaegan_alpha"]
+MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 round_results = false
 DOWNSAMPLE = 150
-# downsample in aggregate_stats_auto and aggregate_stats_max_mean
 
+# downsample in aggregate_stats_auto and aggregate_stats_max_mean
 function prepare_alpha_df!(df)
     apply_aliases!(df, col="dataset", d=DATASET_ALIAS) # rename
     df.dataset[df.dataset .== "metal_nut"] .= "nut"
@@ -52,12 +52,44 @@ df_images_target = filter(r->r.modelname != "sgvae_alpha", df_images_target);
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
 #df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
 filter!(r->occursin("_robreg", r.modelname), df_images_alpha)
-filter!(r->get(parse_savename(r.parameters)[2], "beta", 1.0) in [1.0, 10.], df_images_alpha)
-for model in ["sgvae_", "sgvaegan_"]
+filter!(r->get(parse_savename(r.parameters)[2], "beta", 1.0) in [1.0, 10.0], df_images_alpha)
+for model in ["sgvae_", "sgvaegan_", "sgvaegan10_"]
     df_images_alpha.modelname[map(r->occursin(model, r.modelname), eachrow(df_images_alpha))] .= model*"alpha"
 end
 prepare_alpha_df!(df_images_alpha)
 df_images_alpha_target, _ = _split_image_datasets(df_images_alpha, TARGET_DATASETS);
+
+# sgvaeganalpha - beta=1/10
+subdfa = filter(r->r.modelname == "sgvaegan_alpha", df_images_alpha_target)
+parametersa = map(x->parse_savename(x)[2], subdfa.parameters)
+subdfa.modelname[[x["beta"] for x in parametersa] .== 1.0] .= "sgvaegan_alpha_1"
+subdfa.modelname[[x["beta"] for x in parametersa] .== 10.0] .= "sgvaegan_alpha_10"
+df_images_alpha_target = vcat(df_images_alpha_target, subdfa)
+MODEL_ALIAS["sgvaegan_alpha_1"] = "sgvgna_b1"
+MODEL_ALIAS["sgvaegan_alpha_10"] = "sgvgna_b10"
+
+# sgvaegan/vaegan/fmganpy - 1000 or 10 early stopping anomalies
+subdf = filter(r->r.modelname in ["sgvaegan", "vaegan", "fmganpy"], df_images_target)
+parameters = map(x->parse_savename(x)[2], subdf.parameters)
+vs = [get(x, "version", 0.3) for x in parameters]
+subdf.modelname[vs .== 0.3] .= subdf.modelname[vs .== 0.3] .* "_0.3"
+subdf.modelname[vs .== 0.4] = subdf.modelname[vs .== 0.4] .* "_0.4"
+df_images_target = vcat(df_images_target, subdf)
+MODEL_ALIAS["sgvaegan_0.3"] = "sgvgn03"
+MODEL_ALIAS["vaegan_0.3"] = "vgn03"
+MODEL_ALIAS["fmganpy_0.3"] = "fmgn03"
+MODEL_ALIAS["sgvaegan_0.4"] = "sgvgn04"
+MODEL_ALIAS["vaegan_0.4"] = "vgn04"
+MODEL_ALIAS["fmganpy_0.4"] = "fmgn04"
+
+# also add sgvaegan alpha - 0.3/0.4
+subdfa = filter(r->r.modelname == "sgvaegan_alpha", df_images_alpha_target)
+parametersa = map(x->parse_savename(x)[2], subdfa.parameters)
+subdfa.modelname[[get(x, "version", 0.3) for x in parametersa] .== 0.3] .= "sgvaegan_alpha_0.3"
+subdfa.modelname[[get(x, "version", 0.3) for x in parametersa] .== 0.4] .= "sgvaegan_alpha_0.4"
+df_images_alpha_target = vcat(df_images_alpha_target, subdfa)
+MODEL_ALIAS["sgvaegan_alpha_0.3"] = "sgvgna03"
+MODEL_ALIAS["sgvaegan_alpha_0.4"] = "sgvgna04"
 
 # now differentiate them
 df_svhn = filter(r->r[:dataset] == "svhn2",df_images_target)

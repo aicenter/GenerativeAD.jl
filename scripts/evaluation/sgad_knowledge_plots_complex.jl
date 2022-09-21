@@ -108,7 +108,7 @@ activation=leakyrelu_batch_size=16_fm_alpha=1000_fm_depth=6_h_channels=32_img_di
 
 ps = parameters[[x["init_seed"] for x in parameters] .== 23645901]
 ps = parametersa[[x["init_seed"] for x in parametersa] .== 23645901]
-#########šššš
+#########
 
 # now differentiate them
 df_svhn = filter(r->r[:dataset] == "svhn2",df_images_target)
