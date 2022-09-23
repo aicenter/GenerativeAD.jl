@@ -144,9 +144,11 @@ Vectorizes the 4D image data returned from `load_data`.
 """
 vectorize(data) = map(d->(reshape(d[1], :, size(d[1],4)), d[2]),data)
 
-function normalize_data(data)
-    if minimum(data[1][1]) == 0 && maximum(data[1][1]) == 1
-        return Tuple(map(x->((x[1] .- 0.5) ./0.5, x[2]), data))
+_normalize_data(data) = Tuple(map(x->((x[1] .- 0.5) ./0.5, x[2]), data))
+
+function normalize_data(data, force=false)
+    if (minimum(data[1][1]) == 0 && maximum(data[1][1]) == 1) || force
+        return _normalize_data(data)
     else
         return data
     end
