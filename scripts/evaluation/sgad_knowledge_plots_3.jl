@@ -22,9 +22,9 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "vaegan", "vaegan10", 
+sgad_models = ["classifier", "DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "vaegan", "vaegan10", 
     "sgvaegan", "sgvaegan10", "sgvae", "sgvae_alpha", "sgvaegan_alpha"]
-sgad_alpha_models = ["sgvae_alpha", "sgvaegan_alpha"]
+sgad_alpha_models = ["classifier", "sgvae_alpha", "sgvaegan_alpha"]
 MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 round_results = false
@@ -91,18 +91,28 @@ df_images_alpha_target = vcat(df_images_alpha_target, subdfa)
 MODEL_ALIAS["sgvaegan_alpha_0.3"] = "sgvgna03"
 MODEL_ALIAS["sgvaegan_alpha_0.4"] = "sgvgna04"
 
+# also load the classifier
+df_classifier = load(datadir("evaluation_kp/images_leave-one-in_classifier_eval.bson"))[:df]
+apply_aliases!(df_classifier, col="dataset", d=DATASET_ALIAS) # rename
+df_classifier[:weights_texture] = nothing
+df_classifier[:init_alpha] = nothing
+df_classifier[:alpha0] = nothing
+df_classifier[:fs_fit_t] = nothing
+df_classifier[:fs_eval_t] = nothing
+df_images_alpha_class = vcat(df_images_alpha_target, df_classifier)
+
 # now differentiate them
 df_svhn = filter(r->r[:dataset] == "svhn2",df_images_target)
-df_svhn_alpha = filter(r->r[:dataset] == "svhn2",df_images_alpha_target)
+df_svhn_alpha = filter(r->r[:dataset] == "svhn2",df_images_alpha_class)
 
 df_cifar = filter(r->r[:dataset] == "cifar10",df_images_target)
-df_cifar_alpha = filter(r->r[:dataset] == "cifar10",df_images_alpha_target)
+df_cifar_alpha = filter(r->r[:dataset] == "cifar10",df_images_alpha_class)
 
 df_coco = filter(r->r[:dataset] == "coco",df_images_target)
-df_coco_alpha = filter(r->r[:dataset] == "coco",df_images_alpha_target)
+df_coco_alpha = filter(r->r[:dataset] == "coco",df_images_alpha_class)
 
 df_wmnist = filter(r->r[:dataset] == "wmnist",df_images_target)
-df_wmnist_alpha = filter(r->r[:dataset] == "wmnist",df_images_alpha_target)
+df_wmnist_alpha = filter(r->r[:dataset] == "wmnist",df_images_alpha_class)
 
 function add_missing_model!(df, modelname)
     nr = size(df,2)
@@ -143,9 +153,9 @@ function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols, r
             # some model might be missing
             nr = size(df_agg,2)
             modelnames = df_agg.modelname
-            if !("sgvae_alpha" in modelnames)
-                for dataset in unique(df_agg.dataset)
-                    for m in sgad_alpha_models
+            for m in sgad_alpha_models
+                if !(m in modelnames)
+                    for dataset in unique(df_agg.dataset)
                         df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, m]))
                     end
                 end
@@ -182,6 +192,57 @@ level = 100
 criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
 extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
+
+
+##########
+df = df_cifar
+df_alpha = df_cifar_alpha
+criterion = extended_criterions[1]
+        
+# first separate only the useful columns from the normal eval df
+autocols = non_agg_cols
+nautocols = [string(criterion), string(tst_metric)]
+subdf = filter(r->!(isnan(r[criterion])), df)
+subdf = subdf[:,vcat(autocols, nautocols)] # only use the actually needed columns
+
+# now construct a simillar df to be appended to the first one from the alpha df
+kp_nautocols = [string(criterion), replace(string(criterion), "val"=>"tst")]
+subdf_alpha = filter(r->!(isnan(r[criterion])), df_alpha)
+subdf_alpha = subdf_alpha[:,vcat(autocols, kp_nautocols)]
+rename!(subdf_alpha, kp_nautocols[2] => string(tst_metric)) 
+
+# now define the agg function and cat it
+modelnames = unique(df.modelname)
+downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
+agg(df,crit) = aggregate_stats_auto(df, crit; agg_cols=nautocols, downsample=downsample)
+subdf = vcat(subdf, subdf_alpha)
+
+if size(subdf, 1) > 0
+    df_agg = agg(subdf, criterion)
+    
+    # some model might be missing
+    nr = size(df_agg,2)
+    modelnames = df_agg.modelname
+    
+
+    for m in sgad_alpha_models
+        if !(m in modelnames)
+            for dataset in unique(df_agg.dataset)
+                df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, m]))
+            end
+        end
+    end
+    
+    apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
+    apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
+    sort!(df_agg, [:dataset, :modelname])
+    rt = rank_table(df_agg, tst_metric; round_results=round_results)
+    mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model]) for model in names(rt)[2:end]])
+    push!(ranks, rt[end:end, 2:end])
+    push!(metric_means, mm)
+end
+##########
+
 
 @suppress_err begin
 	ranks_dfs = map(enumerate(zip(titles,
