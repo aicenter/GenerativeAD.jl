@@ -163,7 +163,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
             if GenerativeAD.check_params(savepath, edited_parameters)
                 # fit
                 save_parameters = merge(edited_parameters, (version=version,))
-                training_info, results = fit(data, edited_parameters, save_parameters, i, seed)
+                training_info, results = fit(data, edited_parameters, save_parameters, seed)
 
                 # save the model separately         
                 if training_info.model !== nothing
