@@ -193,57 +193,6 @@ criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
 extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 
-
-##########
-df = df_cifar
-df_alpha = df_cifar_alpha
-criterion = extended_criterions[1]
-        
-# first separate only the useful columns from the normal eval df
-autocols = non_agg_cols
-nautocols = [string(criterion), string(tst_metric)]
-subdf = filter(r->!(isnan(r[criterion])), df)
-subdf = subdf[:,vcat(autocols, nautocols)] # only use the actually needed columns
-
-# now construct a simillar df to be appended to the first one from the alpha df
-kp_nautocols = [string(criterion), replace(string(criterion), "val"=>"tst")]
-subdf_alpha = filter(r->!(isnan(r[criterion])), df_alpha)
-subdf_alpha = subdf_alpha[:,vcat(autocols, kp_nautocols)]
-rename!(subdf_alpha, kp_nautocols[2] => string(tst_metric)) 
-
-# now define the agg function and cat it
-modelnames = unique(df.modelname)
-downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
-agg(df,crit) = aggregate_stats_auto(df, crit; agg_cols=nautocols, downsample=downsample)
-subdf = vcat(subdf, subdf_alpha)
-
-if size(subdf, 1) > 0
-    df_agg = agg(subdf, criterion)
-    
-    # some model might be missing
-    nr = size(df_agg,2)
-    modelnames = df_agg.modelname
-    
-
-    for m in sgad_alpha_models
-        if !(m in modelnames)
-            for dataset in unique(df_agg.dataset)
-                df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, m]))
-            end
-        end
-    end
-    
-    apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
-    apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
-    sort!(df_agg, [:dataset, :modelname])
-    rt = rank_table(df_agg, tst_metric; round_results=round_results)
-    mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model]) for model in names(rt)[2:end]])
-    push!(ranks, rt[end:end, 2:end])
-    push!(metric_means, mm)
-end
-##########
-
-
 @suppress_err begin
 	ranks_dfs = map(enumerate(zip(titles,
 	        [
