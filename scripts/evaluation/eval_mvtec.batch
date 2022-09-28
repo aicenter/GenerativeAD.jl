@@ -10,15 +10,7 @@
 module load Python/3.9.6-GCCcore-11.2.0
 module load Julia/1.5.3-linux-x86_64
 
-# basic - old eval
-julia --threads 16 --project ./generate_stats.jl experiments/images_leave-one-in evaluation/images_leave-one-in --load-all --old_protocol
-julia --threads 16 --project ./collect_stats.jl  evaluation/images_leave-one-in evaluation/images_leave-one-in_eval.bson -f
-julia --project ./join_old_new.jl images_leave-one-in_eval.bson images_leave-one-in_eval.bson images_leave-one-in_eval_all.bson
-# kp eval
-julia --threads 16 --project ./generate_stats.jl experiments/images_leave-one-in evaluation_kp/images_leave-one-in --load-all
-julia --threads 16 --project ./collect_stats.jl  evaluation_kp/images_leave-one-in evaluation_kp/images_leave-one-in_eval.bson -f
 # alpha_eval
-julia --threads 16 --project ./collect_stats.jl  sgad_alpha_evaluation_kp/images_leave-one-in sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson -f --postprocess
 julia --threads 16 --project ./collect_stats.jl  sgad_alpha_evaluation_kp/images_mvtec sgad_alpha_evaluation_kp/images_mvtec_eval.bson -f --postprocess
 # mvtec
 julia --threads 16 --project ./generate_stats.jl experiments/images_mvtec evaluation/images_mvtec --load-all --old_protocol

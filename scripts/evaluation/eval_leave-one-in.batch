@@ -19,11 +19,6 @@ julia --threads 16 --project ./generate_stats.jl experiments/images_leave-one-in
 julia --threads 16 --project ./collect_stats.jl  evaluation_kp/images_leave-one-in evaluation_kp/images_leave-one-in_eval.bson -f
 # alpha_eval
 julia --threads 16 --project ./collect_stats.jl  sgad_alpha_evaluation_kp/images_leave-one-in sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson -f --postprocess
-julia --threads 16 --project ./collect_stats.jl  sgad_alpha_evaluation_kp/images_mvtec sgad_alpha_evaluation_kp/images_mvtec_eval.bson -f --postprocess
-# mvtec
-julia --threads 16 --project ./generate_stats.jl experiments/images_mvtec evaluation/images_mvtec --load-all --old_protocol
-julia --threads 16 --project ./collect_stats.jl  evaluation/images_mvtec evaluation/images_mvtec_eval.bson -f
-julia --project ./join_old_new.jl images_mvtec_eval.bson images_mvtec_eval.bson images_mvtec_eval_all.bson
 
 # generate the tables
 julia --project ./sgad_basic_tables.jl
