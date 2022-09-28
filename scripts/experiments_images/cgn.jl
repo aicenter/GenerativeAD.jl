@@ -37,6 +37,7 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "cgn"
+version = 0.2
 
 # sample parameters, should return a Dict of model kwargs 
 """
@@ -131,23 +132,24 @@ if abspath(PROGRAM_FILE) == @__FILE__
                 data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method, contamination=contamination)
                 
                 # edit parameters
-                edited_parameters = GenerativeAD.edit_params(data, parameters)
+                train_parameters = GenerativeAD.edit_params(data, parameters)
+                save_parameters = merge(train_parameters, (version=version,))
 
-                @info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
+                @info "Trying to fit $modelname on $dataset with parameters $(train_parameters)..."
                 @info "Train/validation/test splits: $(size(data[1][1], 4)) | $(size(data[2][1], 4)) | $(size(data[3][1], 4))"
                 @info "Number of features: $(size(data[1][1])[1:3])"
 
                 # check if a combination of parameters and seed alread exists
-                if GenerativeAD.check_params(savepath, edited_parameters)
+                if GenerativeAD.check_params(savepath, save_parameters)
                     # fit
-                    training_info, results = fit(data, edited_parameters, i, seed)
+                    training_info, results = fit(data, train_parameters, i, seed)
 
                     # save the model separately         
                     if training_info.model !== nothing
-                        tagsave(joinpath(savepath, savename("model", edited_parameters, "bson", digits=5)), 
+                        tagsave(joinpath(savepath, savename("model", save_parameters, "bson", digits=5)), 
                             Dict("fit_t"=>training_info.fit_t,
                                  "history"=>training_info.history,
-                                 "parameters"=>edited_parameters,
+                                 "parameters"=>save_parameters,
                                  "tr_encodings"=>training_info.tr_encodings,
                                  "val_encodings"=>training_info.val_encodings,
                                  "tst_encodings"=>training_info.tst_encodings,
