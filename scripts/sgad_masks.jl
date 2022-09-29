@@ -24,10 +24,6 @@ dtst = "svhn"
 outdir = datadir("imgs/mask_eval")
 mkpath(outdir)
 
-auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
-to_img(x, r=1) = imresize(hcat(map(i->GenerativeAD.Datasets.array_to_img_rgb(permutedims(x[:,:,:,i], (2,1,3)))
-            , 1:size(x,4))...), ratio=r)
-
 # setup
 acs = 1:10
 mn = "AUC"
@@ -74,10 +70,16 @@ end
 aggregate(dfs) = [mean(d[!,tst_metric]) for d in dfs]
 aggregate_alpha(dfs) = map(x->mean(x[1][!,x[2]]), zip(dfs, tst_metrics))
 tensor_to_array(x) = permutedims(x.detach().cpu().numpy(), (4,3,2,1))
+auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
+function to_img(x, r=1)
+	if minimum(x) < 0
+		x = x .* 0.5 .+ 0.5
+	end
+	imresize(hcat(map(i->GenerativeAD.Datasets.array_to_img_rgb(permutedims(x[:,:,:,i], (2,1,3)))
+            , 1:size(x,4))...), ratio=r)
+end
 
 res = gather_results(subdf_alpha, 1)
-
-
 
 function load_data_and_model(ac)
 	# load the original data
