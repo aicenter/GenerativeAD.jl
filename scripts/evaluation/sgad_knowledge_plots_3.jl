@@ -22,9 +22,10 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["classifier", "DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "vaegan", 
+sgad_models = ["classifier", "DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "cgn_0.2", "vaegan", 
 "vaegan10", "sgvaegan", "sgvaegan10", "sgvaegan100", "sgvae", "sgvae_alpha", "sgvaegan_alpha"]
 sgad_alpha_models = ["classifier", "sgvae_alpha", "sgvaegan_alpha"]
+MODEL_ALIAS["cgn_0.2"] = "cgn2"
 MODEL_ALIAS["sgvaegan100"] = "sgvgn100"
 MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
@@ -53,6 +54,9 @@ df_images_target = filter(r->!(r.modelname in ["sgvaegan10", "sgvaegan100"] &&
     get(parse_savename(r.parameters)[2], "score", "") != "discriminator"), df_images_target)
 df_images_target = filter(r->!(r.modelname == "vaegan10" && 
     get(parse_savename(r.parameters)[2], "score", "") != "discriminator"), df_images_target)
+# also differentiate between the old and new cgn
+df_images_target.modelname[map(x->get(parse_savename(x)[2], "version", 0.1) .== 0.2, 
+        df_images_target.parameters) .& (df_images_target.modelname .== "cgn")] .= "cgn_0.2"
 
 # LOI alpha scores
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
