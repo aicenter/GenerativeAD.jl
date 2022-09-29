@@ -20,10 +20,12 @@ const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "vae", "cgn", "sgvae", "vaegan", "sgvaegan"]
-sgad_models_alpha = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "vae", "cgn", "vaegan", "sgvae", "sgvaegan", 
-    "sgvae_alpha", "sgvaegan_alpha"]
-sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models_alpha]
+all_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "vaegan", "vaegan10", 
+    "sgvaegan", "sgvaegan10", "sgvae", "sgvae_alpha", "sgvaegan_alpha"]
+sgad_models = ["DeepSVDD", "fAnoGAN", "fmganpy10", "vae", "cgn", "vaegan10", 
+   "sgvae", "sgvae_alpha",  "sgvaegan10", "sgvaegan10_alpha"]
+MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
+sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models]
 DOWNSAMPLE = 50
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
@@ -93,7 +95,7 @@ apply_aliases!(df_images_alpha, col="dataset", d=DATASET_ALIAS) # rename
 prow = copy(df_images[1:1,:])
 for dataset in unique(df_images_alpha.dataset)
     for ac in unique(df_images_alpha.anomaly_class)
-        for model in ["sgvae_", "sgvaegan_"]
+        for model in ["sgvae_", "sgvaegan10_"]
             subdf = filter(r->r.dataset==dataset && 
                 r.anomaly_class==ac && 
                 !isnan(r.tst_auc) &&

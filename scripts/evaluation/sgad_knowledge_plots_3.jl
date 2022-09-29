@@ -22,8 +22,8 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["classifier", "DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "vaegan", "vaegan10", 
-    "sgvaegan", "sgvaegan10", "sgvae", "sgvae_alpha", "sgvaegan_alpha"]
+sgad_models = ["classifier", "DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "vaegan", 
+"vaegan10", "sgvaegan", "sgvaegan10", "sgvae", "sgvae_alpha", "sgvaegan_alpha"]
 sgad_alpha_models = ["classifier", "sgvae_alpha", "sgvaegan_alpha"]
 MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
@@ -47,6 +47,11 @@ df_images = filter(r->r.modelname in sgad_models, df_images)
 # this generates the overall tables (aggregated by datasets)
 df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
 df_images_target = filter(r->r.modelname != "sgvae_alpha", df_images_target);
+# only use (sg)vaegan with disc score
+df_images_target = filter(r->!(r.modelname == "sgvaegan10" && 
+    get(parse_savename(r.parameters)[2], "score", "") != "discriminator"), df_images_target)
+df_images_target = filter(r->!(r.modelname == "vaegan10" && 
+    get(parse_savename(r.parameters)[2], "score", "") != "discriminator"), df_images_target)
 
 # LOI alpha scores
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
