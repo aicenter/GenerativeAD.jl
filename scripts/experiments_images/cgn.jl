@@ -133,23 +133,23 @@ if abspath(PROGRAM_FILE) == @__FILE__
                 
                 # edit parameters
                 train_parameters = GenerativeAD.edit_params(data, parameters)
-                save_parameters = merge(train_parameters, (version=version,))
+                train_parameters = merge(train_parameters, (version=version,))
 
                 @info "Trying to fit $modelname on $dataset with parameters $(train_parameters)..."
                 @info "Train/validation/test splits: $(size(data[1][1], 4)) | $(size(data[2][1], 4)) | $(size(data[3][1], 4))"
                 @info "Number of features: $(size(data[1][1])[1:3])"
 
                 # check if a combination of parameters and seed alread exists
-                if GenerativeAD.check_params(savepath, save_parameters)
+                if GenerativeAD.check_params(savepath, train_parameters)
                     # fit
                     training_info, results = fit(data, train_parameters, i, seed)
 
                     # save the model separately         
                     if training_info.model !== nothing
-                        tagsave(joinpath(savepath, savename("model", save_parameters, "bson", digits=5)), 
+                        tagsave(joinpath(savepath, savename("model", train_parameters, "bson", digits=5)), 
                             Dict("fit_t"=>training_info.fit_t,
                                  "history"=>training_info.history,
-                                 "parameters"=>save_parameters,
+                                 "parameters"=>train_parameters,
                                  "tr_encodings"=>training_info.tr_encodings,
                                  "val_encodings"=>training_info.val_encodings,
                                  "tst_encodings"=>training_info.tst_encodings,

@@ -16,7 +16,7 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$"]
 
 # setup
-sgad_models = ["sgvae", "sgvaegan", "sgvaegan10"]
+sgad_models = ["sgvae", "sgvaegan", "sgvaegan10", "sgvaegan100"]
 n_models = 1
 
 # functions

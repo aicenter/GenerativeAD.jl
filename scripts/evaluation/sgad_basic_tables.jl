@@ -186,8 +186,11 @@ df_mvtec_nonnan = filter(r-> !isnan(r.val_auc), df_mvtec)
 #
 df_mvtec_alpha = load(datadir("sgad_alpha_evaluation_kp/images_mvtec_eval.bson"))[:df];
 apply_aliases!(df_mvtec_alpha, col="dataset", d=DATASET_ALIAS) # rename
-filter!(r->r.modelname == "sgvae_robreg", df_mvtec_alpha)
-df_mvtec_alpha.modelname .= "sgvae_alpha"
+filter!(r->r.modelname in ("sgvae_robreg", "sgvaegan10_robreg"), df_mvtec_alpha)
+for m in ["sgvae_", "sgvaegan10_"]
+    inds = map(x->occursin(m, x), df_mvtec_alpha.modelname)
+    df_mvtec_alpha.modelname[inds] .= m*"alpha"
+end
 df_mvtec_alpha.dataset[df_mvtec_alpha.dataset .== "metal_nut"] .= "nut"
 
 # here select the best model and glue it to the normal df

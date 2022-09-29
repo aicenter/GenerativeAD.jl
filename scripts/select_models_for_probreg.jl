@@ -141,8 +141,7 @@ subdf = filter(r->
 	r.modelname=="sgvaegan_alpha" && 
 	get(parse_savename(r.parameters)[2], "version", 0.3) == 0.4, 
 	df_images_alpha)
-outd = add_more(subdf, outd, unique(subdf.modelname), datasets, seeds, acs, criterions)
-
+outd = add_more(subdf, outd, unique(subdf.modelname), datasets, seeds, acs, criterions, latent_score_types)
 save(outf, outd)
 @info "saved $outf"
 
