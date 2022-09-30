@@ -37,7 +37,7 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "cgn"
-version = 0.2
+version = 0.3
 
 # sample parameters, should return a Dict of model kwargs 
 """
@@ -47,9 +47,9 @@ Should return a named tuple that contains a sample of model parameters.
 """
 function sample_params()
     par_vec = (2 .^(3:8), 2 .^(3:6), 2 .^(3:6), 2 .^(4:7), ["orthogonal", "kaiming", "xavier", "normal"], 
-        0.01:0.01:0.1, 1:Int(1e8), 0.1:0.2:1,  10f0 .^(-4:0.1:-3))
+        0.01:0.01:0.1, 1:Int(1e8), 0.1:0.2:1,  10f0 .^(-4:0.1:-3), ["linear", "conv"], ["linear", "log"])
     argnames = (:z_dim, :h_channels, :disc_h_dim, :batch_size, :init_type, 
-        :init_gain, :init_seed, :lambda_mask, :lr)
+        :init_gain, :init_seed, :lambda_mask, :lr, :disc_model, :adv_loss)
     parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
 end
 function GenerativeAD.edit_params(data, parameters)
@@ -109,7 +109,6 @@ function fit(data, parameters, ac, seed)
     # now return the different scoring functions
     training_info, [
         (x-> predict(model, x, score_type="discriminator"), merge(parameters, (score = "discriminator",))),
-        (x-> predict(model, x, score_type="perceptual"), merge(parameters, (score = "perceptual",)))
         ]
 end
 
