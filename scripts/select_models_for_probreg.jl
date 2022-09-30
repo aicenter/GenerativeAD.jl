@@ -119,10 +119,6 @@ criterions = (
 	(:val_auc_10_100, :tst_auc_10_100),
 	(:val_auc_5_100, :tst_auc_5_100),
 	(:val_auc_2_100, :tst_auc_2_100),
-	(:val_auc_1_100, :tst_auc_1_100),
-	(:val_auc_05_100, :tst_auc_05_100),
-	(:val_auc_02_100, :tst_auc_02_100),
-	(:val_auc_01_100, :tst_auc_01_100)
 	)
 
 # LOI
@@ -159,6 +155,7 @@ outd = best_models(df_images_mvtec, modelnames, datasets, seeds, acs, criterions
 save(outf, outd)
 @info "saved $outf"
 
+"""
 # multifactor experiment
 df_images_alpha = load(datadir("experiments_multifactor/alpha_evaluation_mf_normal/images_leave-one-in_eval.bson"))[:df];
 prepare_alpha_df!(df_images_alpha)
@@ -172,3 +169,4 @@ outf = datadir("experiments_multifactor/evaluation_mf_normal/best_models_leave-o
 outd = best_models(df_images_alpha, modelnames, datasets, seeds, acs, criterions, latent_score_types)
 save(outf, outd)
 @info "saved $outf"
+"""

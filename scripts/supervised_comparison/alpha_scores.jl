@@ -49,9 +49,6 @@ max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
 
-modelname = "sgvaegan"
-
-
 method = "robreg"
 device = "cpu"
 max_seed_perf = 10
@@ -113,39 +110,6 @@ end
 # this is the part where we load the best models
 bestf = datadir("sgad_alpha_evaluation_kp/best_models_$(datatype).bson")
 best_models = load(bestf)
-
-ac = 1
-seed = 1
-latent_dir = datadir("sgad_latent_scores/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-lfs = readdir(latent_dir)
-ltypes = map(lf->split(split(lf, "score=")[2], ".")[1], lfs)
-lfs = lfs[ltypes .== latent_score_type]
-model_ids = map(x->Meta.parse(split(split(x, "=")[2], "_")[1]), lfs)
-
-# make the save dir
-save_dir = datadir("supervised_comparison/images_$(datatype)/$(modelname)_alpha/$(dataset)/ac=$(ac)/seed=$(seed)")
-mkpath(save_dir)
-@info "Saving data to $(save_dir)..."
-
-# top score files
-res_dir = datadir("experiments/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-rfs = readdir(res_dir)
-rfs = if modelname == "sgvae" 
-	filter(x->occursin(score_type, x), rfs)
-elseif occursin("sgvaegan", modelname)
-	rfs
-end
-
-# this is where we select the files of best models
-# now add the best models to the mix
-inds = (best_models[:anomaly_class] .== ac) .& (best_models[:seed] .== seed) .& 
-	(best_models[:dataset] .== dataset)
-best_params = best_models[:parameters][inds]
-
-# from these params extract the correct model_ids and lfs
-parsed_params = map(x->parse_savename("s_$x")[2], best_params)
-best_model_ids = [x["init_seed"] for x in parsed_params]
-best_lfs = map(x->get_latent_file(x, lfs), parsed_params)
 
 for ac in acs
 	for seed in 1:max_seed

@@ -17,7 +17,7 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 
 # setup
 sgad_models = ["sgvae", "sgvaegan", "sgvaegan10", "sgvaegan100"]
-n_models = 1
+n_models = 2
 
 # functions
 function prepare_alpha_df!(df)
@@ -133,21 +133,26 @@ outd = add_more(subdf, outd, unique(subdf.modelname), datasets, seeds, acs, crit
 save(outf, outd)
 @info "saved $outf"
 
-"""
+
 # mvtec
-df_images_mvtec = load(datadir("sgad_alpha_evaluation_kp/images_mvtec_eval.bson"))[:df];
+criterions = (
+	(:val_auc, :tst_auc),
+	)
+
+df_images_mvtec = load(datadir("evaluation/images_mvtec_eval.bson"))[:df];
+df_images_mvtec.anomaly_class = 1
 prepare_alpha_df!(df_images_mvtec)
 modelnames = unique(df_images_mvtec.modelname) 
 datasets = unique(df_images_mvtec.dataset)
-latent_score_types = unique(df_images_mvtec.latent_score_type)
 seeds = 1:5
 acs = 1:1
 
-outf = datadir("sgad_alpha_evaluation_kp/best_models_mvtec.bson") 
-outd = best_models(df_images_mvtec, modelnames, datasets, seeds, acs, criterions, latent_score_types)
+outf = datadir("sgad_alpha_evaluation_kp/best_models_orig_mvtec.bson") 
+outd = best_models(df_images_mvtec, modelnames, datasets, seeds, acs, criterions)
 save(outf, outd)
 @info "saved $outf"
 
+"""
 # multifactor experiment
 df_images_alpha = load(datadir("experiments_multifactor/alpha_evaluation_mf_normal/images_leave-one-in_eval.bson"))[:df];
 prepare_alpha_df!(df_images_alpha)

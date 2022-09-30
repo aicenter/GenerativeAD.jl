@@ -186,13 +186,14 @@ end
 
 # get the right lf when using a selection of best models
 function get_latent_file(_params, lfs)
-	if _params["latent_score_type"] != latent_score_type
+	lst = get(_params, "latent_score_type", "knn")
+	if lst != latent_score_type
 		return nothing
 	end
 
 	model_id = _params["init_seed"]
 	_lfs = filter(x->occursin("$(model_id)",x), lfs)
-	_lfs = if _params["latent_score_type"] == "knn"
+	_lfs = if lst == "knn"
 		k = _params["k"]
 		v = _params["v"]
 		filter(x->occursin("k=$(k)_",x) && occursin("v=$v",x), _lfs)
