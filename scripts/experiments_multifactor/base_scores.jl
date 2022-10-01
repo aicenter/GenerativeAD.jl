@@ -173,19 +173,19 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         ]
     elseif occursin("fmganpy", modelname)
         [
-        (x-> predict(model, x, workers=4), merge(save_parameters, (score = "discriminator",))),
+        (x-> StatsBase.predict(model, x, workers=4), merge(save_parameters, (score = "discriminator",))),
         ]
     elseif occursin("vaegan", modelname)
         [
-        (x-> predict(model, x, score_type="discriminator", workers=4), merge(save_parameters, (score = "discriminator",))),
-        (x-> predict(model, x, score_type="feature_matching", n=10, workers=4), merge(save_parameters, (score = "feature_matching",))),
-        (x-> predict(model, x, score_type="reconstruction", n=10, workers=4), merge(save_parameters, (score = "reconstruction",))),
+        (x-> StatsBase.predict(model, x, score_type="discriminator", workers=4), merge(save_parameters, (score = "discriminator",))),
+        (x-> StatsBase.predict(model, x, score_type="feature_matching", n=10, workers=4), merge(save_parameters, (score = "feature_matching",))),
+        (x-> StatsBase.predict(model, x, score_type="reconstruction", n=10, workers=4), merge(save_parameters, (score = "reconstruction",))),
         ]
     elseif occursin("sgvaegan", modelname)
         [
-        (x-> predict(model, x, score_type="discriminator", workers=4), merge(save_parameters, (score = "discriminator",))),
-        (x-> predict(model, x, score_type="feature_matching", n=10, workers=4), merge(save_parameters, (score = "feature_matching",))),
-        (x-> predict(model, x, score_type="reconstruction", n=10, workers=4), merge(save_parameters, (score = "reconstruction",))),
+        (x-> StatsBase.predict(model, x, score_type="discriminator", workers=4), merge(save_parameters, (score = "discriminator",))),
+        (x-> StatsBase.predict(model, x, score_type="feature_matching", n=10, workers=4), merge(save_parameters, (score = "feature_matching",))),
+        (x-> StatsBase.predict(model, x, score_type="reconstruction", n=10, workers=4), merge(save_parameters, (score = "reconstruction",))),
         ]
     elseif modelname == "vae"
         [

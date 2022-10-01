@@ -34,9 +34,9 @@ for ac in acs
 
     # model dir
     model_ids = map(x-> Meta.parse(split(split(x, "=")[2], ".")[1]), readdir(in_dir))
-
-    for model_id in model_ids
-        for k in ks
+    
+    for k in ks
+        for model_id in model_ids
             for v in [:delta, :kappa, :gamma]
                 compute_knn_score_multifactor(model_id, in_dir, k, v, out_dir, seed, ac, dataset, modelname; force=false)
             end
