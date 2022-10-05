@@ -47,8 +47,12 @@ function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_d
     if !("weights" in readdir(md))
         @info "Model weights not found in $md."
         return
-    end    
-    model = load_sgvae_model(md, device);
+    end
+    model = if occursin("sgvaegan", modelname)
+        load_sgvaegan_model(md, device)
+    else
+        load_sgvae_model(md, device);
+    end
     model.eval();
 
     # load the original result file for this model
@@ -62,13 +66,7 @@ function compute_save_encodings(model_id, model_dir, device, data, res_fs, res_d
     res_d = load(joinpath(res_dir, res_f))
 
     # decide if we need to normalize the scores
-    if dataset == "wildlife_MNIST"
-        gx = model.generate_mean(10); 
-        gx = gx.detach().to("cpu").numpy();
-        if mean(gx) < 0.2 && minimum(gx) < -0.5
-            data = GenerativeAD.Datasets.normalize_data(data);
-        end
-    end
+    data = GenerativeAD.Datasets.normalize_data(data);
 
     # compute the results
     (tr_X, tr_y), (val_X, val_y), (tst_X, tst_y), (mf_X, mf_y) = data

@@ -38,6 +38,7 @@ acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
 seed = 1
 
 sgad_models = ["sgvae", "cgn", "fmganpy", "vaegan", "sgvaegan", "fmganpy10", "vaegan10", "sgvaegan10"]
+sgad_models_norm = ["sgvae", "fmganpy", "vaegan", "sgvaegan", "fmganpy10", "vaegan10", "sgvaegan10"]
 if modelname in sgad_models
     # so the we dont get the "too many open files" os error
     torch = pyimport("torch")
@@ -175,13 +176,13 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         [
         (x-> StatsBase.predict(model, x, workers=4), merge(save_parameters, (score = "discriminator",))),
         ]
-    elseif occursin("vaegan", modelname)
+    elseif occursin("sgvaegan", modelname)
         [
         (x-> StatsBase.predict(model, x, score_type="discriminator", workers=4), merge(save_parameters, (score = "discriminator",))),
         (x-> StatsBase.predict(model, x, score_type="feature_matching", n=10, workers=4), merge(save_parameters, (score = "feature_matching",))),
         (x-> StatsBase.predict(model, x, score_type="reconstruction", n=10, workers=4), merge(save_parameters, (score = "reconstruction",))),
         ]
-    elseif occursin("sgvaegan", modelname)
+    elseif occursin("vaegan", modelname)
         [
         (x-> StatsBase.predict(model, x, score_type="discriminator", workers=4), merge(save_parameters, (score = "discriminator",))),
         (x-> StatsBase.predict(model, x, score_type="feature_matching", n=10, workers=4), merge(save_parameters, (score = "feature_matching",))),
@@ -232,6 +233,13 @@ for ac in acs
         multifactor_data = GenerativeAD.Datasets.load_cocoplaces_raw("test")[2];
     else
         error("unkown dataset $(dataset)")
+    end
+
+    # normalize the data
+    multifactor_data = if modelname in sgad_models_norm
+        GenerativeAD.Datasets.normalize_data(multifactor_data);
+    else
+        multifactor_data
     end
 
     # setup paths
