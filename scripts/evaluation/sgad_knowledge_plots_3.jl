@@ -22,17 +22,19 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 include("./utils/ranks.jl")
 outdir = "result_tables"
 
-sgad_models = ["classifier", "DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "cgn_0.2", "vaegan", 
-"vaegan10", "sgvaegan", "sgvaegan10", "sgvaegan100", "sgvae", "sgvae_alpha", "sgvaegan_alpha"]
+sgad_models = ["classifier", "DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "cgn_0.2", 
+"cgn_0.3", "vaegan", "vaegan10", "sgvaegan", "sgvaegan10", "sgvaegan100", "sgvae", "sgvae_alpha", 
+"sgvaegan_alpha"]
 sgad_alpha_models = ["classifier", "sgvae_alpha", "sgvaegan_alpha"]
 MODEL_ALIAS["cgn_0.2"] = "cgn2"
+MODEL_ALIAS["cgn_0.3"] = "cgn3"
 MODEL_ALIAS["sgvaegan100"] = "sgvgn100"
 MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 round_results = false
 DOWNSAMPLE = 150
+dseed = 41
 
-# downsample in aggregate_stats_auto and aggregate_stats_max_mean
 function prepare_alpha_df!(df)
     apply_aliases!(df, col="dataset", d=DATASET_ALIAS) # rename
     df.dataset[df.dataset .== "metal_nut"] .= "nut"
@@ -57,6 +59,8 @@ df_images_target = filter(r->!(r.modelname == "vaegan10" &&
 # also differentiate between the old and new cgn
 df_images_target.modelname[map(x->get(parse_savename(x)[2], "version", 0.1) .== 0.2, 
         df_images_target.parameters) .& (df_images_target.modelname .== "cgn")] .= "cgn_0.2"
+df_images_target.modelname[map(x->get(parse_savename(x)[2], "version", 0.1) .== 0.3, 
+        df_images_target.parameters) .& (df_images_target.modelname .== "cgn")] .= "cgn_0.3"
 
 # LOI alpha scores
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
@@ -111,6 +115,20 @@ df_classifier[:fs_fit_t] = nothing
 df_classifier[:fs_eval_t] = nothing
 df_images_alpha_class = vcat(df_images_alpha_target, df_classifier)
 
+# cgn v 0.3 - differentiate
+subdf = filter(r->r.modelname == "cgn_0.3" && occursin("disc_model=conv", r.parameters), df_images_target)
+subdf.modelname .= "cgn3_convdisc"
+df_images_target = vcat(df_images_target, subdf)
+subdf = filter(r->r.modelname == "cgn_0.3" && occursin("disc_model=linear", r.parameters), df_images_target)
+subdf.modelname .= "cgn3_lindisc"
+df_images_target = vcat(df_images_target, subdf)
+subdf = filter(r->r.modelname == "cgn_0.3" && occursin("loss=linear", r.parameters), df_images_target)
+subdf.modelname .= "cgn3_linloss"
+df_images_target = vcat(df_images_target, subdf)
+subdf = filter(r->r.modelname == "cgn_0.3" && occursin("loss=log", r.parameters), df_images_target)
+subdf.modelname .= "cgn3_logloss"
+df_images_target = vcat(df_images_target, subdf)
+
 # now differentiate them
 df_svhn = filter(r->r[:dataset] == "svhn2",df_images_target)
 df_svhn_alpha = filter(r->r[:dataset] == "svhn2",df_images_alpha_class)
@@ -154,7 +172,7 @@ function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols, r
         # now define the agg function and cat it
         modelnames = unique(df.modelname)
         downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
-        agg(df,crit) = aggregate_stats_auto(df, crit; agg_cols=nautocols, downsample=downsample)
+        agg(df,crit) = aggregate_stats_auto(df, crit; agg_cols=nautocols, downsample=downsample, dseed=dseed)
         subdf = vcat(subdf, subdf_alpha)
 
         if size(subdf, 1) > 0

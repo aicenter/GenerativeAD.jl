@@ -300,7 +300,7 @@ Optionally with argument `add_col` one can specify additional column to average 
 """
 function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc;  agg_cols=[],
 							min_samples=("anomaly_class" in names(df) && maximum(df[:anomaly_class]) > 0) ? 10 : 3,
-							downsample=Dict(), add_col=nothing, verbose=true)
+							downsample=Dict(), add_col=nothing, verbose=true, dseed=42)
 	if length(agg_cols) == 0 # use automatic agg cols
 		agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 		agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
@@ -317,7 +317,7 @@ function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc;  agg_co
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
 			n = length(unique(mg.phash))
 			# downsample models given by the `downsample` dictionary
-			Random.seed!(42)
+			Random.seed!(dseed)
 			pg = (mkey.modelname in keys(downsample)) && (downsample[mkey.modelname] < n) ? 
 					groupby(mg, :phash)[randperm(n)[1:downsample[mkey.modelname]]] : 
 					groupby(mg, :phash)
@@ -375,7 +375,7 @@ As oposed to mean-max aggregation the output does not contain parameters and pha
 Optionally with argument `add_col` one can specify additional column to average values over.
 """
 function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; agg_cols=[],
-									downsample=Dict(), add_col=nothing, verbose=true)
+									downsample=Dict(), add_col=nothing, verbose=true, dseed=42)
 	if length(agg_cols) == 0 # use automatic agg cols
 		agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 		agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
@@ -412,7 +412,7 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; agg_col
 			for (skey, sg) in pairs(groupby(mg, agg_keys))
 				n = nrow(sg)
 				# downsample the number of hyperparameter if needed
-				Random.seed!(42)
+				Random.seed!(dseed)
 				ssg = (mkey.modelname in keys(downsample)) && (downsample[mkey.modelname] < n) ? 
 						sg[randperm(n)[1:downsample[mkey.modelname]], :] : sg
 				Random.seed!()
