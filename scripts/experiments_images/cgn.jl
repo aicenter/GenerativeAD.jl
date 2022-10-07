@@ -37,7 +37,7 @@ cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
 modelname = "cgn"
-version = 0.3
+version = 0.4
 
 # sample parameters, should return a Dict of model kwargs 
 """
@@ -129,6 +129,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
 
                 # get data
                 data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method, contamination=contamination)
+                data = GenerativeAD.Datasets.normalize_data(data)
                 
                 # edit parameters
                 train_parameters = GenerativeAD.edit_params(data, parameters)

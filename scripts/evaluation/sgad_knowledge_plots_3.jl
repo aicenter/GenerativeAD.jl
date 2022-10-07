@@ -33,7 +33,7 @@ MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 round_results = false
 DOWNSAMPLE = 150
-dseed = 41
+dseed = 40
 
 function prepare_alpha_df!(df)
     apply_aliases!(df, col="dataset", d=DATASET_ALIAS) # rename
