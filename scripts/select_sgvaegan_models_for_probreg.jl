@@ -152,7 +152,6 @@ outd = best_models(df_images_mvtec, modelnames, datasets, seeds, acs, criterions
 save(outf, outd)
 @info "saved $outf"
 
-"""
 # multifactor experiment
 df_images_alpha = load(datadir("experiments_multifactor/alpha_evaluation_mf_normal/images_leave-one-in_eval.bson"))[:df];
 prepare_alpha_df!(df_images_alpha)
@@ -162,8 +161,7 @@ latent_score_types = unique(df_images_alpha.latent_score_type)
 seeds = 1:1
 acs = 1:10
 
-outf = datadir("experiments_multifactor/evaluation_mf_normal/best_models_leave-one-in.bson") 
-outd = best_models(df_images_alpha, modelnames, datasets, seeds, acs, criterions, latent_score_types)
+outf = datadir("experiments_multifactor/evaluation_mf_normal/best_models_orig_leave-one-in.bson") 
+outd = best_models(df_images_alpha, modelnames, datasets, seeds, acs, criterions)
 save(outf, outd)
 @info "saved $outf"
-"""
