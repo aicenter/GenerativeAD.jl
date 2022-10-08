@@ -37,8 +37,8 @@ method = "leave-one-in"
 acs = isnothing(anomaly_class) ? collect(1:10) : [Meta.parse(anomaly_class)]
 seed = 1
 
-sgad_models = ["sgvae", "cgn", "fmganpy", "vaegan", "sgvaegan", "fmganpy10", "vaegan10", "sgvaegan10"]
-sgad_models_norm = ["sgvae", "fmganpy", "vaegan", "sgvaegan", "fmganpy10", "vaegan10", "sgvaegan10"]
+sgad_models = ["sgvae", "cgn", "fmganpy", "vaegan", "sgvaegan", "fmganpy10", "vaegan10", "sgvaegan10", "sgvaegan100"]
+sgad_models_norm = ["sgvae", "fmganpy", "vaegan", "sgvaegan", "fmganpy10", "vaegan10", "sgvaegan10", "sgvaegan100"]
 if modelname in sgad_models
     # so the we dont get the "too many open files" os error
     torch = pyimport("torch")
@@ -119,10 +119,10 @@ function compute_scores(mf, model_id, expfs, paths, ac, orig_data, multifactor_d
         model = GenerativeAD.Models.CGNAnomaly(load_cgn_model(mf, device))
     elseif occursin("fmganpy", modelname) 
         model = GenerativeAD.Models.pyGAN(load_gan_model(mf, device))
-    elseif occursin("vaegan", modelname)
-        model = GenerativeAD.Models.VAEGAN(load_vaegan_model(mf, device))
     elseif occursin("sgvaegan", modelname)
         model = GenerativeAD.Models.SGVAEGAN(load_sgvaegan_model(mf, device))
+    elseif occursin("vaegan", modelname)
+        model = GenerativeAD.Models.VAEGAN(load_vaegan_model(mf, device))
     elseif modelname in ["vae", "fmgan"]
         model = expdata["model"]
     elseif modelname in ["DeepSVDD", "fAnoGAN"]
