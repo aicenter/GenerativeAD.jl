@@ -48,6 +48,14 @@ end
 function multifactor_experiment(score_fun, parameters, data, normal_label, savepath; force=true, verb=true, 
     save_entries...)
     # first create savename and check if it is not already present
+    parameters = dropnames(parameters, (
+                        :log_var_x_estimate_top, 
+                        :latent_structure,
+                        :fixed_mask_epochs,
+                        :batch_norm,
+                        :init_type,
+                        :tau_mask
+                        ))
     savef = joinpath(savepath, savename(parameters, "bson", digits=5))
     if isfile(savef) && !(force)
         verb ? (@info "$savef already present, skipping") : nothing

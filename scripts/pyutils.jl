@@ -144,3 +144,8 @@ function predict(m::RobReg, X; scale=true, kwargs...)
 	end
 	scores = vec(m.lr.predict_prob(X).detach().numpy())
 end
+
+function dropnames(namedtuple::NamedTuple, names::Tuple{Vararg{Symbol}}) 
+    keepnames = Base.diff_names(Base._nt_names(namedtuple), names)
+    return NamedTuple{keepnames}(namedtuple)
+end
