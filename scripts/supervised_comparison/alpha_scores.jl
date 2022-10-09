@@ -55,7 +55,7 @@ max_seed_perf = 10
 scale = true
 score_type = if modelname == "sgvae"
 	"logpx"
-elseif modelname == "sgvaegan"
+elseif occursin("sgvaegan", modelname)
 	"all"
 end
 init_alpha = if modelname == "sgvae"

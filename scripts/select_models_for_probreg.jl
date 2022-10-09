@@ -16,13 +16,13 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$"]
 
 # setup
-sgad_models = ["sgvae_robreg", "sgvaegan_robreg", "sgvaegan10_robreg"]
+sgad_models = ["sgvae_robreg", "sgvaegan_robreg", "sgvaegan10_robreg", "sgvaegan100_robreg"]
 n_models = 2
 
 # functions
 function prepare_alpha_df!(df)
     filter!(r->r.modelname in sgad_models, df)
-    for model in ["sgvae_", "sgvaegan_", "sgvaegan10_"]
+    for model in ["sgvae_", "sgvaegan_", "sgvaegan10_", "sgvaegan100_"]
     	df.modelname[map(r->occursin(model, r.modelname), eachrow(df))] .= model*"alpha"
 	end
 	df.dataset[df.dataset .== "metal_nut"] .= "nut"
