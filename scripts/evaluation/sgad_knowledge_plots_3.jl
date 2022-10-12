@@ -67,7 +67,7 @@ df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eva
 #df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
 filter!(r->occursin("_robreg", r.modelname), df_images_alpha)
 filter!(r->get(parse_savename(r.parameters)[2], "beta", 1.0) in [1.0, 10.0], df_images_alpha)
-for model in ["sgvae_", "sgvaegan_", "sgvaegan10_"]
+for model in ["sgvae_", "sgvaegan_", "sgvaegan10_", "sgvaegan100_"]
     df_images_alpha.modelname[map(r->occursin(model, r.modelname), eachrow(df_images_alpha))] .= model*"alpha"
 end
 prepare_alpha_df!(df_images_alpha)
