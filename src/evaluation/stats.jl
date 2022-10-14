@@ -337,6 +337,7 @@ function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc;  agg_co
 				
 				# sort by criterion_col
 				sort!(pg_agg, order(criterion_col, rev=true))
+				topn = min(size(pg_agg,1), topn)
 				best = pg_agg[topn:topn, :]
 
 				# add std of top 10 models metrics
@@ -420,6 +421,7 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; agg_col
 				
 				sssg = sort(ssg, order(criterion_col, rev=true))
 				# best hyperparameter after sorting by criterion_col
+				topn = min(size(sssg,1), topn)
 				best = sssg[topn:topn,:]
 				
 				# add std of top 10 models metrics
