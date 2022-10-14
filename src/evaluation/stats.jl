@@ -300,7 +300,7 @@ Optionally with argument `add_col` one can specify additional column to average 
 """
 function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc;  agg_cols=[],
 							min_samples=("anomaly_class" in names(df) && maximum(df[:anomaly_class]) > 0) ? 10 : 3,
-							downsample=Dict(), add_col=nothing, verbose=true, dseed=42)
+							downsample=Dict(), add_col=nothing, verbose=true, dseed=42, topn=1)
 	if length(agg_cols) == 0 # use automatic agg cols
 		agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 		agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
@@ -337,7 +337,7 @@ function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc;  agg_co
 				
 				# sort by criterion_col
 				sort!(pg_agg, order(criterion_col, rev=true))
-				best = first(pg_agg, 1)
+				best = pg_agg[topn:topn, :]
 
 				# add std of top 10 models metrics
 				best_10_std = combine(first(pg_agg, 10), agg_cols .=> std .=> top10_std_cols)
@@ -375,7 +375,8 @@ As oposed to mean-max aggregation the output does not contain parameters and pha
 Optionally with argument `add_col` one can specify additional column to average values over.
 """
 function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; agg_cols=[],
-									downsample=Dict(), add_col=nothing, verbose=true, dseed=42)
+									downsample=Dict(), add_col=nothing, verbose=true, 
+									dseed=42, topn=1)
 	if length(agg_cols) == 0 # use automatic agg cols
 		agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 		agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
@@ -419,7 +420,7 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; agg_col
 				
 				sssg = sort(ssg, order(criterion_col, rev=true))
 				# best hyperparameter after sorting by criterion_col
-				best = first(sssg, 1)
+				best = sssg[topn:topn,:]
 				
 				# add std of top 10 models metrics
 				best_10_std = combine(first(sssg, 10), agg_cols .=> std .=> top10_std_cols)

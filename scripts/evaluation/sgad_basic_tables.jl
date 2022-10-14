@@ -21,10 +21,12 @@ include("./utils/ranks.jl")
 outdir = "result_tables"
 
 all_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "vaegan", "vaegan10", 
-    "sgvaegan", "sgvaegan10", "sgvae", "sgvae_alpha", "sgvaegan_alpha"]
+    "sgvaegan", "sgvaegan10", "sgvaegan100", "sgvae", "sgvae_alpha", "sgvaegan_alpha"]
 sgad_models = ["DeepSVDD", "fAnoGAN", "fmganpy10", "vae", "cgn", "vaegan10", 
-   "sgvae", "sgvae_alpha",  "sgvaegan10", "sgvaegan10_alpha"]
+   "sgvae", "sgvae_alpha", "sgvaegan10",  "sgvaegan100", "sgvaegan100_alpha"]
 MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
+MODEL_ALIAS["sgvaegan100"] = "sgvgn100"
+MODEL_ALIAS["sgvaegan100_alpha"] = "sgvgn100a"
 sgad_models_alias = [MODEL_ALIAS[n] for n in sgad_models]
 DOWNSAMPLE = 50
 
