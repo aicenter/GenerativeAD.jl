@@ -233,43 +233,50 @@ criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
 extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 
-@suppress_err begin
-	ranks_dfs = map(enumerate(zip(titles,
-	        [
-                (df_cifar, df_cifar_alpha),
-                (df_svhn, df_svhn_alpha),
-                (df_coco, df_coco_alpha),
-	            (df_wmnist, df_wmnist_alpha)]))) do (i, (title, (df, df_alpha)))
+function produce_tables()
+    @suppress_err begin
+    	ranks_dfs = map(enumerate(zip(titles,
+    	        [
+                    (df_cifar, df_cifar_alpha),
+                    (df_svhn, df_svhn_alpha),
+                    (df_coco, df_coco_alpha),
+    	            (df_wmnist, df_wmnist_alpha)]))) do (i, (title, (df, df_alpha)))
 
-	    ranks, metric_means = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
-            non_agg_cols, round_results)
-	    
-	    # reorder table on tabular data as there is additional class of models (flows)
-	    # one can do this manually at the end
-	    f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title)$(topns).csv")
-	    println("saving to $f")
-	    CSV.write(f, metric_means)
-	    ranks, metric_means
-	end
-end
+    	    ranks, metric_means = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
+                non_agg_cols, round_results)
+    	    
+    	    # reorder table on tabular data as there is additional class of models (flows)
+    	    # one can do this manually at the end
+    	    f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title)$(topns).csv")
+    	    println("saving to $f")
+    	    CSV.write(f, metric_means)
+    	    ranks, metric_means
+    	end
+    end
 
-DOWNSAMPLE = 50
-@suppress_err begin
-    ranks_dfs = map(enumerate(zip(titles,
-            [
-                (df_cifar, df_cifar_alpha),
-                (df_svhn, df_svhn_alpha),
-                (df_coco, df_coco_alpha),
-                (df_wmnist, df_wmnist_alpha)]))) do (i, (title, (df, df_alpha)))
+    DOWNSAMPLE = 50
+    @suppress_err begin
+        ranks_dfs = map(enumerate(zip(titles,
+                [
+                    (df_cifar, df_cifar_alpha),
+                    (df_svhn, df_svhn_alpha),
+                    (df_coco, df_coco_alpha),
+                    (df_wmnist, df_wmnist_alpha)]))) do (i, (title, (df, df_alpha)))
 
-        ranks, metric_means = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
-            non_agg_cols, round_results)
-        
-        # reorder table on tabular data as there is additional class of models (flows)
-        # one can do this manually at the end
-        f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title)$(topns)_downsampled.csv")
-        println("saving to $f")
-        CSV.write(f, metric_means)
-        ranks, metric_means
+            ranks, metric_means = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
+                non_agg_cols, round_results)
+            
+            # reorder table on tabular data as there is additional class of models (flows)
+            # one can do this manually at the end
+            f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title)$(topns)_downsampled.csv")
+            println("saving to $f")
+            CSV.write(f, metric_means)
+            ranks, metric_means
+        end
     end
 end
+produce_tables()
+
+topn = 5
+topns = "_top_$(topn)"
+produce_tables()
