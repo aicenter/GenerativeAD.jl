@@ -20,8 +20,9 @@ const MODEL_RENAME = Dict(
 Computes rank table from `d` and aggregation `agg`. Applies model and dataset aliases. 
 Sorts models based on model_type. Returns the rank table and also the aggregated dataframe.
 """
-function sorted_rank(d, agg, val_metric=:val_auc, tst_metric=:tst_auc, downsample=Dict{String, Int}(); verbose=true)
-	df_agg = agg(d, val_metric; downsample=downsample, verbose=verbose)
+function sorted_rank(d, agg, val_metric=:val_auc, tst_metric=:tst_auc, downsample=Dict{String, Int}(); 
+	verbose=true, kwargs...)
+	df_agg = agg(d, val_metric; downsample=downsample, verbose=verbose, kwargs...)
 	
 	df_agg["model_type"] = copy(df_agg["modelname"])
 	apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
