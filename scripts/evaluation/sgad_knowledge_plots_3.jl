@@ -280,3 +280,8 @@ produce_tables()
 topn = 5
 topns = "_top_$(topn)"
 produce_tables()
+
+
+topn = 2
+topns = "_top_$(topn)"
+produce_tables()
