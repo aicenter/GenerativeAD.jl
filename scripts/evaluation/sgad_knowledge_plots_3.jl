@@ -20,6 +20,7 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$"]
 
 include("./utils/ranks.jl")
+include("./utils/utils.jl")
 outdir = "result_tables"
 
 sgad_models = ["classifier", "DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "cgn_0.2", 
@@ -39,47 +40,20 @@ dseed = 40
 topn = 1
 topns = (topn == 1) ? "" : "_top_$(topn)"
 
-function prepare_alpha_df!(df)
-    apply_aliases!(df, col="dataset", d=DATASET_ALIAS) # rename
-    df.dataset[df.dataset .== "metal_nut"] .= "nut"
-    df["fs_fit_t"] = NaN
-    df["fs_eval_t"] = NaN
-    df
-end
 
 # LOI basic tables
 df_images = load(datadir("evaluation_kp/images_leave-one-in_eval.bson"))[:df];
-apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS) # rename
 # filter out only the interesting models
 df_images = filter(r->r.modelname in sgad_models, df_images)
 # this generates the overall tables (aggregated by datasets)
-df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
-df_images_target = filter(r->r.modelname != "sgvae_alpha", df_images_target);
-# only use (sg)vaegan with disc score
-df_images_target = filter(r->!(r.modelname in ["sgvaegan10", "sgvaegan100"] && 
-    get(parse_savename(r.parameters)[2], "score", "") != "discriminator"), df_images_target)
-df_images_target = filter(r->!(r.modelname == "vaegan10" && 
-    get(parse_savename(r.parameters)[2], "score", "") != "discriminator"), df_images_target)
-# also differentiate between the old and new cgn
-df_images_target.modelname[map(x->get(parse_savename(x)[2], "version", 0.1) .== 0.2, 
-        df_images_target.parameters) .& (df_images_target.modelname .== "cgn")] .= "cgn_0.2"
-df_images_target.modelname[map(x->get(parse_savename(x)[2], "version", 0.1) .== 0.3, 
-        df_images_target.parameters) .& (df_images_target.modelname .== "cgn")] .= "cgn_0.3"
-# finally, set apart the sgvaegan with lin adv score
-df_images_target.modelname[map(x->get(parse_savename(x)[2], "version", 0.1) .== 0.5, 
-        df_images_target.parameters) .& (df_images_target.modelname .== "sgvaegan")] .= "sgvaegan_0.5"
+df_images_target = setup_classic_models(df_images_target)
 
 # LOI alpha scores
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
 #df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
-filter!(r->occursin("_robreg", r.modelname), df_images_alpha)
-filter!(r->get(parse_savename(r.parameters)[2], "beta", 1.0) in [1.0, 10.0], df_images_alpha)
-for model in ["sgvae_", "sgvaegan_", "sgvaegan10_", "sgvaegan100_"]
-    df_images_alpha.modelname[map(r->occursin(model, r.modelname), eachrow(df_images_alpha))] .= model*"alpha"
-end
-prepare_alpha_df!(df_images_alpha)
-df_images_alpha_target, _ = _split_image_datasets(df_images_alpha, TARGET_DATASETS);
+df_images_alpha = setup_alpha_models(df_images_alpha)
 
+# now there is a little bit more differentiation here
 # sgvaeganalpha - beta=1/10
 subdfa = filter(r->r.modelname == "sgvaegan_alpha", df_images_alpha_target)
 parametersa = map(x->parse_savename(x)[2], subdfa.parameters)
