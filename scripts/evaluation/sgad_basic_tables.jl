@@ -21,13 +21,13 @@ include("./utils/ranks.jl")
 outdir = "result_tables"
 
 models = ["DeepSVDD", "fAnoGAN", "fmganpy10", "vae", "cgn", "vaegan10", 
-    "sgvae", "sgvaegan100", "sgvae_alpha", "sgvaegan10_alpha", "sgvaegan100_alpha"]
-MODEL_ALIAS["sgvaegan_alpha"] = "sgvgna"
+    "sgvae", "sgvaegan100", "sgvae_alpha", "sgvaegan_alpha"]
+models_alpha = ["sgvae_alpha", "sgvaegan10_alpha", "sgvaegan100_alpha"]
+MODEL_ALIAS["fmganpy10"] = "fmgn"
 MODEL_ALIAS["vaegan10"] = "vgn"
-MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgna"
-MODEL_ALIAS["sgvaegan100_alpha"] = "sgvgna"
-MODEL_ALIAS["sgvaegan10"] = "sgvgn"
 MODEL_ALIAS["sgvaegan100"] = "sgvgn"
+MODEL_ALIAS["sgvae_alpha"] = "sgvaea"
+MODEL_ALIAS["sgvaegan_alpha"] = "sgvgna"
 models_alias = [MODEL_ALIAS[n] for n in models]
 dseed = 40
 DOWNSAMPLE = 50
@@ -44,7 +44,7 @@ function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{Stri
             tst_metric = _prefix_symbol("tst", metric)    
             
             _, rt = sorted_rank(df, agg, val_metric, tst_metric, downsample, dseed=dseed)
-            sorted_models = vcat(["dataset"], [x for x in sgad_models_alias if x in names(rt)])
+            sorted_models = vcat(["dataset"], [x for x in models_alias if x in names(rt)])
             rt = rt[!,sorted_models]
 
             rt[end-2, 1] = "\$\\sigma_1\$"
@@ -110,7 +110,7 @@ filter!(r->get(parse_savename(r.parameters)[2], "beta", 1.0) in [1.0, 10.0], df_
 for model in ["sgvae_", "sgvaegan_", "sgvaegan10_", "sgvaegan100_"]
     df_images_alpha.modelname[map(r->occursin(model, r.modelname), eachrow(df_images_alpha))] .= model*"alpha"
 end
-filter!(r->r.modelname in models, df_images_alpha)
+filter!(r->r.modelname in models_alpha, df_images_alpha)
 apply_aliases!(df_images_alpha, col="dataset", d=DATASET_ALIAS) # rename
 # on wmnist and coco we use sgvaegan10alpha, otherwise we use sgvaegan100alpha
 filter!(r->!(
@@ -157,7 +157,7 @@ downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
 rts = basic_summary_table(df_images_target_nonnan, outdir, prefix=prefix, suffix=suffix,
     downsample=downsample)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
-    rts[1], sgad_models_alias)
+    rts[1], models_alias)
 
 ##### LOI images per AC
 # this should generate the above tables split by anomaly classes
@@ -174,8 +174,8 @@ function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Di
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)    
 
-        _, rt = sorted_rank(df, aggregate_stats_auto, val_metric, tst_metric, downsample)
-        sorted_models = vcat(["dataset"], [x for x in sgad_models_alias if x in names(rt)])
+        _, rt = sorted_rank(df, aggregate_stats_auto, val_metric, tst_metric, downsample, dseed=dseed)
+        sorted_models = vcat(["dataset"], [x for x in models_alias if x in names(rt)])
         rt = rt[!,sorted_models]
 
         rt[end-2, 1] = "\$\\sigma_1\$"
@@ -204,13 +204,19 @@ downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
 rts = basic_summary_table_per_ac(df_images_target_nonnan, outdir, prefix=prefix, suffix=suffix,
     downsample=downsample)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
-    rts[1], sgad_models_alias)
+    rts[1], models_alias)
 
 ##### MVTEC
+models = ["DeepSVDD", "fAnoGAN", "fmganpy10", "vae", "cgn", "vaegan10", 
+    "sgvae", "sgvaegan10", "sgvae_alpha", "sgvaegan_alpha"]
+models_alpha = ["sgvae_alpha", "sgvaegan10_alpha"]
+MODEL_ALIAS["sgvaegan10"] = "sgvgn"
+models_alias = [MODEL_ALIAS[n] for n in models]
+
 # now let's do the same for mvtec results
 df_mvtec = load(datadir("evaluation/images_mvtec_eval_all.bson"))[:df];
 apply_aliases!(df_mvtec, col="dataset", d=DATASET_ALIAS)
-df_mvtec = filter(r->r.modelname in sgad_models, df_mvtec)
+df_mvtec = filter(r->r.modelname in models, df_mvtec)
 df_mvtec = filter(r->!(r.dataset in ["grid", "wood"]), df_mvtec)
 df_mvtec_nonnan = filter(r-> !isnan(r.val_auc), df_mvtec)
 
