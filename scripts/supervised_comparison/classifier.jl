@@ -152,7 +152,7 @@ end
 batch_eval(scoref, x, batchsize=512) =
     hcat(map(y->cpu(scoref(gpu(Array(y)))), Flux.Data.DataLoader(x, batchsize=batchsize))...)
 
-function basic_classifier_inputs(dataset, ac, seed)
+function basic_classifier_inputs(dataset, ac, seed, classes_val=4)
 	# first load the data
 	(x_tr, y_tr), (x_val, y_val), (x_tst, y_tst) = GenerativeAD.Datasets.load_data(dataset, seed=seed, 
 	    anomaly_class_ind = ac, method = "leave-one-in")
@@ -162,7 +162,7 @@ function basic_classifier_inputs(dataset, ac, seed)
 	# decide the classes that will be used as anomalies
 	# the target + the next 4 = normal data
 	# the rest is anomalous
-	acsn, acsa = divide_classes(ac)
+	acsn, acsa = divide_classes(ac, classes_val+1)
 	tr_inds, val_inds = map(x->map(c->c in acsn, x), (c_tr, c_val));
 
 	# now split the data - we will train on val data and test on tst data

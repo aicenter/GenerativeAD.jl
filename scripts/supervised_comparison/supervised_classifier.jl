@@ -27,9 +27,13 @@ s = ArgParseSettings()
     	default = 0
     	arg_type = Int
     	help = "anomaly class"
+    "class_setup"
+    	default = 4
+    	arg_type = Int
+    	help = "how many anomalous classes to use in training"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack dataset, anomaly_class = parsed_args
+@unpack dataset, anomaly_class, class_setup = parsed_args
 datatype = occursin("MvTec", dataset) ? "mvtec" : "leave-one-in"
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
@@ -37,10 +41,12 @@ acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
 modelname = "classifier"
 niters = 1000
 max_seed_perf = 10
+classes_val = class_setup
+classes_str = (classes_val == 4) ? "" : "_$(classes_val)v$(9-classes_val)"
 
 function experiment(dataset, ac, seed, save_dir)
 	# get the data
-	(tr_x, tr_y), (tst_x, tst_y) = basic_classifier_inputs(dataset, ac, seed)
+	(tr_x, tr_y), (tst_x, tst_y) = basic_classifier_inputs(dataset, ac, seed, classes_val)
 
 	# get classifier parameters
 	parameters = sample_params()
@@ -91,7 +97,7 @@ end
 
 for ac in acs
 	for seed in 1:max_seed
-		save_dir = datadir("supervised_comparison/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+		save_dir = datadir("supervised_comparison$(classes_str)/images_$(datatype)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
 		mkpath(save_dir)
 		@info "Saving data to $(save_dir)..."
 
