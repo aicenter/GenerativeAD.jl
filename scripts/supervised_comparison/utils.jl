@@ -318,11 +318,11 @@ function original_class_split(dataset, ac; seed=1, ratios=(0.6,0.2,0.2))
 end
 
 # this splits the 10 classes into two halves - one anomalous, one normal
-function divide_classes(ac)
+function divide_classes(ac, nval=5)
 	all_acs = repeat(collect(1:10), 3)
 	iac = 10 + ac
-	acsn = all_acs[iac:iac+4]
-	acsa = all_acs[iac-5:iac-1]
+	acsn = all_acs[iac:iac+nval-1]
+	acsa = all_acs[iac-(10-nval):iac-1]
 	return acsn, acsa
 end
 

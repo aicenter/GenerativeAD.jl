@@ -7,7 +7,8 @@
 MODEL=$1
 DATASET=$2
 ANOMALY_CLASS=$3
-FORCE=$4
+VAL_CLASSES=$4
+FORCE=$5
 
 module load Julia/1.5.3-linux-x86_64
 module load Python/3.9.6-GCCcore-11.2.0
@@ -16,4 +17,4 @@ source ${HOME}/sgad-env/bin/activate
 export PYTHON="${HOME}/sgad-env/bin/python"
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
-julia ./base_scores.jl $MODEL ${DATASET} ${ANOMALY_CLASS} $FORCE
+julia ./base_scores.jl $MODEL ${DATASET} ${ANOMALY_CLASS} ${VAL_CLASSES} $FORCE

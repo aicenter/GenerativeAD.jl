@@ -3,7 +3,8 @@
 MODEL=$1
 DATASET_FILE=$2
 ANOMALY_CLASS=$3
-FORCE=$4
+VAL_CLASSES=$4
+FORCE=$5
 
 LOG_DIR="${HOME}/logs/supervised_base_scores"
 
@@ -14,6 +15,6 @@ fi
 while read d; do
     # submit to slurm
     sbatch \
-    --output="${LOG_DIR}/${d}_${MODEL}_${ANOMALY_CLASS}_%A.out" \
-     ./base_scores.sh $MODEL $d ${ANOMALY_CLASS} $FORCE
+    --output="${LOG_DIR}/${d}_${MODEL}_${ANOMALY_CLASS}_${VAL_CLASSES}_%A.out" \
+     ./base_scores.sh $MODEL $d ${ANOMALY_CLASS} ${VAL_CLASSES} $FORCE
 done < ${DATASET_FILE}
