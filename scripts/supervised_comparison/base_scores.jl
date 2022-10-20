@@ -47,7 +47,7 @@ max_seed = (datatype == "mvtec") ? 5 : 1
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
 max_seed_perf = 10
 classes_val = class_setup
-classes_str = (clases_val == 4) ? "" : "_$(classes_val)v$(9-classes_val)"
+classes_str = (classes_val == 4) ? "" : "_$(classes_val)v$(9-classes_val)"
 
 function experiment(model_id, rf, ac, seed, save_dir, res_dir)
 	# 
