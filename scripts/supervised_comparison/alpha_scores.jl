@@ -37,17 +37,23 @@ s = ArgParseSettings()
     	default = 1.0
     	arg_type = Float64
     	help = "base beta for robust logistic regression"
+    "class_setup"
+    	default = 4
+    	arg_type = Int
+    	help = "how many anomalous classes to use in validation"
     "--force", "-f"
         action = :store_true
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, latent_score_type, anomaly_class, base_beta, force = parsed_args
+@unpack modelname, dataset, latent_score_type, anomaly_class, base_beta, class_setup, force = parsed_args
 @info "running with these params: $(parsed_args)"
 datatype = occursin("MvTEC", dataset) ? "mvtec" : "leave-one-in"
 max_ac = (datatype == "mvtec") ? 1 : 10
 max_seed = (datatype == "mvtec") ? 5 : 1 
 acs = (anomaly_class == 0) ? collect(1:max_ac) : [anomaly_class]
+classes_val = class_setup
+classes_str = (classes_val == 4) ? "" : "_$(classes_val)v$(9-classes_val)"
 
 method = "robreg"
 device = "cpu"
@@ -91,10 +97,9 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	# decide the classes that will be used as anomalies
 	# the target + the next 4 = normal data
 	# the rest is anomalous
-	acsn, acsa = divide_classes(ac)
+	acsn, acsa = divide_classes(ac, classes_val+1)
 	val_inds = map(c->c in acsn, c_val);
-	tst_inds = map(c->c in acsn, c_tst);
-
+	
 	# this is the final form of the data for the next method
 	val_scores = scores_val[val_inds,:]
 	val_y = y_val[val_inds]
@@ -124,7 +129,7 @@ for ac in acs
 		model_ids = map(x->Meta.parse(split(split(x, "=")[2], "_")[1]), lfs)
 
 		# make the save dir
-		save_dir = datadir("supervised_comparison/images_$(datatype)/$(modelname)_alpha/$(dataset)/ac=$(ac)/seed=$(seed)")
+		save_dir = datadir("supervised_comparison$(classes_str)/images_$(datatype)/$(modelname)_alpha/$(dataset)/ac=$(ac)/seed=$(seed)")
 		mkpath(save_dir)
 		@info "Saving data to $(save_dir)..."
 

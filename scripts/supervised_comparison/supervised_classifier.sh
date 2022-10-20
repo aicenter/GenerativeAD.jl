@@ -8,9 +8,9 @@
 #SBATCH --output /home/skvarvit/logs/classifier/%J.log
 
 DATASET=$1
-CLASSES_VAL=$2
+VAL_CLASSES=$2
 
 module load Julia/1.5.3-linux-x86_64
 module load Python/3.9.6-GCCcore-11.2.0
 
-julia --project ./supervised_classifier.jl $DATASET ${CLASSES_VAL}
+julia --project ./supervised_classifier.jl $DATASET ${VAL_CLASSES}
