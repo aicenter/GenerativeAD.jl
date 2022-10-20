@@ -6,6 +6,7 @@ using StatsBase
 import PGFPlots
 using CSV
 using Suppressor
+using Random
 
 using GenerativeAD.Evaluation: MODEL_ALIAS, DATASET_ALIAS, MODEL_TYPE, apply_aliases!
 using GenerativeAD.Evaluation: _prefix_symbol, aggregate_stats_mean_max, aggregate_stats_max_mean
@@ -18,20 +19,27 @@ AUC_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC@
 AUCP_METRICS = map(x-> "auc_100_$(x)", [100, 50, 20, 10, 5, 2, 1])
 AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC@\\%10\$", "\$AUC@\\%5\$", 
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$"]
-
+DOWNSAMPLE = 50
+dseed = 40
 
 include("../evaluation/utils/ranks.jl")
+include("../evaluation/utils/utils.jl")
 outdir = "result_tables"
 
-models = ["classifier", "DeepSVDD", "fAnoGAN", "fmganpy10", "vae", "cgn", "vaegan10", "sgvae", "sgvaegan10",
- "sgvae_robreg", "sgvaegan10_robreg", "sgvaegan100"]
-models_alias = ["classifier", "dsvd", "fano", "fmgn", "vae", "cgn", "vgn", "sgvae", "sgvgn", "sgvaea", 
-    "sgvgna", "sgvgn100"]
+models = ["classifier", "DeepSVDD", "fAnoGAN", "fmganpy10", "vae", "cgn", "cgn_0.2", "vaegan10", "sgvae",
+ "sgvae_alpha", "sgvaegan10", "sgvaegan10_alpha", "sgvaegan100", "sgvaegan100_alpha"]
+models_alias = ["classifier", "dsvd", "fano", "fmgn", "vae", "cgn", "cgn2", "vgn10", "sgvae", "sgvaea", 
+    "sgvgn10", "sgvgn10a", "sgvgn100", "sgvgn100a"]
 round_results = false
 
 # LOI basic tables
 df_images = load(datadir("supervised_comparison/images_leave-one-in_eval.bson"))[:df];
-apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS) # rename
+df_images = setup_classic_models(df_images)
+for model in ["sgvae_", "sgvaegan10_", "sgvaegan100_"]
+    df_images.modelname[map(r->occursin(model, r.modelname), eachrow(df_images))] .= model*"alpha"
+end
+df_images = filter(r->r.modelname in models, df_images)
+# rename the models
 for (m,a) in zip(models, models_alias)
     df_images.modelname[df_images.modelname .== m] .= a
 end
@@ -59,9 +67,15 @@ function collect_plot_points(modelname, dataset, ac, seed, df, val_metrics, tst_
             !isnan(r[tst_metric]),
             subdf
             )
-        if size(_subdf,1) == 0
+        n = size(_subdf,1)
+        if n == 0
             push!(res, NaN)
         else
+            # subsample the models
+            Random.seed!(dseed)
+            inds = sample(1:n, min(n, DOWNSAMPLE), replace=false)
+            _subdf = _subdf[inds, :]
+            Random.seed!()
             imax = argmax(_subdf[val_metric])
             push!(res, _subdf[tst_metric][imax])
         end
@@ -90,6 +104,6 @@ for modelname in models_alias
     end
 end
 
-f = datadir("evaluation/result_tables/supervised_comparison.csv")
+f = datadir("evaluation/result_tables/supervised_comparison_4v5.csv")
 CSV.write(f, res_df)
 @info "Written result to $f"

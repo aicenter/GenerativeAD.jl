@@ -46,12 +46,12 @@ df_images = load(datadir("evaluation_kp/images_leave-one-in_eval.bson"))[:df];
 # filter out only the interesting models
 df_images = filter(r->r.modelname in sgad_models, df_images)
 # this generates the overall tables (aggregated by datasets)
-df_images_target = setup_classic_models(df_images_target)
+df_images_target = setup_classic_models(df_images)
 
 # LOI alpha scores
 df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
 #df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
-df_images_alpha = setup_alpha_models(df_images_alpha)
+df_images_alpha_target = setup_alpha_models(df_images_alpha)
 
 # now there is a little bit more differentiation here
 # sgvaeganalpha - beta=1/10
@@ -114,7 +114,7 @@ subdf = filter(r->r.modelname == "cgn_0.3" && occursin("disc_model=lin", r.param
 subdf.modelname .= "cgn3_lin_lin"
 df_images_target = vcat(df_images_target, subdf)
 
-# now differentiate them
+# now differentiate them by datasets
 df_svhn = filter(r->r[:dataset] == "svhn2",df_images_target)
 df_svhn_alpha = filter(r->r[:dataset] == "svhn2",df_images_alpha_class)
 
