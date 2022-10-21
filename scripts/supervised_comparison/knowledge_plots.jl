@@ -32,7 +32,6 @@ AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$"]
 DOWNSAMPLE = 50
 dseed = 40
-topn = 1
 
 include("../evaluation/utils/ranks.jl")
 include("../evaluation/utils/utils.jl")
@@ -89,8 +88,7 @@ function collect_plot_points(modelname, dataset, ac, seed, df, val_metrics, tst_
             _subdf = _subdf[inds, :]
             Random.seed!()
             sortinds = sortperm(_subdf[val_metric], rev=true)
-            imax = sortinds[min(topn, n)]
-            push!(res, _subdf[tst_metric][imax])
+            push!(res, _subdf[tst_metric][1])
         end
     end
     return res

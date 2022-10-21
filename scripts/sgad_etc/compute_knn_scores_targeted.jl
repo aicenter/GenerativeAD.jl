@@ -31,6 +31,7 @@ ks = (datatype == "mvtec") ? collect(1:4:151) : vcat([1, 31, 61], collect(101:10
 ks = (dataset == "cocoplaces") ? collect(1:10:201) : ks
 ac = anomaly_class
 max_tries = 20
+dataset_bm = (datatype == "mvtec") ? "MVTec-AD_$(dataset)" : dataset
 
 bestf = datadir("sgad_alpha_evaluation_kp/best_models_orig_$(datatype).bson")
 best_models = load(bestf)
@@ -46,7 +47,7 @@ for i in 1:100 # run this over and over until the job time limit is exhausted
 
         # model dir
         inds = (best_models[:anomaly_class] .== anomaly_class) .& (best_models[:seed] .== seed) .& 
-            (best_models[:dataset] .== dataset) .& (best_models[:modelname] .== modelname)
+            (best_models[:dataset] .== dataset_bm) .& (best_models[:modelname] .== modelname)
         best_params = best_models[:parameters][inds]
 
         # from these params extract the correct model_ids and lfs
