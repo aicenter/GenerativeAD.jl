@@ -63,6 +63,10 @@ function experiment(model_id, rf, ac, seed, save_dir, res_dir)
 	scores_tst = data[:tst_scores]
 	y_val = data[:val_labels]
 	y_tst = data[:tst_labels]
+	if isnothing(scores_val) || isnothing(scores_tst) || isnothing(y_val) || isnothing(y_tst)
+		@info "Score data missing in $(joinpath(res_dir, rf))"
+		return
+	end
 
 	# now exclude some data from the validation dataset
 	(c_tr, y_tr), (c_val, y_val), (c_tst, y_tst) = original_class_split(dataset, ac, seed=seed)
