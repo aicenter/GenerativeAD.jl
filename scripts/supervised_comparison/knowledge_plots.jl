@@ -7,12 +7,23 @@ import PGFPlots
 using CSV
 using Suppressor
 using Random
+using ArgParse
 
 using GenerativeAD.Evaluation: MODEL_ALIAS, DATASET_ALIAS, MODEL_TYPE, apply_aliases!
 using GenerativeAD.Evaluation: _prefix_symbol, aggregate_stats_mean_max, aggregate_stats_max_mean
 using GenerativeAD.Evaluation: PAT_METRICS, PATN_METRICS, PAC_METRICS, BASE_METRICS, TRAIN_EVAL_TIMES
 using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, convert_anomaly_class
 
+s = ArgParseSettings()
+@add_arg_table! s begin
+   "classes_val"
+        default = 4
+        arg_type = Int
+        help = "no. validation anomalous classes"
+end
+parsed_args = parse_args(ARGS, s)
+@unpack classes_val = parsed_args
+classes_str = (classes_val == 4) ? "" : "_$(classes_val)v$(9-classes_val)"
 AUC_METRICS = ["auc_100", "auc_50", "auc_20", "auc_10", "auc_5", "auc_2", "auc_1", "auc_05", "auc_02", "auc_01"]
 AUC_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC@\\%10\$", "\$AUC@\\%5\$", 
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$", "\$AUC@\\%0.5\$", "\$AUC@\\%0.2\$", "\$AUC@\\%0.1\$"]
@@ -34,7 +45,7 @@ models_alias = ["classifier", "dsvd", "fano", "fmgn", "vae", "cgn", "cgn2", "vgn
 round_results = false
 
 # LOI basic tables
-df_images = load(datadir("supervised_comparison/images_leave-one-in_eval.bson"))[:df];
+df_images = load(datadir("supervised_comparison$(classes_str)/images_leave-one-in_eval.bson"))[:df];
 df_images = setup_classic_models(df_images)
 for model in ["sgvae_", "sgvaegan10_", "sgvaegan100_"]
     df_images.modelname[map(r->occursin(model, r.modelname), eachrow(df_images))] .= model*"alpha"
@@ -106,6 +117,7 @@ for modelname in models_alias
     end
 end
 
-f = datadir("evaluation/result_tables/supervised_comparison_4v5.csv")
+save_str = (classes_val == 4) ? "_4v5" : classes_str
+f = datadir("evaluation/result_tables/supervised_comparison$(save_str).csv")
 CSV.write(f, res_df)
 @info "Written result to $f"
