@@ -23,14 +23,14 @@ s = ArgParseSettings()
         default = "wildlife_MNIST"
         arg_type = String
         help = "dataset or mvtec category"
-    "anomaly_class"
-    	default = 0
-    	arg_type = Int
-    	help = "anomaly class"
     "class_setup"
     	default = 4
     	arg_type = Int
     	help = "how many anomalous classes to use in training"
+    "anomaly_class"
+    	default = 0
+    	arg_type = Int
+    	help = "anomaly class"
 end
 parsed_args = parse_args(ARGS, s)
 @unpack dataset, anomaly_class, class_setup = parsed_args

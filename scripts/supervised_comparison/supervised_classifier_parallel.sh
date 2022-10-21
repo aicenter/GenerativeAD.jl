@@ -15,6 +15,6 @@ while read d; do
     # submit to slurm
     sbatch \
     --array=1-${NUM_SAMPLES}%${NUM_CONC} \
-    --output="${LOG_DIR}/${d}_%A_%a.out" \
+    --output="${LOG_DIR}/${d}_${VAL_CLASSES}_%A_%a.out" \
      ./supervised_classifier.sh $d ${VAL_CLASSES}
 done < ${DATASET_FILE}
