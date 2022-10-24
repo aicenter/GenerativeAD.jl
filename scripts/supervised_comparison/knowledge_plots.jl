@@ -88,7 +88,7 @@ function collect_plot_points(modelname, dataset, ac, seed, df, val_metrics, tst_
             _subdf = _subdf[inds, :]
             Random.seed!()
             sortinds = sortperm(_subdf[val_metric], rev=true)
-            push!(res, _subdf[tst_metric][1])
+            push!(res, _subdf[tst_metric][sortinds[1]])
         end
     end
     return res
