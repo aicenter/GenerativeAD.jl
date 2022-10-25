@@ -18,20 +18,39 @@ const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@
 @suppress_err begin
 
 include("./utils/ranks.jl")
+include("./utils/utils.jl")
 outdir = "result_tables"
 
-models = ["DeepSVDD", "fAnoGAN", "fmganpy10", "vae", "cgn", "vaegan10", 
-    "sgvae", "sgvaegan100", "sgvae_alpha", "sgvaegan_alpha"]
-models_alpha = ["sgvae_alpha", "sgvaegan10_alpha", "sgvaegan100_alpha"]
-MODEL_ALIAS["fmganpy10"] = "fmgn"
-MODEL_ALIAS["vaegan10"] = "vgn"
-MODEL_ALIAS["sgvaegan100"] = "sgvgn"
-MODEL_ALIAS["sgvae_alpha"] = "sgvaea"
-MODEL_ALIAS["sgvaegan_alpha"] = "sgvgna"
-models_alias = [MODEL_ALIAS[n] for n in models]
+sgad_models = ["classifier", "DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "cgn_0.2", 
+"cgn_0.3", "vaegan", "vaegan10", "sgvaegan", "sgvaegan_0.5", "sgvaegan10", "sgvaegan100", "sgvae", 
+"sgvae_alpha", "sgvaegan_alpha"]
+sgad_alpha_models = ["classifier", "sgvae_alpha", "sgvaegan_alpha"]
+MODEL_ALIAS["cgn_0.2"] = "cgn2"
+MODEL_ALIAS["cgn_0.3"] = "cgn3"
+MODEL_ALIAS["sgvaegan_0.5"] = "sgvgn05"
+MODEL_ALIAS["sgvaegan100"] = "sgvgn100"
+MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
+MODEL_ALIAS["sgvaegan100_alpha"] = "sgvgn100a"
+TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
+round_results = false
 DOWNSAMPLE = 50
 
-TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
+# LOI basic tables
+df_images = load(datadir("evaluation_kp/images_leave-one-in_eval.bson"))[:df];
+# filter out only the interesting models
+df_images = filter(r->r.modelname in sgad_models, df_images)
+# this generates the overall tables (aggregated by datasets)
+df_images = setup_classic_models(df_images)
+
+# LOI alpha scores
+df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
+#df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
+df_images_alpha = setup_alpha_models(df_images_alpha)
+
+# now there is a little bit more differentiation here
+df_images_alpha = differentiate_beta_1_10(df_images_alpha)
+df_images = differentiate_early_stopping(df_images)
+df_images = differentiate_sgvaegana(df_images)
 
 function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{String, Int}())
     agg_names = ["maxmean"]
@@ -81,43 +100,15 @@ function save_selection(f, rt, plot_models)
     f
 end
 
-##### LOI images 
-df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
-# filter out only the interesting models
-df_images = filter(r->r.modelname in models, df_images)
-# for sgvaegan and vaegan only use discriminator score
-filter!(r->!(r.modelname in ["sgvaegan10", "sgvaegan100"] && 
-    get(parse_savename(r.parameters)[2], "score", "") != "discriminator"), df_images)
-filter!(r->!(r.modelname == "vaegan10" && 
-    get(parse_savename(r.parameters)[2], "score", "") != "discriminator"), df_images)
-# on svhn2, we use cgn v2, otherwise we use cgn 0.1
-filter!(r->!(
-    r.modelname == "cgn" && 
-    r.dataset == "SVHN2" && 
-    get(parse_savename(r.parameters)[2], "version", 0.1) != 0.2), df_images)
-filter!(r->!(
-    r.modelname == "cgn" && 
-    r.dataset != "SVHN2" && 
-    get(parse_savename(r.parameters)[2], "version", 0.1) != 0.1), df_images)
-# rename datasets
-apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS) 
 
-# alpha
-df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
-filter!(r->occursin("_robreg", r.modelname), df_images_alpha)
-filter!(r->get(parse_savename(r.parameters)[2], "beta", 1.0) in [1.0, 10.0], df_images_alpha)
-for model in ["sgvae_", "sgvaegan_", "sgvaegan10_", "sgvaegan100_"]
-    df_images_alpha.modelname[map(r->occursin(model, r.modelname), eachrow(df_images_alpha))] .= model*"alpha"
-end
-filter!(r->r.modelname in models_alpha, df_images_alpha)
-apply_aliases!(df_images_alpha, col="dataset", d=DATASET_ALIAS) # rename
+##### LOI images 
 # on wmnist and coco we use sgvaegan10alpha, otherwise we use sgvaegan100alpha
 filter!(r->!(
     r.modelname == "sgvaegan100_alpha" && 
-    r.dataset in ["wmnist", "coco"]), df_images_alpha)
+    r.dataset in ["coco"]), df_images_alpha)
 filter!(r->!(
     r.modelname == "sgvaegan10_alpha" && 
-    r.dataset in ["svhn2", "cifar10"]), df_images_alpha)
+    r.dataset in ["wmnist", "svhn2", "cifar10"]), df_images_alpha)
 # now rename it all to sgvaegan_alpha
 df_images_alpha.modelname[map(x->occursin("sgvaegan", x), df_images_alpha.modelname)] .= "sgvaegan_alpha"
 

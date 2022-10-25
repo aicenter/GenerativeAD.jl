@@ -50,37 +50,9 @@ df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eva
 df_images_alpha_target = setup_alpha_models(df_images_alpha)
 
 # now there is a little bit more differentiation here
-# sgvaeganalpha - beta=1/10
-subdfa = filter(r->r.modelname == "sgvaegan_alpha", df_images_alpha_target)
-parametersa = map(x->parse_savename(x)[2], subdfa.parameters)
-subdfa.modelname[[x["beta"] for x in parametersa] .== 1.0] .= "sgvaegan_alpha_1"
-subdfa.modelname[[x["beta"] for x in parametersa] .== 10.0] .= "sgvaegan_alpha_10"
-df_images_alpha_target = vcat(df_images_alpha_target, subdfa)
-MODEL_ALIAS["sgvaegan_alpha_1"] = "sgvgna_b1"
-MODEL_ALIAS["sgvaegan_alpha_10"] = "sgvgna_b10"
-
-# sgvaegan/vaegan/fmganpy - 1000 or 10 early stopping anomalies
-subdf = filter(r->r.modelname in ["sgvaegan", "vaegan", "fmganpy"], df_images_target)
-parameters = map(x->parse_savename(x)[2], subdf.parameters)
-vs = [get(x, "version", 0.3) for x in parameters]
-subdf.modelname[vs .== 0.3] .= subdf.modelname[vs .== 0.3] .* "_0.3"
-subdf.modelname[vs .== 0.4] = subdf.modelname[vs .== 0.4] .* "_0.4"
-df_images_target = vcat(df_images_target, subdf)
-MODEL_ALIAS["sgvaegan_0.3"] = "sgvgn03"
-MODEL_ALIAS["vaegan_0.3"] = "vgn03"
-MODEL_ALIAS["fmganpy_0.3"] = "fmgn03"
-MODEL_ALIAS["sgvaegan_0.4"] = "sgvgn04"
-MODEL_ALIAS["vaegan_0.4"] = "vgn04"
-MODEL_ALIAS["fmganpy_0.4"] = "fmgn04"
-
-# also add sgvaegan alpha - 0.3/0.4
-subdfa = filter(r->r.modelname == "sgvaegan_alpha", df_images_alpha_target)
-parametersa = map(x->parse_savename(x)[2], subdfa.parameters)
-subdfa.modelname[[get(x, "version", 0.3) for x in parametersa] .== 0.3] .= "sgvaegan_alpha_0.3"
-subdfa.modelname[[get(x, "version", 0.3) for x in parametersa] .== 0.4] .= "sgvaegan_alpha_0.4"
-df_images_alpha_target = vcat(df_images_alpha_target, subdfa)
-MODEL_ALIAS["sgvaegan_alpha_0.3"] = "sgvgna03"
-MODEL_ALIAS["sgvaegan_alpha_0.4"] = "sgvgna04"
+df_images_alpha_target = differentiate_beta_1_10(df_images_alpha_target)
+df_images_target = differentiate_early_stopping(df_images_target)
+df_images_target = differentiate_sgvaegana(df_images_target)
 
 # also load the classifier
 df_classifier = load(datadir("evaluation_kp/images_leave-one-in_classifier_eval.bson"))[:df]
