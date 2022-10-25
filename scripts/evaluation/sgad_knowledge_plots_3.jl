@@ -36,10 +36,6 @@ MODEL_ALIAS["sgvaegan100_alpha"] = "sgvgn100a"
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 round_results = false
 DOWNSAMPLE = 150
-dseed = 40
-topn = 1
-topns = (topn == 1) ? "" : "_top_$(topn)"
-
 
 # LOI basic tables
 df_images = load(datadir("evaluation_kp/images_leave-one-in_eval.bson"))[:df];
@@ -157,8 +153,7 @@ function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols, r
         # now define the agg function and cat it
         modelnames = unique(df.modelname)
         downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
-        agg(df,crit) = aggregate_stats_auto(df, crit; agg_cols=nautocols, downsample=downsample, 
-            dseed=dseed, topn=topn)
+        agg(df,crit) = aggregate_stats_auto(df, crit; agg_cols=nautocols, downsample=downsample)
         subdf = vcat(subdf, subdf_alpha)
 
         if size(subdf, 1) > 0
@@ -221,7 +216,7 @@ function produce_tables()
     	    
     	    # reorder table on tabular data as there is additional class of models (flows)
     	    # one can do this manually at the end
-    	    f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title)$(topns).csv")
+    	    f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title).csv")
     	    println("saving to $f")
     	    CSV.write(f, metric_means)
     	    ranks, metric_means
@@ -242,20 +237,11 @@ function produce_tables()
             
             # reorder table on tabular data as there is additional class of models (flows)
             # one can do this manually at the end
-            f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title)$(topns)_downsampled.csv")
+            f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title)_downsampled.csv")
             println("saving to $f")
             CSV.write(f, metric_means)
             ranks, metric_means
         end
     end
 end
-produce_tables()
-
-topn = 5
-topns = "_top_$(topn)"
-produce_tables()
-
-
-topn = 2
-topns = "_top_$(topn)"
 produce_tables()

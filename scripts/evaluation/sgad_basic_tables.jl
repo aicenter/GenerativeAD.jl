@@ -29,7 +29,6 @@ MODEL_ALIAS["sgvaegan100"] = "sgvgn"
 MODEL_ALIAS["sgvae_alpha"] = "sgvaea"
 MODEL_ALIAS["sgvaegan_alpha"] = "sgvgna"
 models_alias = [MODEL_ALIAS[n] for n in models]
-dseed = 40
 DOWNSAMPLE = 50
 
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
@@ -43,7 +42,7 @@ function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{Stri
             val_metric = _prefix_symbol("val", metric)
             tst_metric = _prefix_symbol("tst", metric)    
             
-            _, rt = sorted_rank(df, agg, val_metric, tst_metric, downsample, dseed=dseed)
+            _, rt = sorted_rank(df, agg, val_metric, tst_metric, downsample)
             sorted_models = vcat(["dataset"], [x for x in models_alias if x in names(rt)])
             rt = rt[!,sorted_models]
 
@@ -174,7 +173,7 @@ function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Di
         val_metric = _prefix_symbol("val", metric)
         tst_metric = _prefix_symbol("tst", metric)    
 
-        _, rt = sorted_rank(df, aggregate_stats_auto, val_metric, tst_metric, downsample, dseed=dseed)
+        _, rt = sorted_rank(df, aggregate_stats_auto, val_metric, tst_metric, downsample)
         sorted_models = vcat(["dataset"], [x for x in models_alias if x in names(rt)])
         rt = rt[!,sorted_models]
 

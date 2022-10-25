@@ -300,7 +300,7 @@ Optionally with argument `add_col` one can specify additional column to average 
 """
 function aggregate_stats_mean_max(df::DataFrame, criterion_col=:val_auc;  agg_cols=[],
 							min_samples=("anomaly_class" in names(df) && maximum(df[:anomaly_class]) > 0) ? 10 : 3,
-							downsample=Dict(), add_col=nothing, verbose=true, dseed=42, topn=1)
+							downsample=Dict(), add_col=nothing, verbose=true, dseed=40, topn=1)
 	if length(agg_cols) == 0 # use automatic agg cols
 		agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 		agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
@@ -377,7 +377,7 @@ Optionally with argument `add_col` one can specify additional column to average 
 """
 function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; agg_cols=[],
 									downsample=Dict(), add_col=nothing, verbose=true, 
-									dseed=42, topn=1)
+									dseed=40, topn=1)
 	if length(agg_cols) == 0 # use automatic agg cols
 		agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 		agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
