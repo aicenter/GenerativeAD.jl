@@ -50,7 +50,7 @@ df_images_alpha = setup_alpha_models(df_images_alpha)
 # now there is a little bit more differentiation here
 df_images_alpha = differentiate_beta_1_10(df_images_alpha)
 df_images = differentiate_early_stopping(df_images)
-df_images = differentiate_sgvaegana(df_images)
+df_images_alpha = differentiate_sgvaegana(df_images_alpha)
 
 function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{String, Int}())
     agg_names = ["maxmean"]

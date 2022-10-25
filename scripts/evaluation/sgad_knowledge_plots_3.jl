@@ -52,7 +52,7 @@ df_images_alpha_target = setup_alpha_models(df_images_alpha)
 # now there is a little bit more differentiation here
 df_images_alpha_target = differentiate_beta_1_10(df_images_alpha_target)
 df_images_target = differentiate_early_stopping(df_images_target)
-df_images_target = differentiate_sgvaegana(df_images_target)
+df_images_alpha_target = differentiate_sgvaegana(df_images_alpha_target)
 
 # also load the classifier
 df_classifier = load(datadir("evaluation_kp/images_leave-one-in_classifier_eval.bson"))[:df]
