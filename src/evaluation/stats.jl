@@ -448,7 +448,7 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; agg_col
 		end
 	end
 	if results_per_ac
-		return vcat(results...), results_pac
+		return vcat(results...), vcat(results_pac...)
 	else
 		return vcat(results...)
 	end
