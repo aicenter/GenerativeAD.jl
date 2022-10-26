@@ -27,4 +27,4 @@ julia --project ./join_old_new.jl images_mvtec_eval.bson images_mvtec_eval.bson 
 
 # generate the tables
 julia --project ./sgad_basic_tables.jl
-julia --project ./sgad_knowledge_plots_3.jl
+julia --project ./sgad_knowledge_plots.jl

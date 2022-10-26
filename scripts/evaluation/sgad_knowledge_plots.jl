@@ -6,140 +6,152 @@ using StatsBase
 import PGFPlots
 using CSV
 using Suppressor
+using Random
 
 using GenerativeAD.Evaluation: MODEL_ALIAS, DATASET_ALIAS, MODEL_TYPE, apply_aliases!
 using GenerativeAD.Evaluation: _prefix_symbol, aggregate_stats_mean_max, aggregate_stats_max_mean
 using GenerativeAD.Evaluation: PAT_METRICS, PATN_METRICS, PAC_METRICS, BASE_METRICS, TRAIN_EVAL_TIMES
 using GenerativeAD.Evaluation: rank_table, print_rank_table, latex_booktabs, convert_anomaly_class
 
-const PAT_METRICS_NAMES = ["\$PR@\\%0.01\$","\$PR@\\%0.1\$","\$PR@\\%1\$","\$PR@\\%5\$","\$PR@\\%10\$","\$PR@\\%20\$"]
+AUC_METRICS = ["auc_100", "auc_50", "auc_20", "auc_10", "auc_5", "auc_2", "auc_1", "auc_05", "auc_02", "auc_01"]
+AUC_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC@\\%10\$", "\$AUC@\\%5\$", 
+    "\$AUC@\\%2\$", "\$AUC@\\%1\$", "\$AUC@\\%0.5\$", "\$AUC@\\%0.2\$", "\$AUC@\\%0.1\$"]
+AUCP_METRICS = map(x-> "auc_100_$(x)", [100, 50, 20, 10, 5, 2, 1])
+AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC@\\%10\$", "\$AUC@\\%5\$", 
+    "\$AUC@\\%2\$", "\$AUC@\\%1\$"]
 
 include("./utils/ranks.jl")
+include("./utils/utils.jl")
 outdir = "result_tables"
 
-sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "vaegan", "sgvae_alpha",
-    "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx", "sgvae_alpha_kld",
-    "sgvae_alpha_auc"]
-sgad_models_alias = vcat([MODEL_ALIAS[n] for n in sgad_models], ["sgvae100"])
-model_alias = copy(MODEL_ALIAS)
-model_alias["sgvae_alpha_auc_100"] = "sgvae100"
-sgad_models = vcat(sgad_models, ["sgvae_alpha_auc_100"])
-sgad_alpha_models = ["sgvae_alpha", "sgvae_alpha_knn", "sgvae_alpha_normal", "sgvae_alpha_normal_logpx", 
-    "sgvae_alpha_kld", "sgvae_alpha_auc", "sgvae_alpha_auc_100"]
-
-TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist"])
+sgad_models = ["classifier", "DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "cgn", "cgn_0.2", 
+"cgn_0.3", "vaegan", "vaegan10", "sgvaegan", "sgvaegan_0.5", "sgvaegan10", "sgvaegan100", "sgvae", 
+"sgvae_alpha", "sgvaegan_alpha"]
+sgad_alpha_models = ["classifier", "sgvae_alpha", "sgvaegan_alpha"]
+MODEL_ALIAS["cgn_0.2"] = "cgn2"
+MODEL_ALIAS["cgn_0.3"] = "cgn3"
+MODEL_ALIAS["sgvaegan_0.5"] = "sgvgn05"
+MODEL_ALIAS["sgvaegan100"] = "sgvgn100"
+MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
+MODEL_ALIAS["sgvaegan100_alpha"] = "sgvgn100a"
+TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
+round_results = false
+DOWNSAMPLE = 50
 
 # LOI basic tables
-df_images = load(datadir("evaluation/images_leave-one-in_eval_all.bson"))[:df];
-apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS) # rename
+df_images = load(datadir("evaluation_kp/images_leave-one-in_eval.bson"))[:df];
 # filter out only the interesting models
 df_images = filter(r->r.modelname in sgad_models, df_images)
-
 # this generates the overall tables (aggregated by datasets)
-df_images_target, _ = _split_image_datasets(df_images, TARGET_DATASETS);
-df_images_p_negative = load(datadir("evaluation/images_leave-one-in_p-negative_eval.bson"))[:df];
-apply_aliases!(df_images_p_negative, col="dataset", d=DATASET_ALIAS) # rename
-df_images_target = vcat(df_images_target, df_images_p_negative);
+df_images_target = setup_classic_models(df_images)
 
-##### KNOWLEDGE PLOTS
-# now let's load the clean dataframes and put together some knowledge plots
-orig_path = "/home/skvarvit/generativead/GenerativeAD.jl/data"
-df_images_loi_clean = load(datadir("evaluation/images_leave-one-in_clean_val_final_eval_all.bson"))[:df];
-df_images_loi_clean = filter(r->r.modelname in sgad_models, df_images_loi_clean)
+# LOI alpha scores
+df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval.bson"))[:df];
+#df_images_alpha = load(datadir("sgad_alpha_evaluation_kp/images_leave-one-in_eval_converted.bson"))[:df];
+df_images_alpha_target = setup_alpha_models(df_images_alpha)
 
-df_images_loi_clean[df_images_loi_clean.fit_t .=== nothing, :fit_t] .= 1.0; # ConvSkipGANomaly is missing the fit_t
-apply_aliases!(df_images_loi_clean, col="dataset", d=DATASET_ALIAS)
-for d in Set(["cifar10", "svhn2", "wmnist"])
-    mask = (df_images_loi_clean.dataset .== d)
-    df_images_loi_clean[mask, :dataset] .= df_images_loi_clean[mask, :dataset] .* ":" .* convert_anomaly_class.(df_images_loi_clean[mask, :anomaly_class], d)
-    df_images_loi_clean[mask, :anomaly_class] .= 1 # it has to be > 0, because otherwise we get too many warnings from the aggregate_stats_max_mean
-end
+# now there is a little bit more differentiation here
+df_images_alpha_target = differentiate_beta_1_10(df_images_alpha_target)
+df_images_target = differentiate_early_stopping(df_images_target)
+df_images_alpha_target = differentiate_sgvaegana(df_images_alpha_target)
 
-# mvtec
-df_mvtec = load(datadir("evaluation/images_mvtec_eval_all.bson"))[:df];
-df_mvtec_p_negative = load(datadir("evaluation/images_mvtec_p-negative_eval.bson"))[:df];
-df_mvtec = vcat(df_mvtec, df_mvtec_p_negative);
-apply_aliases!(df_mvtec, col="dataset", d=DATASET_ALIAS)
-df_mvtec = filter(r->r.modelname in sgad_models, df_mvtec)
-df_mvtec = filter(r->!(r.dataset in ["grid", "wood"]), df_mvtec)
-df_images_mvtec_clean = load(datadir("evaluation/images_mvtec_clean_val_final_eval_all.bson"))[:df];
-df_images_mvtec_clean = filter(r->r.modelname in sgad_models, df_images_mvtec_clean)
-#load(joinpath(orig_path, "evaluation/images_mvtec_clean_val_final_eval.bson"))[:df];
-df_mvtec[:anomaly_class] = 1
-df_images_mvtec_clean[:anomaly_class] = 1
-apply_aliases!(df_images_mvtec_clean, col="dataset", d=DATASET_ALIAS)
+# also load the classifier
+df_classifier = load(datadir("evaluation_kp/images_leave-one-in_classifier_eval.bson"))[:df]
+apply_aliases!(df_classifier, col="dataset", d=DATASET_ALIAS) # rename
+df_classifier[:weights_texture] = nothing
+df_classifier[:init_alpha] = nothing
+df_classifier[:alpha0] = nothing
+df_classifier[:fs_fit_t] = nothing
+df_classifier[:fs_eval_t] = nothing
+df_images_alpha_class = vcat(df_images_alpha_target, df_classifier)
 
+# cgn v 0.3 - differentiate
+subdf = filter(r->r.modelname == "cgn_0.3" && occursin("disc_model=conv", r.parameters) &&
+    occursin("loss=lin", r.parameters), df_images_target)
+subdf.modelname .= "cgn3_lin_conv"
+df_images_target = vcat(df_images_target, subdf)
+subdf = filter(r->r.modelname == "cgn_0.3" && occursin("disc_model=lin", r.parameters) &&
+    occursin("loss=lin", r.parameters), df_images_target)
+subdf.modelname .= "cgn3_lin_lin"
+df_images_target = vcat(df_images_target, subdf)
+subdf = filter(r->r.modelname == "cgn_0.3" && occursin("disc_model=conv", r.parameters) &&
+    occursin("loss=log", r.parameters), df_images_target)
+subdf.modelname .= "cgn3_log_conv"
+df_images_target = vcat(df_images_target, subdf)
+subdf = filter(r->r.modelname == "cgn_0.3" && occursin("disc_model=lin", r.parameters) &&
+    occursin("loss=lin", r.parameters), df_images_target)
+subdf.modelname .= "cgn3_lin_lin"
+df_images_target = vcat(df_images_target, subdf)
 
-# now differentiate them
-df_semantic = filter(r->!(occursin("wmnist", r[:dataset])),df_images_target)
-df_semantic_clean = filter(r->!(occursin("mnist", r[:dataset])),df_images_loi_clean)
+# now differentiate them by datasets
+df_svhn = filter(r->r[:dataset] == "svhn2",df_images_target)
+df_svhn_alpha = filter(r->r[:dataset] == "svhn2",df_images_alpha_class)
 
-df_wmnist = filter(r->(occursin("wmnist", r[:dataset])),df_images_target)
-df_wmnist_clean = filter(r->(occursin("wmnist", r[:dataset])),df_images_loi_clean)
+df_cifar = filter(r->r[:dataset] == "cifar10",df_images_target)
+df_cifar_alpha = filter(r->r[:dataset] == "cifar10",df_images_alpha_class)
 
-df_mvtec = df_mvtec
-df_mvtec_clean = df_images_mvtec_clean
+df_coco = filter(r->r[:dataset] == "coco",df_images_target)
+df_coco_alpha = filter(r->r[:dataset] == "coco",df_images_alpha_class)
 
-# also, add the clean sgvae alpha lines - these are the same as the ones from sgvae
-function add_alpha_clean(df)
-    subdf = filter(r->r.modelname == "sgvae", df)
-    for suffix in ["_alpha", "_alpha_knn", "_alpha_kld", "_alpha_normal", "_alpha_normal_logpx", "_alpha_auc", 
-        "_alpha_auc_100"]
-        subdf.modelname .= "sgvae" * suffix
-        df = vcat(df, copy(subdf))
+df_wmnist = filter(r->r[:dataset] == "wmnist",df_images_target)
+df_wmnist_alpha = filter(r->r[:dataset] == "wmnist",df_images_alpha_class)
+
+function add_missing_model!(df, modelname)
+    nr = size(df,2)
+    modelnames = df.modelname
+    if !(modelname in modelnames)
+        for dataset in unique(df.dataset)
+            df = push!(df, vcat(repeat([NaN], nr-2), [dataset, modelname]))
+        end
     end
     df
 end
-df_semantic_clean = add_alpha_clean(df_semantic_clean)
-df_wmnist_clean = add_alpha_clean(df_wmnist_clean)
-df_mvtec_clean = add_alpha_clean(df_mvtec_clean)
 
-# remove duplicate rows from mvtec clean
-models = df_mvtec_clean.modelname
-seeds = df_mvtec_clean.seed
-datasets = df_mvtec_clean.dataset
-subdfs = []
-for model in unique(models)
-    for dataset in unique(datasets)
-        for seed in unique(seeds)
-            inds = (models .== model) .& (seeds .== seed) .& (datasets .== dataset)
-            if sum(inds) > 0
-                subdf = df_mvtec_clean[inds,:]
-                #subdf = subdf[argmax(subdf.tst_auc), :]
-                subdf = subdf[1, :]
-                push!(subdfs, DataFrame(subdf))
-            end
-        end
-    end
+function glue_classic_and_alpha(df, df_alpha, val_metric, tst_metric, tst_metrica, non_agg_cols)
+    # first separate only the useful columns from the normal eval df
+    agg_cols = [string(val_metric), string(tst_metric)]
+    subdf = filter(r->!(isnan(r[val_metric]) && !(isnan(r[tst_metric]))), df)
+    subdf = subdf[:,vcat(non_agg_cols, agg_cols)] # only use the actually needed columns
+
+    # now construct a simillar df to be appended to the first one from the alpha df
+    kp_nautocols = [string(val_metric), string(tst_metrica)]
+    subdf_alpha = filter(r->!(isnan(r[val_metric])) && !(isnan(r[tst_metrica])), df_alpha)
+    subdf_alpha = subdf_alpha[:,vcat(non_agg_cols, kp_nautocols)]
+    rename!(subdf_alpha, kp_nautocols[2] => string(tst_metric)) 
+
+    # now define the agg function and cat it
+    modelnames = unique(df.modelname)
+    downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
+    agg(df,crit) = aggregate_stats_auto(df, crit; agg_cols=agg_cols, downsample=downsample)
+    subdf = vcat(subdf, subdf_alpha)
+    return subdf, agg
 end
-df_mvtec_clean = vcat(subdfs...)
 
-# filter out grid and wood
-df_mvtec_clean = filter(r->!(r.dataset in ["wood", "grid"]), df_mvtec_clean)
-
-function _incremental_rank(df, criterions, agg)
+function _incremental_rank(df, df_alpha, criterions, tst_metric, non_agg_cols, round_results)
     ranks, metric_means = [], []
     for criterion in criterions
-        df_nonnan = filter(r->!(isnan(r[criterion])), df)
-        if size(df_nonnan, 1) > 0
-            df_agg = agg(df_nonnan, criterion)
+        subdf, agg = glue_classic_and_alpha(df, df_alpha, criterion, tst_metric, 
+                replace(string(criterion), "val"=>"tst"), non_agg_cols)
 
+        if size(subdf, 1) > 0
+            df_agg = agg(subdf, criterion)
+            
             # some model might be missing
             nr = size(df_agg,2)
             modelnames = df_agg.modelname
-            if !("sgvae_alpha" in modelnames)
-                for dataset in unique(df_agg.dataset)
-                    for m in sgad_alpha_models
+            for m in sgad_alpha_models
+                if !(m in modelnames)
+                    for dataset in unique(df_agg.dataset)
                         df_agg = push!(df_agg, vcat(repeat([NaN], nr-2), [dataset, m]))
                     end
                 end
             end
-
+            
             apply_aliases!(df_agg, col="modelname", d=MODEL_RENAME)
-            apply_aliases!(df_agg, col="modelname", d=model_alias)
+            apply_aliases!(df_agg, col="modelname", d=MODEL_ALIAS)
             sort!(df_agg, [:dataset, :modelname])
-            rt = rank_table(df_agg, tst_metric)
-            mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model][.!isnan.(rt[1:end-3, model])]) for model in names(rt)[2:end]])
+            rt = rank_table(df_agg, tst_metric; round_results=round_results)
+            mm = DataFrame([Symbol(model) => mean(rt[1:end-3, model]) for model in names(rt)[2:end]])
             push!(ranks, rt[end:end, 2:end])
             push!(metric_means, mm)
         end
@@ -152,38 +164,60 @@ mn = "AUC"
 metric = :auc
 val_metric = _prefix_symbol("val", metric)
 tst_metric = _prefix_symbol("tst", metric)
+titles = ["cifar", "svhn", "coco", "wmnist"]
 
-cnames = PAT_METRICS_NAMES
-criterions = _prefix_symbol.("val", PAT_METRICS)
+# aggragated cols
+non_agg_cols = ["modelname","dataset","anomaly_class","phash","parameters","seed","npars",
+    "fs_fit_t","fs_eval_t"]
+agg_cols = filter(x->!(x in non_agg_cols), names(df_images))
 
+# first create the knowledge plot data for the changing level of anomalies
+# at different percentages of normal data
+cnames = reverse(AUC_METRICS_NAMES)
+level = 100
+criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
 extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
-titles = ["semantic", "wmnist", "mvtec"]
 
-@suppress_err begin
-ranks_dfs = map(enumerate(zip(titles,
-        [(df_semantic, df_semantic_clean), 
-            (df_wmnist, df_wmnist_clean), 
-            (df_mvtec, df_mvtec_clean)]))) do (i, (title, (df, df_clean)))
-    ranks_inc, metric_means_inc = _incremental_rank(df, extended_criterions, aggregate_stats_auto)
-    
-    if size(df_clean,1) > 0
-        ranks_clean, metric_means_clean = _incremental_rank(df_clean, [val_metric], aggregate_stats_max_mean)
-        if !("cgn" in names(metric_means_clean))
-            metric_means_clean[:cgn] = NaN
+function produce_tables()
+    DOWNSAMPLE = 50
+    ranks_dfs = @suppress_err begin
+        ranks_dfs = map(enumerate(zip(titles,
+                [
+                    (df_cifar, df_cifar_alpha),
+                    (df_svhn, df_svhn_alpha),
+                    (df_coco, df_coco_alpha),
+                    (df_wmnist, df_wmnist_alpha)]))) do (i, (title, (df, df_alpha)))
+
+            ranks, metric_means = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
+                non_agg_cols, round_results)
+            
+            # reorder table on tabular data as there is additional class of models (flows)
+            # one can do this manually at the end
+            f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title)_downsampled.csv")
+            println("saving to $f")
+            CSV.write(f, metric_means)
+            ranks, metric_means
         end
-        ranks_all, metric_means_all = vcat(ranks_clean, ranks_inc; cols=:intersect), 
-        vcat(metric_means_clean, metric_means_inc; cols=:intersect)
-    else
-        ranks_all, metric_means_all = ranks_inc, metric_means_inc
+        ranks_dfs
     end
+    ranks_dfs
+end
+kplots = produce_tables()
 
-    f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_$(title)_data.csv")
-    println("saving to $f")
-    CSV.write(f, metric_means_all)
-    f = joinpath(datadir(), "evaluation", outdir, "knowledge_plot_ranks_$(title)_data.csv")
-    println("saving to $f")
-    CSV.write(f, ranks_all)
-    ranks_all, metric_means_all
-end
-end
+# now do it again, this time per anomaly class and only for certain metrics
+val_metric = :val_auc_100_100
+tst_metrica = :tst_auc_100_100 
+tst_metric = :tst_auc
+all_df,_ = glue_classic_and_alpha(df_images_target, df_images_alpha_class, val_metric, tst_metric, 
+                tst_metrica, non_agg_cols)
+
+# downsampling
+DOWNSAMPLE = 50
+modelnames = unique(all_df.modelname)
+downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
+resa, subresa = aggregate_stats_max_mean(all_df, val_metric; results_per_ac=true, 
+    agg_cols=[string(val_metric), string(tst_metric)], downsample=downsample)
+f = joinpath(datadir(), "evaluation", outdir, "kp_v3_table_per_ac.csv")
+CSV.write(f, subresa[:,["modelname", "dataset", "anomaly_class", "parameters", "seed",
+    "val_auc_100_100", "tst_auc"]])
