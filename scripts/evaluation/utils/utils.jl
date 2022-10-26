@@ -1,6 +1,6 @@
 function setup_classic_models(df)
     # rename datasets
-    apply_aliases!(df_images, col="dataset", d=DATASET_ALIAS) # rename
+    apply_aliases!(df, col="dataset", d=DATASET_ALIAS) # rename
     # no sgvae alpha here
     df = filter(r->r.modelname != "sgvae_alpha", df);
     # only use (sg)vaegan with disc score

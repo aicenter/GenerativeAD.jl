@@ -27,6 +27,8 @@ sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "fmganpy", "fmganpy10", "vae", "c
 sgad_alpha_models = ["classifier", "sgvae_alpha", "sgvaegan_alpha"]
 sgad_models_final = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "vaegan10", "sgvae",  "sgvaegan100", 
     "sgvae_alpha", "sgvaegan_alpha"]
+sgad_alias_sorted = ["dsvd", "fano", "fmgn", "vae", "cgn", "vgn", "sgvae",  "sgvgn", 
+    "sgvaea", "sgvgna"]
 MODEL_ALIAS["cgn_0.2"] = "cgn2"
 MODEL_ALIAS["cgn_0.3"] = "cgn3"
 MODEL_ALIAS["sgvaegan_0.5"] = "sgvgn05"
@@ -57,34 +59,30 @@ df_images_alpha = differentiate_beta_1_10(df_images_alpha)
 df_images = differentiate_early_stopping(df_images)
 df_images_alpha = differentiate_sgvaegana(df_images_alpha)
 
-function basic_summary_table(df, dir; suffix="", prefix="", downsample=Dict{String, Int}())
-    agg_names = ["maxmean"]
-    agg_funct = [aggregate_stats_max_mean]
-    rts = []
+function basic_summary_table(df, dir, models_order; suffix="", prefix="", downsample=Dict{String, Int}())
+    name = "maxmean"
+    agg = aggregate_stats_max_mean
     metric = :auc
-    for (name, agg) in zip(agg_names, agg_funct)            
-        _, rt = sorted_rank(df, agg, val_metric, tst_metric, downsample, 
-            agg_cols=[string(val_metric), string(tst_metric)])
-        sorted_models = vcat(["dataset"], [x for x in models_alias if x in names(rt)])
-        rt = rt[!,sorted_models]
+    _, rt = sorted_rank(df, agg, val_metric, tst_metric, downsample, 
+        agg_cols=[string(val_metric), string(tst_metric)])
+    sorted_models = vcat(["dataset"], [x for x in models_order if x in names(rt)])
+    rt = rt[!,sorted_models]
 
-        rt[end-2, 1] = "\$\\sigma_1\$"
-        rt[end-1, 1] = "\$\\sigma_{10}\$"
-        rt[end, 1] = "rnk"
+    rt[end-2, 1] = "\$\\sigma_1\$"
+    rt[end-1, 1] = "\$\\sigma_{10}\$"
+    rt[end, 1] = "rnk"
 
-        file = "$(datadir())/evaluation/$(dir)/$(prefix)_$(metric)_$(metric)_$(name)$(suffix).txt"
-        open(file, "w") do io
-            print_rank_table(io, rt; backend=:txt) # or :tex
-        end
-        @info "saved to $file"
-        file = "$(datadir())/evaluation/$(dir)/$(prefix)_$(metric)_$(metric)_$(name)$(suffix).tex"
-        open(file, "w") do io
-            print_rank_table(io, rt; backend=:tex) # or :tex
-        end
-        @info "saved to $file"
-        push!(rts, rt)
+    file = "$(datadir())/evaluation/$(dir)/$(prefix)_$(metric)_$(metric)_$(name)$(suffix).txt"
+    open(file, "w") do io
+        print_rank_table(io, rt; backend=:txt) # or :tex
     end
-    rts
+    @info "saved to $file"
+    file = "$(datadir())/evaluation/$(dir)/$(prefix)_$(metric)_$(metric)_$(name)$(suffix).tex"
+    open(file, "w") do io
+        print_rank_table(io, rt; backend=:tex) # or :tex
+    end
+    @info "saved to $file"
+    rt
 end
 
 function save_selection(f, rt, plot_models)
@@ -161,6 +159,7 @@ end
 # now filter further
 filter!(r->r.modelname in sgad_models_final, df_images)
 df_images.modelname[df_images.modelname .== "sgvaegan100"] .= "sgvaegan"
+df_images.modelname[df_images.modelname .== "vaegan10"] .= "vaegan"
 
 # this generates the overall tables (aggregated by datasets)
 df_images = filter(r-> !isnan(r[val_metric]), df_images)
@@ -168,10 +167,10 @@ prefix="images_loi"
 suffix=""
 modelnames = unique(df_images.modelname)
 downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
-rts = basic_summary_table(df_images, outdir, prefix=prefix, suffix=suffix,
+rt = basic_summary_table(df_images, outdir, sgad_alias_sorted, prefix=prefix, suffix=suffix,
     downsample=downsample)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
-    rts[1], models_alias)
+    rt, sgad_alias_sorted)
 
 ##### LOI images per AC
 # this should generate the above tables split by anomaly classes
@@ -183,12 +182,11 @@ for d in Set(TARGET_DATASETS)
 end
 df_images_target = filter(r-> !isnan(r.val_auc), df_images_target)
 
-function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Dict{String, Int}())
-    rts = []   
+function basic_summary_table_per_ac(df, dir, models_order; suffix="", prefix="", downsample=Dict{String, Int}())
     metric = :auc
     _, rt = sorted_rank(df, aggregate_stats_auto, val_metric, tst_metric, downsample,
         agg_cols=[string(val_metric), string(tst_metric)])
-    sorted_models = vcat(["dataset"], [x for x in models_alias if x in names(rt)])
+    sorted_models = vcat(["dataset"], [x for x in models_order if x in names(rt)])
     rt = rt[!,sorted_models]
 
     rt[end-2, 1] = "\$\\sigma_1\$"
@@ -205,18 +203,17 @@ function basic_summary_table_per_ac(df, dir; suffix="", prefix="", downsample=Di
         print_rank_table(io, rt; backend=:tex)
     end
     @info "saved to $file"
-    push!(rts, rt)
-    rts
+    rt
 end
 
 prefix="images_loi"
 suffix="_per_ac"
 modelnames = unique(df_images_target.modelname)
 downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
-rts = basic_summary_table_per_ac(df_images_target, outdir, prefix=prefix, suffix=suffix,
+rt_ac = basic_summary_table_per_ac(df_images_target, outdir, sgad_alias_sorted, prefix=prefix, suffix=suffix,
     downsample=downsample)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_autoagg$(suffix).csv", 
-    rts[1], models_alias)
+    rt_ac, sgad_alias_sorted)
 
 ##### MVTEC
 models = ["DeepSVDD", "fAnoGAN", "fmganpy10", "vae", "cgn", "vaegan10", 
@@ -226,6 +223,9 @@ MODEL_ALIAS["sgvaegan10"] = "sgvgn"
 models_alias = [MODEL_ALIAS[n] for n in models]
 
 # now let's do the same for mvtec results
+val_metric = :val_auc
+tst_metric = :tst_auc
+
 df_mvtec = load(datadir("evaluation/images_mvtec_eval_all.bson"))[:df];
 apply_aliases!(df_mvtec, col="dataset", d=DATASET_ALIAS)
 df_mvtec = filter(r->r.modelname in models, df_mvtec)
@@ -246,26 +246,33 @@ df_mvtec_alpha.dataset[df_mvtec_alpha.dataset .== "metal_nut"] .= "nut"
 prow = copy(df_mvtec[1:1,:])
 for dataset in unique(df_mvtec_alpha.dataset)
     for seed in unique(df_mvtec_alpha.seed)
-        subdf = filter(r->r.dataset==dataset && r.seed==seed && !isnan(r.tst_auc), df_mvtec_alpha) 
-        imax = argmax(subdf.val_auc)
-        r = subdf[imax,:]
-        prow.modelname = "sgvae_alpha"
-        prow.dataset = dataset
-        prow.seed = r.seed
-        prow.tst_auc = r.tst_auc
-        prow.val_auc = r.val_auc
-        prow.seed = 1
-        df_mvtec_nonnan = vcat(df_mvtec_nonnan, prow)
+        for model in ["sgvae_alpha", "sgvaegan10_alpha"]
+            subdf = filter(r->r.dataset==dataset && r.seed==seed && !isnan(r[tst_metric]) && 
+            r.modelname == model && !isnan(r[val_metric]), df_mvtec_alpha) 
+            imax = argmax(subdf[:,val_metric])
+            r = subdf[imax,:]
+            prow.modelname = model
+            prow.dataset = dataset
+            prow.seed = r.seed
+            prow[tst_metric] = r[tst_metric]
+            prow[val_metric] = r[val_metric]
+            prow.seed = seed
+            df_mvtec_nonnan = vcat(df_mvtec_nonnan, prow)
+        end
     end
 end
+# rename some models
+df_mvtec_nonnan.modelname[df_mvtec_nonnan.modelname .== "fmganpy10"] .= "fmgan"
+df_mvtec_nonnan.modelname[df_mvtec_nonnan.modelname .== "sgvaegan10_alpha"] .= "sgvaegan_alpha"
+df_mvtec_nonnan.modelname[df_mvtec_nonnan.modelname .== "vaegan10"] .= "vaegan"
 
 prefix="images_mvtec"
 suffix=""
 modelnames = unique(df_mvtec_nonnan.modelname)
 downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
-rts = basic_summary_table(df_mvtec_nonnan, outdir, prefix=prefix, suffix=suffix,
+rt = basic_summary_table(df_mvtec_nonnan, outdir, sgad_alias_sorted, prefix=prefix, suffix=suffix,
     downsample=downsample)
 save_selection("$(datadir())/evaluation/$(outdir)/$(prefix)_auc_auc_maxmean$(suffix).csv", 
-    rts[1], sgad_models_alias)
+    rt, sgad_alias_sorted)
 
 end

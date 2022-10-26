@@ -35,7 +35,7 @@ MODEL_ALIAS["sgvaegan10_alpha"] = "sgvgn10a"
 MODEL_ALIAS["sgvaegan100_alpha"] = "sgvgn100a"
 TARGET_DATASETS = Set(["cifar10", "svhn2", "wmnist", "coco"])
 round_results = false
-DOWNSAMPLE = 150
+DOWNSAMPLE = 50
 
 # LOI basic tables
 df_images = load(datadir("evaluation_kp/images_leave-one-in_eval.bson"))[:df];
@@ -175,27 +175,6 @@ extended_criterions = vcat(criterions, [val_metric])
 extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
 
 function produce_tables()
-    @suppress_err begin
-    	ranks_dfs = map(enumerate(zip(titles,
-    	        [
-                    (df_cifar, df_cifar_alpha),
-                    (df_svhn, df_svhn_alpha),
-                    (df_coco, df_coco_alpha),
-    	            (df_wmnist, df_wmnist_alpha)]))) do (i, (title, (df, df_alpha)))
-
-    	    ranks, metric_means = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
-                non_agg_cols, round_results)
-    	    
-    	    # reorder table on tabular data as there is additional class of models (flows)
-    	    # one can do this manually at the end
-    	    f = joinpath(datadir(), "evaluation", outdir, "kp_v3_$(title).csv")
-    	    println("saving to $f")
-    	    CSV.write(f, metric_means)
-    	    ranks, metric_means
-    	end
-    end
-
-    DOWNSAMPLE = 50
     @suppress_err begin
         ranks_dfs = map(enumerate(zip(titles,
                 [
