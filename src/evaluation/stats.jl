@@ -377,7 +377,7 @@ Optionally with argument `add_col` one can specify additional column to average 
 """
 function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; agg_cols=[],
 									downsample=Dict(), add_col=nothing, verbose=true, 
-									dseed=40, topn=1)
+									dseed=40, topn=1, results_per_ac=false)
 	if length(agg_cols) == 0 # use automatic agg cols
 		agg_cols = vcat(_prefix_symbol.("val", BASE_METRICS), _prefix_symbol.("tst", BASE_METRICS))
 		agg_cols = vcat(agg_cols, _prefix_symbol.("val", PAT_METRICS), _prefix_symbol.("tst", PAT_METRICS))
@@ -391,6 +391,7 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; agg_col
 	agg_keys = ("anomaly_class" in names(df)) ? [:seed, :anomaly_class] : [:seed]
 	# choose best for each seed/anomaly_class cobination and average over them
 	results = []
+	results_pac = []
 	for (dkey, dg) in pairs(groupby(df, :dataset))
 		for (mkey, mg) in pairs(groupby(dg, :modelname))
 			partial_results = []
@@ -432,6 +433,7 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; agg_col
 			end
 
 			best_per_seed = reduce(vcat, partial_results)
+			push!(results_pac, best_per_seed)
 			# average over seed-anomaly_class groups
 			best = combine(best_per_seed,  
 						agg_cols .=> mean .=> agg_cols, 
@@ -445,5 +447,9 @@ function aggregate_stats_max_mean(df::DataFrame, criterion_col=:val_auc; agg_col
 			push!(results, best)
 		end
 	end
-	vcat(results...)
+	if results_per_ac
+		return vcat(results...), results_pac
+	else
+		return vcat(results...)
+	end
 end
