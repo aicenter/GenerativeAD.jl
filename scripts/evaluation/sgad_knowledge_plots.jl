@@ -215,6 +215,10 @@ all_df,_ = glue_classic_and_alpha(df_images_target, df_images_alpha_class, val_m
 # downsampling
 DOWNSAMPLE = 50
 modelnames = unique(all_df.modelname)
+# rename the models
+for model in modelnames
+    all_df.modelname[all_df.modelname .== model] .= get(MODEL_ALIAS, model, model)
+end
 downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
 resa, subresa = aggregate_stats_max_mean(all_df, val_metric; results_per_ac=true, 
     agg_cols=[string(val_metric), string(tst_metric)], downsample=downsample)

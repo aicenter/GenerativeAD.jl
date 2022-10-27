@@ -22,4 +22,4 @@ julia --threads 16 --project ./collect_stats.jl  sgad_alpha_evaluation_kp/images
 
 # generate the tables
 julia --project ./sgad_basic_tables.jl
-julia --project ./sgad_knowledge_plots_3.jl
+julia --project ./sgad_knowledge_plots.jl
