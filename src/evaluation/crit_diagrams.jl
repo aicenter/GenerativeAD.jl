@@ -19,7 +19,7 @@ crit_chisq(α::Real, df::Int) = quantile(Chisq(df), 1-α)
 Nemenyi critical difference value. If average ranks of two models are larger than this,
 their performance difference is statistically siginificant.
 """
-nemenyi_cd(k::Int, n::Int, α::Real) = sqrt(k*(k+1)/(6*n))*crit_srd(α, k, Inf)/sqrt(2)
+nemenyi_cd(α::Real, n::Int, , k::Int) = sqrt(k*(k+1)/(6*n))*crit_srd(α, k, Inf)/sqrt(2)
 crit_srd(α::Real, k::Real, df::Real) = 
     (isnan(k) | isnan(df)) ? NaN : quantile(StudentizedRange(df, k), 1-α)
 
