@@ -3,10 +3,10 @@
 #SBATCH --partition gpu
 #SBATCH --nodes 1
 #SBATCH --ntasks-per-node 1
-#SBATCH --mem-per-cpu 80G
+#SBATCH --mem-per-cpu 60G
 #SBATCH --time 24:00:00
 #SBATCH --job-name jacodeco
-#SBATCH --output ~/logs/jacodeco/%J.log
+#SBATCH --output $HOME/logs/jacodeco/%J.log
 
 MODEL=$1
 DATASET=$2
