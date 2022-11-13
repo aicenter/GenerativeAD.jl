@@ -70,6 +70,6 @@ function compute_log_jacodet_scores(md)
 	return outd
 end
 
-for md in mds
+for md in mdirs
 	compute_log_jacodet_scores(md)
 end
