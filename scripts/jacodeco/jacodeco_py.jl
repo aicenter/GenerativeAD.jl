@@ -32,11 +32,11 @@ method = "leave-one-in"
 ac = anomaly_class
 data = GenerativeAD.load_data(dataset, seed=1, anomaly_class_ind=ac, method=method)
 data = GenerativeAD.Datasets.normalize_data(data)
-mdirs = readdir(modelpath, join=true)
 device = "cuda"
 seed = 1
 
 modelpath = datadir("sgad_models/images_$(method)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+mdirs = readdir(modelpath, join=true)
 outpath = datadir("jacodeco/images_$(method)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
 mkpath(outpath)
 

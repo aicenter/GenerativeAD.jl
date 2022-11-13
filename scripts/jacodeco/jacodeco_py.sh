@@ -6,7 +6,7 @@
 #SBATCH --mem-per-cpu 60G
 #SBATCH --time 24:00:00
 #SBATCH --job-name jacodeco
-#SBATCH --output $HOME/logs/jacodeco/%J.log
+#SBATCH --output logs/%J.log
 
 MODEL=$1
 DATASET=$2
