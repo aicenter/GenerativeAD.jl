@@ -21,4 +21,3 @@ export PYTHON="${HOME}/sgad-env/bin/python"
 julia --project -e 'using Pkg; Pkg.build("PyCall"); @info("SETUP DONE")'
 
 julia ./jacodeco_py.jl $MODEL $DATASET $AC $FORCE
-
