@@ -5,6 +5,7 @@ using ArgParse
 using GenerativeAD
 import StatsBase: fit!, predict
 using BSON, FileIO
+using Random
 
 include("../pyutils.jl")
 
@@ -54,9 +55,9 @@ function compute_log_jacodet_scores(md)
 
 	score(x) = predict(model, x, score_type="log_jacodet", workers=2)
 
-	tr_scores, val_scores, tst_scores = score(data[1][1]), score(data[2][1]), score(data[3][1])
+	val_scores, tst_scores = score(data[2][1]), score(data[3][1])
 	outd = Dict(
-		:tr_scores => tr_scores,
+		:tr_scores => nothing,
 		:val_scores => val_scores,
 		:tst_scores => tst_scores,
 		:model_id => Meta.parse(split(basename(md),"=")[2]), 
@@ -70,6 +71,6 @@ function compute_log_jacodet_scores(md)
 	return outd
 end
 
-for md in mdirs
+for md in shuffle(mdirs)
 	compute_log_jacodet_scores(md)
 end
