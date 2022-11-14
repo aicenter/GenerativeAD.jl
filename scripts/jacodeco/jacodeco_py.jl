@@ -53,7 +53,7 @@ function compute_log_jacodet_scores(md)
 		throw("unknown model type $modelname")
 	end
 
-	score(x) = predict(model, x, score_type="log_jacodet", workers=2)
+	score(x) = predict(model, x, score_type="log_jacodet", workers=2, batch_size=16)
 
 	val_scores, tst_scores = score(data[2][1]), score(data[3][1])
 	outd = Dict(
