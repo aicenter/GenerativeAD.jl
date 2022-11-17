@@ -77,3 +77,23 @@ function differentiate_sgvaegana(df)
     MODEL_ALIAS["sgvaegan_alpha_0.4"] = "sgvgna04"
     df
 end
+
+function glue_classic_and_alpha(df, df_alpha, val_metric, tst_metric, tst_metrica, non_agg_cols)
+    # first separate only the useful columns from the normal eval df
+    agg_cols = [string(val_metric), string(tst_metric)]
+    subdf = filter(r->!(isnan(r[val_metric]) && !(isnan(r[tst_metric]))), df)
+    subdf = subdf[:,vcat(non_agg_cols, agg_cols)] # only use the actually needed columns
+
+    # now construct a simillar df to be appended to the first one from the alpha df
+    kp_nautocols = [string(val_metric), string(tst_metrica)]
+    subdf_alpha = filter(r->!(isnan(r[val_metric])) && !(isnan(r[tst_metrica])), df_alpha)
+    subdf_alpha = subdf_alpha[:,vcat(non_agg_cols, kp_nautocols)]
+    rename!(subdf_alpha, kp_nautocols[2] => string(tst_metric)) 
+
+    # now define the agg function and cat it
+    modelnames = unique(df.modelname)
+    downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
+    agg(df,crit) = aggregate_stats_auto(df, crit; agg_cols=agg_cols, downsample=downsample)
+    subdf = vcat(subdf, subdf_alpha)
+    return subdf, agg
+end
