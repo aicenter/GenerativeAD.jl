@@ -121,7 +121,7 @@ scores = StatsBase.predict(model, _tst_X, score_type="feature_matching", n=10)
 # this looks fine - we have a match between the stored scores and the input data
 
 # create a structure to store the data
-function fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, seed, ac, model_id, dataset)
+function fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, seed, ac, model_id, dataset, ps)
 	_val_scores, _val_y, _ = _subsample_data(p, p_normal, val_y, val_scores; seed=seed)
 	_tst_scores, _tst_y, _ = _subsample_data(p, p_normal, tst_y, tst_scores; seed=seed)
 	val_ljd = StatsBase.predict(model, _val_X, score_type="log_jacodet", batch_size=8)
@@ -138,13 +138,14 @@ function fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, see
 		:seed => seed,
 		:model_id => model_id,
 		:p => p,
-		:p_normal => p_normal
+		:p_normal => p_normal,
+		:params => ps
 		)
 	return ljd
 end
 
 # now loop it
-fd(i) = fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, i, ac, model_id, dataset)
+fd(i) = fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, i, ac, model_id, dataset, ps)
 jacodata = []
 for i in 1:5
 	push!(jacodata, fd(i))
@@ -159,7 +160,7 @@ function store_all_folds(dataset, model_id, ac, ps, p, p_normal)
 	model = GenerativeAD.Models.SGVAEGAN(load_sgvaegan_model(mpath, "cuda"))
 	val_scores, tst_scores, val_y, tst_y = get_basic_scores(model_id, ac, ps)
 
-	fd(i) = fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, i, ac, model_id, dataset)
+	fd(i) = fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, i, ac, model_id, dataset, ps)
 	jacodata = []
 	for i in 1:5
 		push!(jacodata, fd(i))

@@ -15,8 +15,9 @@ function fit_predict_lrnormal(val_scores, tst_scores, val_y, tst_y, seed, p, p_n
 	return val_auc, tst_auc, lrmodel.alpha
 end
 
-function get_basic_scores(model_id, ac, ps)
-	latent_dir = datadir("sgad_latent_scores/images_$(datatype)/$(base_modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+function get_basic_scores(model_id, ac, ps, datatype="leave-one-in", base_modelname="sgvaegan100",
+	dataset="SVHN2")
+	latent_dir = datadir("sgad_latent_scores/images_$(datatype)/$(base_modelname)/$(dataset)/ac=$(ac)/seed=1")
 	lfs = readdir(latent_dir)
 	ltypes = map(lf->split(split(lf, "score=")[2], ".")[1], lfs)
 	lfs = lfs[ltypes .== latent_score_type]
@@ -25,7 +26,7 @@ function get_basic_scores(model_id, ac, ps)
 	lf = lfs[ilf]
 
 	# top score files
-	res_dir = datadir("experiments/images_$(datatype)/$(base_modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+	res_dir = datadir("experiments/images_$(datatype)/$(base_modelname)/$(dataset)/ac=$(ac)/seed=1")
 	rfs = readdir(res_dir)
 
 	# get the saved scores
