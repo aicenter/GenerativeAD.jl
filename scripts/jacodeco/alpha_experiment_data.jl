@@ -86,7 +86,7 @@ acs = df.anomaly_class
 model_ids = df.model_id
 
 # 
-i = 2
+i = 5
 ac = acs[i]
 model_id = model_ids[i]
 ps = params[i]
@@ -104,28 +104,34 @@ p_normal = 0.2
 seed = 1
 
 # this now creates the baseline
-val_scores, tst_scores, val_y, tst_y = get_basic_scores(model_id, ac, ps)
-val_auc, tst_auc, alpha = fit_predict_lrnormal(val_scores, tst_scores, val_y, tst_y, 1, p, p_normal)
-_val_scores, _val_y, _ = _subsample_data(p, p_normal, val_y, val_scores; seed=seed)
-_tst_scores, _tst_y, _ = _subsample_data(p, p_normal, tst_y, tst_scores; seed=seed)
+#val_scores, tst_scores, val_y, tst_y = get_basic_scores(model_id, ac, ps)
+#val_auc, tst_auc, alpha = fit_predict_lrnormal(val_scores, tst_scores, val_y, tst_y, 1, p, p_normal)
+#_val_scores, _val_y, _ = _subsample_data(p, p_normal, val_y, val_scores; seed=seed)
+#_tst_scores, _tst_y, _ = _subsample_data(p, p_normal, tst_y, tst_scores; seed=seed)
 
 # now load the normal data, subsample them and get their jacodeco for them
-orig_data = GenerativeAD.Datasets.load_data(dataset; seed=1, method="leave-one-in", anomaly_class_ind=ac);
-orig_data = GenerativeAD.Datasets.normalize_data(orig_data);
-val_X, val_Y = orig_data[2];
-tst_X, tst_Y = orig_data[3];
-_val_X, _val_Y, _ = _subsample_data(p, p_normal, val_Y, val_X; seed=seed);
-_tst_X, _tst_Y, _ = _subsample_data(p, p_normal, tst_Y, tst_X; seed=seed);
+#orig_data = GenerativeAD.Datasets.load_data(dataset; seed=1, method="leave-one-in", anomaly_class_ind=ac);
+#orig_data = GenerativeAD.Datasets.normalize_data(orig_data);
+#val_X, val_Y = orig_data[2];
+#tst_X, tst_Y = orig_data[3];
+#_val_X, _val_Y, _ = _subsample_data(p, p_normal, val_Y, val_X; seed=seed);
+#_tst_X, _tst_Y, _ = _subsample_data(p, p_normal, tst_Y, tst_X; seed=seed);
 
 # now we need to load the original model and try to mimick the scores and compute logjacodet from scratch
-model = GenerativeAD.Models.SGVAEGAN(load_sgvaegan_model(mpath, "cuda"))
-scores = StatsBase.predict(model, _tst_X, score_type="discriminator")
-scores = StatsBase.predict(model, _tst_X, score_type="reconstruction", n=10)
-scores = StatsBase.predict(model, _tst_X, score_type="feature_matching", n=10)
+#model = GenerativeAD.Models.SGVAEGAN(load_sgvaegan_model(mpath, "cuda"))
+#scores = StatsBase.predict(model, _tst_X, score_type="discriminator")
+#scores = StatsBase.predict(model, _tst_X, score_type="reconstruction", n=10)
+#scores = StatsBase.predict(model, _tst_X, score_type="feature_matching", n=10)
 # this looks fine - we have a match between the stored scores and the input data
 
 # create a structure to store the data
-function fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, seed, ac, model_id, dataset, ps)
+function fold_data(model, orig_data, val_scores, tst_scores, val_y, tst_y, p, p_normal, seed, ac, model_id, dataset, ps)
+	# subsample the original data
+	val_X, val_Y = orig_data[2];
+	tst_X, tst_Y = orig_data[3];
+	_val_X, _val_Y, _ = _subsample_data(p, p_normal, val_Y, val_X; seed=seed);
+	_tst_X, _tst_Y, _ = _subsample_data(p, p_normal, tst_Y, tst_X; seed=seed);
+	# subsample the scores
 	_val_scores, _val_y, _ = _subsample_data(p, p_normal, val_y, val_scores; seed=seed)
 	_tst_scores, _tst_y, _ = _subsample_data(p, p_normal, tst_y, tst_scores; seed=seed)
 	val_ljd = StatsBase.predict(model, _val_X, score_type="log_jacodet", batch_size=8)
@@ -174,8 +180,10 @@ function store_all_folds(dataset, model_id, ac, ps, p, p_normal)
 		@info "skipping $f, already exists."
 		return
 	end
+	orig_data = GenerativeAD.Datasets.load_data(dataset; seed=1, method="leave-one-in", anomaly_class_ind=ac);
+	orig_data = GenerativeAD.Datasets.normalize_data(orig_data);
 
-	fd(i) = fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, i, ac, model_id, dataset, ps)
+	fd(i) = fold_data(model, orig_data, val_scores, tst_scores, val_y, tst_y, p, p_normal, i, ac, model_id, dataset, ps)
 	jacodata = []
 	for i in 1:5
 		push!(jacodata, fd(i))
