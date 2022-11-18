@@ -70,6 +70,7 @@ subdf, _ = glue_classic_and_alpha(df, df_alpha, criterion, tst_metric,
 filter!(r->r.modelname == modelname, subdf)
 # filter out this model since it gives out Infs in jacodeco
 filter!(r->!(occursin("55529190", r.parameters)), subdf)
+filter!(r->!(occursin("10954393", r.parameters)), subdf)
 modelnames = unique(df.modelname)
 downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
 aggdf, acdf = aggregate_stats_max_mean(subdf, criterion; agg_cols=[string(val_metric), string(tst_metric)], 
@@ -86,7 +87,7 @@ acs = df.anomaly_class
 model_ids = df.model_id
 
 # 
-i = 5
+i = 2
 ac = acs[i]
 model_id = model_ids[i]
 ps = params[i]

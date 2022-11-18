@@ -28,10 +28,8 @@ dfs = readdir(datapath)
 df = dfs[3]
 all_data = load(joinpath(datapath, df))[:jacodata]
 
-iseed = 2
+iseed = 1
 data = all_data[iseed];
-ac = data[:ac]
-seed = data[:seed]
 
 # this now creates the baseline
 function get_results(data)
