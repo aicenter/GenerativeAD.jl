@@ -6,9 +6,9 @@ end
 
 function fit_predict_lrnormal(val_scores, tst_scores, val_y, tst_y)
 	_init_alpha, _alpha0 = compute_alphas(val_scores, val_y)
-	lrmodel = RobReg(input_dim = size(_val_scores,2), alpha=_init_alpha, alpha0=_alpha0, 
-	                	beta=base_beta/sum(_val_y))
-	fit!(lrmodel, _val_scores, _val_y; verb=false, early_stopping=true, scale=scale, patience=10,
+	lrmodel = RobReg(input_dim = size(val_scores,2), alpha=_init_alpha, alpha0=_alpha0, 
+	                	beta=base_beta/sum(val_y))
+	fit!(lrmodel, val_scores, val_y; verb=false, early_stopping=true, scale=scale, patience=10,
 		balanced=true)
 
 	# predict
