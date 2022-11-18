@@ -145,14 +145,14 @@ function fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, see
 end
 
 # now loop it
-fd(i) = fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, i, ac, model_id, dataset, ps)
-jacodata = []
-for i in 1:5
-	push!(jacodata, fd(i))
-	@info "seed $i finished"
-end
-f = datadir("jacodeco/partial_experiment/$(dataset)_$(ac)_all_scores.bson")
-save(f, :jacodata=>jacodata)
+#fd(i) = fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, i, ac, model_id, dataset, ps)
+#jacodata = []
+#for i in 1:5
+#	push!(jacodata, fd(i))
+#	@info "seed $i finished"
+#end
+#f = datadir("jacodeco/partial_experiment/$(dataset)_$(ac)_all_scores.bson")
+#save(f, :jacodata=>jacodata)
 
 # now do it for the rest of the anomaly classes as well
 function store_all_folds(dataset, model_id, ac, ps, p, p_normal)
@@ -171,6 +171,6 @@ function store_all_folds(dataset, model_id, ac, ps, p, p_normal)
 	@info "saved $f"
 end
 
-for (model_id, ac, ps) in collect(zip(model_ids, acs, params))[2:end]
+for (model_id, ac, ps) in zip(model_ids, acs, params)
 	store_all_folds(dataset, model_id, ac, ps, p, p_normal)
 end

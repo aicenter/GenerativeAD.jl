@@ -1,17 +1,21 @@
 function fit_predict_lrnormal(val_scores, tst_scores, val_y, tst_y, seed, p, p_normal)
 	_val_scores, _val_y, _ = _subsample_data(p, p_normal, val_y, val_scores; seed=seed)
 	_tst_scores, _tst_y, _ = _subsample_data(p, p_normal, tst_y, tst_scores; seed=seed)
-	_init_alpha, _alpha0 = compute_alphas(_val_scores, _val_y)
+	return fit_predict_lrnormal(_val_scores, _tst_scores, _val_y, _tst_y)
+end
+
+function fit_predict_lrnormal(val_scores, tst_scores, val_y, tst_y)
+	_init_alpha, _alpha0 = compute_alphas(val_scores, val_y)
 	lrmodel = RobReg(input_dim = size(_val_scores,2), alpha=_init_alpha, alpha0=_alpha0, 
 	                	beta=base_beta/sum(_val_y))
 	fit!(lrmodel, _val_scores, _val_y; verb=false, early_stopping=true, scale=scale, patience=10,
 		balanced=true)
 
 	# predict
-	val_probs = predict(lrmodel, _val_scores, scale=scale)
-	tst_probs = predict(lrmodel, _tst_scores, scale=scale)
-	val_auc = auc_val(_val_y, val_probs)
-	tst_auc = auc_val(_tst_y, tst_probs)
+	val_probs = predict(lrmodel, val_scores, scale=scale)
+	tst_probs = predict(lrmodel, tst_scores, scale=scale)
+	val_auc = auc_val(val_y, val_probs)
+	tst_auc = auc_val(tst_y, tst_probs)
 	return val_auc, tst_auc, lrmodel.alpha
 end
 
