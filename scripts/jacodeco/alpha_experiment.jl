@@ -17,6 +17,8 @@ include("utils.jl")
 base_modelname = "sgvaegan100"
 dataset = "SVHN2"
 datatype = "leave-one-in"
+base_beta = 10.0
+scale = true
 
 datapath = datadir("jacodeco/partial_experiment")
 dfs = readdir(datapath)
@@ -36,3 +38,6 @@ val_scores, tst_scores, val_y, tst_y, val_ljd, tst_ljd =
 	data[:val_scores], data[:tst_scores], data[:val_y], data[:tst_y], data[:tst_ljd], data[:val_ljd]
 val_auc_normal, tst_auc_normal, alpha_normal = fit_predict_lrnormal(val_scores, tst_scores, val_y, tst_y)
 
+val_scores_ljd = hcat(reshape(val_ljd,:,1), val_scores)
+tst_scores_ljd = hcat(reshape(tst_ljd,:,1), tst_scores)
+val_auc_ljd, tst_auc_ljd, alpha_ljd = fit_predict_lrnormal(val_scores_ljd, tst_scores_ljd, val_y, tst_y)

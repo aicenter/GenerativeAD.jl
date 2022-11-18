@@ -466,13 +466,14 @@ end
 
 # for sgvaegan alpha
 function compute_alphas(scores, labels)
+	n = size(scores,2)
     # first determine which is the most important base score
-    base_aucs = map(i->auc_val(labels, scores[:,i]), 1:3)
+    base_aucs = map(i->auc_val(labels, scores[:,i]), 1:(n-3))
     ibest = argmax(base_aucs)
     
     # create the robust logistic regression
-    init_alpha = ones(Float32, 6)*0.1
-    alpha0 = zeros(Float32, 6)
+    init_alpha = ones(Float32, n)*0.1
+    alpha0 = zeros(Float32, n)
     init_alpha[ibest] = 1.0
     alpha0[ibest] = 1.0
     init_alpha, alpha0
