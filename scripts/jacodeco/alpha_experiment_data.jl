@@ -67,26 +67,30 @@ agg_cols = filter(x->!(x in non_agg_cols), names(df_images))
 round_results = false
 subdf, _ = glue_classic_and_alpha(df, df_alpha, criterion, tst_metric, 
         replace(string(criterion), "val"=>"tst"), non_agg_cols)
+filter!(r->r.modelname == modelname, subdf)
+# filter out this model since it gives out Infs in jacodeco
+filter!(r->!(occursin("55529190", r.parameters)), subdf)
 modelnames = unique(df.modelname)
 downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
 aggdf, acdf = aggregate_stats_max_mean(subdf, criterion; agg_cols=[string(val_metric), string(tst_metric)], 
-	downsample=downsample, results_per_ac=true)
+	downsample=downsample, results_per_ac=true, dseed=1233, topn=1)
 df = filter(r->r.modelname == modelname, acdf)
 df.tst_auc
 df[:cac] = convert_anomaly_class.(df[:, :anomaly_class], "svhn2") 
-sort(df[:,[:anomaly_class, :cac, :tst_auc]], :cac)
+params = [p[2] for p in parse_savename.(df.parameters)]
+df[:model_id] = [p["init_seed"] for p in params] 
+sort(df[:,[:model_id, :anomaly_class, :cac, :tst_auc]], :cac)
 
 # now do the alpha experiments with the models
 acs = df.anomaly_class
-params = [p[2] for p in parse_savename.(df.parameters)]
-model_ids = [p["init_seed"] for p in params]
+model_ids = df.model_id
 
 # 
-i = 1
+i = 2
 ac = acs[i]
 model_id = model_ids[i]
-mpath = datadir("sgad_models/images_leave-one-in/sgvaegan100/$(dataset)/ac=$(ac)/seed=1/model_id=$(model_id)")
 ps = params[i]
+mpath = datadir("sgad_models/images_leave-one-in/sgvaegan100/$(dataset)/ac=$(ac)/seed=1/model_id=$(model_id)")
 
 # load the scores as in the sgad alpha experiment, compute the scores over 10 folds in a single anomaly class
 base_beta = 10.0
@@ -126,6 +130,12 @@ function fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, see
 	_tst_scores, _tst_y, _ = _subsample_data(p, p_normal, tst_y, tst_scores; seed=seed)
 	val_ljd = StatsBase.predict(model, _val_X, score_type="log_jacodet", batch_size=8)
 	tst_ljd = StatsBase.predict(model, _tst_X, score_type="log_jacodet", batch_size=8)
+	if any(isinf.(val_ljd))
+		@info "validation ljd contains Infs"
+	end
+	if any(isinf.(tst_ljd))
+		@info "test ljd contains Infs"
+	end
 	ljd = Dict(
 		:dataset => dataset,
 		:tst_ljd => tst_ljd,
@@ -159,6 +169,11 @@ function store_all_folds(dataset, model_id, ac, ps, p, p_normal)
 	mpath = datadir("sgad_models/images_leave-one-in/sgvaegan100/$(dataset)/ac=$(ac)/seed=1/model_id=$(model_id)")
 	model = GenerativeAD.Models.SGVAEGAN(load_sgvaegan_model(mpath, "cuda"))
 	val_scores, tst_scores, val_y, tst_y = get_basic_scores(model_id, ac, ps)
+	f = datadir("jacodeco/partial_experiment/$(dataset)_$(ac)_all_scores.bson")
+	if isfile(f)
+		@info "skipping $f, already exists."
+		return
+	end
 
 	fd(i) = fold_data(model, val_scores, tst_scores, val_y, tst_y, p, p_normal, i, ac, model_id, dataset, ps)
 	jacodata = []
@@ -166,7 +181,7 @@ function store_all_folds(dataset, model_id, ac, ps, p, p_normal)
 		push!(jacodata, fd(i))
 		@info "seed $i, fold $ac finished"
 	end
-	f = datadir("jacodeco/partial_experiment/$(dataset)_$(ac)_all_scores.bson")
+	
 	save(f, :jacodata=>jacodata)
 	@info "saved $f"
 end
