@@ -71,6 +71,9 @@ filter!(r->r.modelname == modelname, subdf)
 # filter out this model since it gives out Infs in jacodeco
 filter!(r->!(occursin("55529190", r.parameters)), subdf)
 filter!(r->!(occursin("10954393", r.parameters)), subdf)
+# this model seems to be stable and not producing any infs
+filter!(r->(occursin("87954753", r.parameters)), subdf) 
+
 modelnames = unique(df.modelname)
 downsample = Dict(zip(modelnames, repeat([DOWNSAMPLE], length(modelnames))))
 aggdf, acdf = aggregate_stats_max_mean(subdf, criterion; agg_cols=[string(val_metric), string(tst_metric)], 
@@ -173,14 +176,14 @@ end
 
 # now do it for the rest of the anomaly classes as well
 function store_all_folds(dataset, model_id, ac, ps, p, p_normal)
-	mpath = datadir("sgad_models/images_leave-one-in/sgvaegan100/$(dataset)/ac=$(ac)/seed=1/model_id=$(model_id)")
-	model = GenerativeAD.Models.SGVAEGAN(load_sgvaegan_model(mpath, "cuda"))
-	val_scores, tst_scores, val_y, tst_y = get_basic_scores(model_id, ac, ps)
 	f = datadir("jacodeco/partial_experiment/$(dataset)_$(ac)_all_scores.bson")
 	if isfile(f)
 		@info "skipping $f, already exists."
 		return
 	end
+	mpath = datadir("sgad_models/images_leave-one-in/sgvaegan100/$(dataset)/ac=$(ac)/seed=1/model_id=$(model_id)")
+	model = GenerativeAD.Models.SGVAEGAN(load_sgvaegan_model(mpath, "cuda"))
+	val_scores, tst_scores, val_y, tst_y = get_basic_scores(model_id, ac, ps)
 	orig_data = GenerativeAD.Datasets.load_data(dataset; seed=1, method="leave-one-in", anomaly_class_ind=ac);
 	orig_data = GenerativeAD.Datasets.normalize_data(orig_data);
 

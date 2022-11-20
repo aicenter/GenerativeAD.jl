@@ -25,7 +25,10 @@ dfs = readdir(datapath)
 
 
 ##
-df = dfs[3]
+70925884,
+87954753,
+5, 6 = 4, 5
+df = dfs[10]
 all_data = load(joinpath(datapath, df))[:jacodata]
 
 iseed = 1
