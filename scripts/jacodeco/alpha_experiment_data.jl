@@ -71,6 +71,10 @@ filter!(r->r.modelname == modelname, subdf)
 # filter out this model since it gives out Infs in jacodeco
 filter!(r->!(occursin("55529190", r.parameters)), subdf)
 filter!(r->!(occursin("10954393", r.parameters)), subdf)
+filter!(r->!(occursin("83407829", r.parameters) && r.anomaly_class==4), subdf)
+filter!(r->!(occursin("70925884", r.parameters) && r.anomaly_class==5), subdf)
+
+
 # this model seems to be stable and not producing any infs
 filter!(r->(occursin("87954753", r.parameters)), subdf) 
 
@@ -90,7 +94,7 @@ acs = df.anomaly_class
 model_ids = df.model_id
 
 # 
-i = 2
+i = 6
 ac = acs[i]
 model_id = model_ids[i]
 ps = params[i]
@@ -127,6 +131,8 @@ seed = 1
 #scores = StatsBase.predict(model, _tst_X, score_type="reconstruction", n=10)
 #scores = StatsBase.predict(model, _tst_X, score_type="feature_matching", n=10)
 # this looks fine - we have a match between the stored scores and the input data
+#x = _tst_X[:,:,:,1:10]
+#scores = StatsBase.predict(model, x, score_type="log_jacodet")
 
 # create a structure to store the data
 function fold_data(model, orig_data, val_scores, tst_scores, val_y, tst_y, p, p_normal, seed, ac, model_id, dataset, ps)
