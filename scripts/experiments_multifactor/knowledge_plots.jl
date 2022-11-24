@@ -168,54 +168,26 @@ maxmean_f(df,crit) = aggregate_stats_max_mean(df, crit; agg_cols=[])
 cnames = reverse(AUC_METRICS_NAMES)
 afs = unique(df_images.anomaly_factors)
 
-@suppress_err begin
-for level in [100, 50, 10]
-    for af in afs
-        #
-        df = filter(r->r.anomaly_factors == af,df_wmnist)
-        df_alpha = filter(r->r.anomaly_factors == af,df_wmnist_alpha)
-        
-    	criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
-    	extended_criterions = vcat(criterions, [val_metric])
-    	extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
-
-        ranks_all, metric_means_all = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
-            non_agg_cols, round_results)
-        
-        # reorder table on tabular data as there is additional class of models (flows)
-        # one can do this manually at the end
-        f = joinpath(outdir, "knowledge_plot_multifactor_af-$(af)_$(title)_ano_$(level).csv")
-        println("saving to $f")
-        CSV.write(f, metric_means_all)
-        f = joinpath(outdir, "knowledge_plot_ranks_multifactor_af-$(af)_$(title)_ano_$(level).csv")
-        println("saving to $f")
-        CSV.write(f, ranks_all)
-        ranks_all, metric_means_all
-    end
-end
-end
-
-# then do it again but for 50/50 anomaly/normal ratios and changing amount of data
-cnames = reverse(AUCP_METRICS_NAMES)
-criterions = reverse(_prefix_symbol.("val", AUCP_METRICS))
-extended_criterions = vcat(criterions, [val_metric])
-extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
-
+level = 100
 @suppress_err begin
 for af in afs
-
+    #
     df = filter(r->r.anomaly_factors == af,df_wmnist)
     df_alpha = filter(r->r.anomaly_factors == af,df_wmnist_alpha)
     
+	criterions = reverse(_prefix_symbol.("val", map(x->x*"_$level",  AUC_METRICS)))
+	extended_criterions = vcat(criterions, [val_metric])
+	extended_cnames = vcat(["clean"], vcat(cnames, ["\$$(mn)_{val}\$"]))
+
     ranks_all, metric_means_all = _incremental_rank(df, df_alpha, extended_criterions, tst_metric, 
         non_agg_cols, round_results)
     
     # reorder table on tabular data as there is additional class of models (flows)
     # one can do this manually at the end
-    f = joinpath(outdir, "knowledge_plot_multifactor_af-$(af)_$(title)_prop.csv")
+    f = joinpath(outdir, "knowledge_plot_multifactor_af-$(af)_$(title)_ano_$(level).csv")
     println("saving to $f")
     CSV.write(f, metric_means_all)
-    f = joinpath(outdir, "knowledge_plot_ranks_multifactor_af-$(af)_$(title)_prop.csv")
+    f = joinpath(outdir, "knowledge_plot_ranks_multifactor_af-$(af)_$(title)_ano_$(level).csv")
     println("saving to $f")
     CSV.write(f, ranks_all)
     ranks_all, metric_means_all

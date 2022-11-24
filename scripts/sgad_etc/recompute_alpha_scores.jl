@@ -76,30 +76,6 @@ elseif occursin("sgvaegan", modelname)
 	[1, 1, 1, 0, 0, 0]
 end
 
-function basic_stats(labels, scores)
-	try
-		roc = EvalMetrics.roccurve(labels, scores)
-		auc = EvalMetrics.auc_trapezoidal(roc...)
-		prc = EvalMetrics.prcurve(labels, scores)
-		auprc = EvalMetrics.auc_trapezoidal(prc...)
-
-		t5 = EvalMetrics.threshold_at_fpr(labels, scores, 0.05)
-		cm5 = ConfusionMatrix(labels, scores, t5)
-		tpr5 = EvalMetrics.true_positive_rate(cm5)
-		f5 = EvalMetrics.f1_score(cm5)
-
-		return auc, auprc, tpr5, f5
-	catch e
-		if isa(e, ArgumentError)
-			return NaN, NaN, NaN, NaN
-		else
-			rethrow(e)
-		end
-	end
-end
-
-auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
-
 function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_alpha, alpha0, base_beta; 
 	seed=nothing, scale=true, kwargs...)
 	scores, labels, _ = try
@@ -173,12 +149,6 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
 	end
 	return val_auc, tst_auc
 end	
-
-function perf_at_p_agg(args...; kwargs...)
-	results = [perf_at_p_new(args...;seed=seed, kwargs...) for seed in 1:max_seed_perf]
-	results = results[.!map(x->any(isnan.(x)), results)]
-	return topn_mean([x[1] for x in results], [x[2] for x in results], 4)
-end
 
 function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	outf = joinpath(save_dir, split(lf, ".")[1])

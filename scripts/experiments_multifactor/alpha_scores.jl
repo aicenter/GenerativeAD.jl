@@ -13,6 +13,7 @@ using Random
 using GenerativeAD.Evaluation: _prefix_symbol, _get_anomaly_class, _subsample_data
 using GenerativeAD.Evaluation: BASE_METRICS, AUC_METRICS
 include("../pyutils.jl")
+include("../supervised_comparison/utils.jl")
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -27,15 +28,15 @@ s = ArgParseSettings()
     "latent_score_type"
         arg_type = String
         help = "normal, kld, knn or normal_logpx"
-        default = "normal"
+        default = "knn"
     "anomaly_class"
         default = nothing
         help = "anomaly class"
     "method"
-        default = "logreg"
+        default = "probreg"
         help = "logreg or probreg or robreg"
     "base_beta"
-        default = 5.0
+        default = 10.0
         arg_type = Float64
         help = "base beta for robust logistic regression"
     "--mf_normal"
@@ -59,40 +60,30 @@ nf = length(anomaly_factors)
 (nf == 0 || nf > 3) ? error("number of --anomaly_factors must be between 1 and 3") : nothing
 save_suffix = mf_normal ? "_mf_normal" : ""
 
-score_type = "logpx"
+# other params
 device = "cpu"
 max_seed_perf = 10
 scale = true
-init_alpha = [1.0, 0.1, 0.1, 0.1]
+score_type = if modelname == "sgvae"
+    "logpx"
+elseif occursin("sgvaegan", modelname)
+    "all"
+end
+init_alpha = if modelname == "sgvae"
+    [1.0, 0.1, 0.1, 0.1]
+elseif occursin("sgvaegan", modelname)
+    [1.0, 1.0, 1.0, 0.1, 0.1, 0.1]
+end
+alpha0 = if modelname == "sgvae"
+    [1, 0, 0, 0]
+elseif occursin("sgvaegan", modelname)
+    [1, 1, 1, 0, 0, 0]
+end
 
 # anomaly factors to strings and back
 _afs2str(x) = reduce((a,b)->"$(a)$(b)", x)
 _str2afs(x) = map(i->Meta.parse(string(x[i])), 1:length(x))
 afstring =  _afs2str(anomaly_factors)
-
-function basic_stats(labels, scores)
-    try
-        roc = EvalMetrics.roccurve(labels, scores)
-        auc = EvalMetrics.auc_trapezoidal(roc...)
-        prc = EvalMetrics.prcurve(labels, scores)
-        auprc = EvalMetrics.auc_trapezoidal(prc...)
-
-        t5 = EvalMetrics.threshold_at_fpr(labels, scores, 0.05)
-        cm5 = ConfusionMatrix(labels, scores, t5)
-        tpr5 = EvalMetrics.true_positive_rate(cm5)
-        f5 = EvalMetrics.f1_score(cm5)
-
-        return auc, auprc, tpr5, f5
-    catch e
-        if isa(e, ArgumentError)
-            return NaN, NaN, NaN, NaN
-        else
-            rethrow(e)
-        end
-    end
-end
-
-auc_val(labels, scores) = EvalMetrics.auc_trapezoidal(EvalMetrics.roccurve(labels, scores)...)
 
 function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_alpha, base_beta; 
     seed=nothing, scale=true, kwargs...)
@@ -121,7 +112,13 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
             elseif method == "probreg"
                 ProbReg()
             elseif method == "robreg"
-                RobReg(alpha=init_alpha, beta=base_beta/sum(labels))
+                _init_alpha, _alpha0 = if occursin("sgvaegan", modelname)
+                    compute_alphas(scores, labels) # determine them based on the best score
+                else 
+                    init_alpha, alpha0 # global values
+                end
+                RobReg(input_dim = size(scores,2), alpha=_init_alpha, alpha0=_alpha0, 
+                    beta=base_beta/sum(labels))
             else
                 error("unknown method $method")
             end
@@ -163,13 +160,6 @@ function perf_at_p_new(p, p_normal, val_scores, val_y, tst_scores, tst_y, init_a
     return val_auc, tst_auc
 end    
 
-nanmean(x) = mean(x[.!isnan.(x)])
-
-function perf_at_p_agg(args...; kwargs...)
-    results = [perf_at_p_new(args...; seed=seed, kwargs...) for seed in 1:max_seed_perf]
-    return nanmean([x[1] for x in results]), nanmean([x[2] for x in results])
-end
-
 function experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
     outf = joinpath(save_dir, split(lf, ".")[1])
     outf = if method == "robreg"
@@ -184,22 +174,16 @@ function experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
     end    
 
     # load the saved scores
-    ldata = load(joinpath(latent_dir, lf))
-    rf = filter(x->occursin("$(model_id)", x), rfs)
-    if length(rf) < 1
-        @info "Something is wrong, original score file for $lf not found"
+    val_scores_orig, tst_scores_orig, val_y, tst_y, ldata, rdata = 
+        load_scores(model_id, lf, latent_dir, rfs, res_dir, modelname)
+    if isnothing(rdata) && isnothing(ldata)
         return
     end
-    rf = rf[1]
-    rdata = load(joinpath(res_dir, rf))
-
-    # prepare the data
-    if isnan(ldata[:val_scores][1])
-        @info "scores not available or corrupted"
-        return 
+    rdata = if occursin("sgvaegan", modelname)
+        rdata[1]
+    else
+        rdata
     end
-    val_scores_orig = cat(rdata[:val_scores], transpose(ldata[:val_scores]), dims=2);
-    tst_scores_orig = cat(rdata[:tst_scores], transpose(ldata[:tst_scores]), dims=2);
     mf_scores = cat(rdata[:mf_scores], transpose(ldata[:mf_scores]), dims=2);
     mf_y = ldata[:mf_labels];
 
@@ -249,7 +233,13 @@ function experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
         elseif method == "probreg"
             ProbReg()
         elseif method == "robreg"
-            RobReg(alpha=init_alpha, beta=base_beta/sum(val_y))
+            _init_alpha, _alpha0 = if occursin("sgvaegan", modelname)
+                compute_alphas(val_scores, val_y) # determine them based on the best score
+            else 
+                init_alpha, alpha0 # global values
+            end
+            RobReg(input_dim = size(val_scores,2), alpha=_init_alpha, alpha0=_alpha0, 
+                beta=base_beta/sum(val_y))
         else
             error("unknown method $method")
         end
