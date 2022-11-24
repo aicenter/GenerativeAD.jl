@@ -299,12 +299,6 @@ function experiment(model_id, lf, ac, seed, latent_dir, save_dir, res_dir, rfs)
 	res_df
 end
 
-# get the right lf when using a selection of best models
-function get_random_latent_files(model_id, lfs, n=10)
-	_lfs = filter(x->occursin("$(model_id)",x), lfs)
-	sample(_lfs, min(n, length(_lfs)), replace=false)
-end
-
 # this is the part where we load the best models
 bestf = datadir("sgad_alpha_evaluation_kp/best_models_orig_$(datatype).bson")
 best_models = load(bestf)

@@ -184,6 +184,11 @@ function perf_at_p_agg(args...; kwargs...)
 	return topn_mean([x[1] for x in results], [x[2] for x in results], 4)
 end
 
+function get_random_latent_files(model_id, lfs, n=10)
+	_lfs = filter(x->occursin("$(model_id)",x), lfs)
+	sample(_lfs, min(n, length(_lfs)), replace=false)
+end
+
 # get the right lf when using a selection of best models
 function get_latent_file(_params, lfs)
 	lst = get(_params, "latent_score_type", "knn")

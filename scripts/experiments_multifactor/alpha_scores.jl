@@ -18,7 +18,7 @@ include("../supervised_comparison/utils.jl")
 s = ArgParseSettings()
 @add_arg_table! s begin
    "modelname"
-        default = "sgvae"
+        default = "sgvaegan100"
         arg_type = String
         help = "modelname"
     "dataset"
@@ -61,6 +61,7 @@ nf = length(anomaly_factors)
 save_suffix = mf_normal ? "_mf_normal" : ""
 
 # other params
+n_best_lfs = 5
 device = "cpu"
 max_seed_perf = 10
 scale = true
@@ -321,29 +322,9 @@ function experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
     res_df
 end
 
-# get the right lf when using a selection of best models
-function get_latent_file(_params, lfs)
-    if _params["latent_score_type"] != latent_score_type
-        return nothing
-    end
-
-    model_id = _params["init_seed"]
-    _lfs = filter(x->occursin("$(model_id)",x), lfs)
-    _lfs = if _params["latent_score_type"] == "knn"
-        k = _params["k"]
-        v = _params["v"]
-        filter(x->occursin("k=$(k)_",x) && occursin("v=$v",x), _lfs)
-    else
-        _lfs
-    end
-    if length(_lfs) != 1
-        error("something wrong when processing $(_params)")
-    end
-    return _lfs[1]
-end
-
 # this is the part where we load the best models
-bestf = datadir("experiments_multifactor/evaluation_mf_normal/best_models_leave-one-in.bson")
+#bestf = datadir("experiments_multifactor/evaluation_mf_normal/best_models_leave-one-in.bson")
+bestf = datadir("sgad_alpha_evaluation_kp/best_models_orig_$(datatype).bson")
 best_models = load(bestf)
 
 for ac in acs
@@ -352,10 +333,10 @@ for ac in acs
     # we actually don't even need to load the models themselves, just the original (logpx) scores
     # and the latent scores and a logistic regression solver from scikit
     latent_dir = datadir("experiments_multifactor/latent_scores/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-    lfs = readdir(latent_dir)
-    ltypes = map(lf->split(split(lf, "score=")[2], ".")[1], lfs)
-    lfs = lfs[ltypes .== latent_score_type]
-    model_ids = map(x->Meta.parse(split(split(x, "=")[2], "_")[1]), lfs)
+    lfs = readdir(latent_dir);
+    ltypes = map(lf->split(split(lf, "score=")[2], ".")[1], lfs);
+    lfs = lfs[ltypes .== latent_score_type];
+    model_ids = map(x->Meta.parse(split(split(x, "=")[2], "_")[1]), lfs);
 
     # make the save dir
     save_dir = datadir("experiments_multifactor/alpha_evaluation$(save_suffix)/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)/af=$(afstring)")
@@ -364,30 +345,36 @@ for ac in acs
 
     # top score files
     res_dir = datadir("experiments_multifactor/base_scores/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
-    rfs = readdir(res_dir)
-    rfs = filter(x->occursin(score_type, x), rfs)
+    rfs = readdir(res_dir);
+    rfs = if modelname == "sgvae" 
+        filter(x->occursin(score_type, x), rfs)
+    elseif occursin("sgvaegan", modelname)
+        rfs
+    end
 
     # this is where we select the files of best models
     # now add the best models to the mix
     inds = (best_models[:anomaly_class] .== ac) .& (best_models[:seed] .== seed) .& 
-        (best_models[:dataset] .== dataset)
-    best_params = best_models[:parameters][inds]
+        (best_models[:dataset] .== dataset);
+    best_params = best_models[:parameters][inds];
 
     # from these params extract the correct model_ids and lfs
-    parsed_params = map(x->parse_savename("s_$x")[2], best_params)
-    best_model_ids = [x["init_seed"] for x in parsed_params]
-    best_lfs = map(x->get_latent_file(x, lfs), parsed_params)
+    parsed_params = map(x->parse_savename("s_$x")[2], best_params);
+    best_model_ids = [x["init_seed"] for x in parsed_params];
+    best_lfs = map(x->get_random_latent_files(x, lfs, n_best_lfs), best_model_ids);
+    best_model_ids = vcat(map(x->repeat([x[1]], length(x[2])), zip(best_model_ids, best_lfs))...);
+    best_lfs = vcat(best_lfs...);
 
     # use only those that are not nothing - in agreement with the latent_score_type
-    used_inds = .!map(isnothing, best_lfs)
+    used_inds = .!map(isnothing, best_lfs);
 
     # also, scramble the rest of the models
     n = length(model_ids)
-    rand_inds = sample(1:n, n, replace=false)
+    rand_inds = sample(1:n, n, replace=false);
 
     # this is what will be iterated over
-    final_model_ids = vcat(best_model_ids[used_inds], model_ids[rand_inds])
-    final_lfs = vcat(best_lfs[used_inds], lfs[rand_inds])
+    final_model_ids = vcat(best_model_ids[used_inds], model_ids[rand_inds]);
+    final_lfs = vcat(best_lfs[used_inds], lfs[rand_inds]);
 
     for (model_id, lf) in zip(final_model_ids, final_lfs)
         experiment(model_id, lf, ac, latent_dir, save_dir, res_dir, rfs)
