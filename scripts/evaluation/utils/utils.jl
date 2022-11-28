@@ -97,3 +97,37 @@ function glue_classic_and_alpha(df, df_alpha, val_metric, tst_metric, tst_metric
     subdf = vcat(subdf, subdf_alpha)
     return subdf, agg
 end
+
+function collect_plot_points(modelname, dataset, ac, seed, df, val_metrics, tst_metrics)
+    # filter the model, dataset and anomaly class
+    subdf = filter(r->
+        r.modelname == modelname &&
+        r.dataset == dataset && 
+        r.seed == seed &&
+        r.anomaly_class == ac,
+        df
+        )
+
+    res = []
+    for (val_metric, tst_metric) in zip(val_metrics, tst_metrics)
+        _subdf = filter(r->
+            !isnan(r[val_metric]) &&
+            !isnan(r[tst_metric]),
+            subdf
+            )
+        n = size(_subdf,1)
+        if n == 0
+            push!(res, NaN)
+        else
+            # subsample the models
+            Random.seed!(dseed)
+            inds = sample(1:n, min(n, DOWNSAMPLE), replace=false)
+            _subdf = _subdf[inds, :]
+            Random.seed!()
+            sortinds = sortperm(_subdf[val_metric], rev=true)
+            push!(res, _subdf[tst_metric][sortinds[1]])
+        end
+    end
+    return res
+end
+

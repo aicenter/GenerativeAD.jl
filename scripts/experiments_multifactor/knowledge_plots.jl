@@ -19,11 +19,33 @@ AUCP_METRICS = map(x-> "auc_100_$(x)", [100, 50, 20, 10, 5, 2, 1])
 AUCP_METRICS_NAMES = ["\$AUC@\\%100\$", "\$AUC@\\%50\$", "\$AUC@\\%20\$", "\$AUC@\\%10\$", "\$AUC@\\%5\$", 
 	"\$AUC@\\%2\$", "\$AUC@\\%1\$"]
 
-
 include("../evaluation/utils/ranks.jl")
-mf_normal = true
-outdir = mf_normal ? datadir("experiments_multifactor/evaluation_mf_normal/result_tables") : datadir("experiments_multifactor/evaluation/result_tables")
+include("../evaluation/utils/utils.jl")
+
+outdir = datadir("experiments_multifactor/evaluation_mf_normal/result_tables")
 mkpath(outdir)
+
+# load the dfs
+df_images = load(datadir("experiments_multifactor/evaluation_mf_normal/images_leave-one-in_eval.bson"))[:df]
+df_sgvgna = load(datadir("experiments_multifactor/alpha_evaluation_mf_normal/sgvaegan100_eval.bson"))[:df]
+df_sgvaea = load(datadir("experiments_multifactor/alpha_evaluation_mf_normal/sgvae_eval.bson"))[:df]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 sgad_models = ["DeepSVDD", "fAnoGAN", "fmgan", "vae", "cgn", "sgvae", "sgvae_alpha", "sgvae_probreg",
 "sgvae_robreg", "sgvae_robreg1", "sgvae_robreg5"]
