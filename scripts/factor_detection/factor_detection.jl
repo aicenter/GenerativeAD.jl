@@ -33,29 +33,22 @@ modelinds = model_ids .== model_id
 final_model_ids = model_ids[modelinds]
 final_lfs = lfs[modelinds]
 
-i = 1
+i = 42
 lf = final_lfs[i]
 model_id = final_model_ids[i]
 
 ldata = load(joinpath(ldir, lf))
-scores = ldata[:mf_scores]
+mf_scores = ldata[:mf_scores]
 mf_labels = ldata[:mf_labels]
 
 # first a small experiment - anomalies are in the shape
-anomalous_inds = 
+normal_scores = hcat(
+	ldata[:val_scores][:,ldata[:val_labels] .== 0], 
+	ldata[:tst_scores][:,ldata[:tst_labels] .== 0])
 true_inds = map(i->mf_labels[i,:] .== ac, 1:3)
-y_ano1 = 
 
-
-using Random
-mf_labels = hcat([sample(1:10,3) for _ in 1:60000]...)
-mf_scores = rand(3,60000)
-tr_scores = rand(3,1000)
-ac = 1
-
-s = mf_scores[:,1]
-af = 1
-
+#
+af = 2
 afs = [1,2,3]
 @assert(af in afs)
 nafs = afs[afs.!=af]
@@ -66,9 +59,9 @@ sublabels = mf_labels[:,inds]
 subscores = mf_scores[:,inds]
 s = subscores[:,1]
 
-predict_anomaly_factor(tr_scores, subscores[:,3])
+predict_anomaly_factor(normal_scores, subscores[:,3])
 
 n = size(subscores, 2)
 y_true = ones(Int, n)*af
-y_pred = mapslices(x->predict_anomaly_factor(tr_scores,x), subscores, dims=1)
+y_pred = mapslices(x->predict_anomaly_factor(normal_scores,x), subscores, dims=1)
 acc = mean(y_true .== y_pred)

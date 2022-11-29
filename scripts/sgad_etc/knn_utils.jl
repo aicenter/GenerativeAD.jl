@@ -22,6 +22,7 @@ end
 function fit_predict(k, v, tr_x, val_x, tst_x)
     model = GenerativeAD.Models.knn_constructor(;v=v, k=k)
     fit!(model, Array(transpose(tr_x)))
+    tr_scores = get_scores(model, Array(transpose(tr_x)))
     val_scores = get_scores(model, Array(transpose(val_x)))
     tst_scores = get_scores(model, Array(transpose(tst_x)))
     return val_scores, tst_scores
@@ -46,7 +47,7 @@ function compute_knn_score(model_id, in_dir, k, v, out_dir, seed, ac, dataset, m
         (in_d[:tr_encodings_foreground], in_d[:val_encodings_foreground], in_d[:tst_encodings_foreground])
         );
     scores = map(x->fit_predict(k,v,x...), data);
-    scores = map(i->Array(transpose(hcat([x[i] for x in scores]...))), 1:2)
+    scores = map(i->Array(transpose(hcat([x[i] for x in scores]...))), 1:3)
 
     # and save them
     output = Dict(
@@ -56,9 +57,9 @@ function compute_knn_score(model_id, in_dir, k, v, out_dir, seed, ac, dataset, m
         :dataset => dataset,
         :anomaly_class => ac,
         :seed => seed,
-        :tr_scores => NaN,
-        :val_scores => scores[1],
-        :tst_scores => scores[2],
+        :tr_scores => scores[1],
+        :val_scores => scores[2],
+        :tst_scores => scores[3],
         :tr_labels => in_d[:tr_labels],
         :val_labels => in_d[:val_labels],
         :tst_labels => in_d[:tst_labels],
