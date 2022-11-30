@@ -149,3 +149,19 @@ function dropnames(namedtuple::NamedTuple, names::Tuple{Vararg{Symbol}})
     keepnames = Base.diff_names(Base._nt_names(namedtuple), names)
     return NamedTuple{keepnames}(namedtuple)
 end
+
+np = pyimport("numpy")
+torch = pyimport("torch")
+
+denormalize(x) = (x ./ 2) .+ 0.5
+
+_to_img(x, r=1) = imresize(hcat(map(i->GenerativeAD.Datasets.array_to_img_rgb(permutedims(x[:,:,:,i], (2,1,3)))
+            , 1:size(x,4))...), ratio=r)
+
+to_img(x, r=1; descale=false) = descale ? _to_img(denormalize(x), r) : _to_img(x, r)
+
+jl2py(x::Array, device="cuda") = torch.tensor(np.array(Array(permutedims(x, [4,3,2,1])))).to(device)
+py2jl(x) = permutedims(torch2np(x), [4,3,2,1])
+torch2np(x) = x.detach().cpu().numpy()
+
+clamp(x::AbstractArray{T,N},l::T,u::T) where T where N = max.(min.(x, u),l)
