@@ -54,9 +54,7 @@ function ranked_prediction(lf, model_id, outdir, ac, dataset)
 	mf_labels = ldata[:mf_labels]
 
 	# first a small experiment - anomalies are in the shape
-	normal_scores = hcat(
-		ldata[:val_scores][:,ldata[:val_labels] .== 0], 
-		ldata[:tst_scores][:,ldata[:tst_labels] .== 0])
+	normal_scores = ldata[:val_scores][:,ldata[:val_labels] .== 0]
 
 	# do the ranked experiment
 	results = map(af->get_prediction_ranked(ac, af, mf_scores, mf_labels, normal_scores), 1:3)
