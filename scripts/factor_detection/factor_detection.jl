@@ -15,21 +15,22 @@ s = ArgParseSettings()
     	default = 1
         arg_type = Int
         help = "anomaly class"
+    "model_id"
+    	default = 32131929
+    	arg_type = Int
+    	help = "model id"
     "--force", "-f"
         action = :store_true
         help = "force recomputing of scores"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack modelname, dataset, anomaly_class, force = parsed_args
+@unpack modelname, dataset, anomaly_class, model_id, force = parsed_args
 ac = anomaly_class
 
-
+# just get the data
 ldir = datadir("experiments_multifactor/latent_scores/$modelname/$dataset/ac=$ac/seed=1")
 lfs = readdir(ldir)
 model_ids = map(x->Meta.parse(replace(split(x,"_")[2], "id="=>"")), lfs)
-
-model_id = 32131929
-model_id = unique(model_ids)[6]
 
 modelinds = model_ids .== model_id
 final_model_ids = model_ids[modelinds]

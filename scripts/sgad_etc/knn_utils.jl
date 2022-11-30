@@ -76,10 +76,11 @@ end
 function fit_predict_multifactor(k, v, tr_x, val_x, tst_x, mf_x)
     model = GenerativeAD.Models.knn_constructor(;v=v, k=k)
     fit!(model, Array(transpose(tr_x)))
+    tr_scores = get_scores(model, Array(transpose(tr_x)))
     val_scores = get_scores(model, Array(transpose(val_x)))
     tst_scores = get_scores(model, Array(transpose(tst_x)))
     mf_scores = get_scores(model, Array(transpose(mf_x)))
-    return val_scores, tst_scores, mf_scores
+    return tr_scores, val_scores, tst_scores, mf_scores
 end
 
 function compute_knn_score_multifactor(model_id, in_dir, k, v, out_dir, seed, ac, dataset, modelname; force=false)
@@ -104,7 +105,7 @@ function compute_knn_score_multifactor(model_id, in_dir, k, v, out_dir, seed, ac
             in_d[:tst_encodings_foreground], in_d[:mf_encodings_foreground])
         );
     scores = map(x->fit_predict_multifactor(k,v,x...), data);
-    scores = map(i->Array(transpose(hcat([x[i] for x in scores]...))), 1:3)
+    scores = map(i->Array(transpose(hcat([x[i] for x in scores]...))), 1:4)
 
     # and save them
     output = Dict(
@@ -114,10 +115,10 @@ function compute_knn_score_multifactor(model_id, in_dir, k, v, out_dir, seed, ac
         :dataset => dataset,
         :anomaly_class => ac,
         :seed => seed,
-        :tr_scores => NaN,
-        :val_scores => scores[1],
-        :tst_scores => scores[2],
-        :mf_scores => scores[3],
+        :tr_scores => scores[1],
+        :val_scores => scores[2],
+        :tst_scores => scores[3],
+        :mf_scores => scores[4],
         :tr_labels => in_d[:tr_labels],
         :val_labels => in_d[:val_labels],
         :tst_labels => in_d[:tst_labels],
