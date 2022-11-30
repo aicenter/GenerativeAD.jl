@@ -38,7 +38,7 @@ for ac in acs
     for k in ks
         for model_id in model_ids
             for v in [:delta, :kappa, :gamma]
-                compute_knn_score_multifactor(model_id, in_dir, k, v, out_dir, seed, ac, dataset, modelname; force=false)
+                compute_knn_score_multifactor(model_id, in_dir, k, v, out_dir, seed, ac, dataset, modelname; force=force)
             end
         end
     end

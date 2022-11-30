@@ -23,17 +23,19 @@ parsed_args = parse_args(ARGS, s)
 @unpack modelname, dataset, anomaly_class, force = parsed_args
 ac = anomaly_class
 
-model_id = 32131929
 
 ldir = datadir("experiments_multifactor/latent_scores/$modelname/$dataset/ac=$ac/seed=1")
 lfs = readdir(ldir)
 model_ids = map(x->Meta.parse(replace(split(x,"_")[2], "id="=>"")), lfs)
 
+model_id = 32131929
+model_id = unique(model_ids)[6]
+
 modelinds = model_ids .== model_id
 final_model_ids = model_ids[modelinds]
 final_lfs = lfs[modelinds]
 
-i = 42
+i = 10
 lf = final_lfs[i]
 model_id = final_model_ids[i]
 
