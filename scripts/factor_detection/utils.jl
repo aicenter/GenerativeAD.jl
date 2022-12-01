@@ -105,7 +105,7 @@ function compute_bfscores(model, x)
 	return bscore, fscore
 end
 
-function predict_masked(model,x::AbstractArray{T,3}; n=10) where T
+function predict_masked(model,x::AbstractArray{T,3}; n=20) where T
 	x = reshape(x,size(x)...,1)
 	bfscores = []
 	for i in 1:n
@@ -136,6 +136,6 @@ function get_prediction_masked(model, ac, af, mf_X, mf_Y)
 	n = size(tst_x, 4)
 	y_true = ones(Int, n)*af
 	y_pred, bscores, fscores = predict_masked(model, tst_x)
-	acc = mean(y_true .== y_pred)
+	acc = mean((y_true .== y_pred)[.!isnan.(y_pred)])
 	y_true, y_pred, bscores, fscores, acc	
 end

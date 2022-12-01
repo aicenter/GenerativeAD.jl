@@ -2,7 +2,6 @@ include("../supervised_comparison/utils.jl")
 include("./utils.jl")
 include("../pyutils.jl")
 
-
 s = ArgParseSettings()
 @add_arg_table! s begin
 	"modelname"
@@ -70,11 +69,4 @@ function masked_prediction(model, model_id, outdir, ac, dataset)
 	outdf
 end
 
-
-
-
-
-
-
-
-
+res = masked_prediction(model, model_id, outdir, ac, dataset)
