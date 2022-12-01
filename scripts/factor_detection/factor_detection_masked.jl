@@ -37,19 +37,4 @@ model.model.eval();
 outdir = datadir("factor_identification/prediction_masked/$modelname/$dataset/ac=$ac/seed=1")
 
 # compute the predictions
-res = masked_prediction(model, model_id, outdir, ac, dataset)
-
-for iexp in 1:10
-	res = masked_prediction(model, model_id, outdir, ac, dataset, iexp)
-end	
-
-"""
-# other models to consider
-32131929
- 35963739
- 85249629
-  7696832
- 62977160
- 99981007
-
-"""
+res = map(iexp->masked_prediction(model, model_id, outdir, ac, dataset, iexp), 1:10)
