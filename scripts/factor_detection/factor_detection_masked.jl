@@ -37,4 +37,4 @@ model.model.eval();
 outdir = datadir("factor_identification/prediction_masked/$modelname/$dataset/ac=$ac/seed=1")
 
 # compute the predictions
-res = map(iexp->masked_prediction(model, model_id, outdir, ac, dataset, iexp), 1:10)
+res = map(iexp->masked_prediction(model, model_id, outdir, ac, dataset, force, iexp), 1:10)

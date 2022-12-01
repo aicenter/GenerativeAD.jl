@@ -58,8 +58,12 @@ function get_prediction_ranked(ac, af, mf_scores, mf_labels, normal_scores)
 	return y_true, y_pred, percentiles, acc
 end
 
-function ranked_prediction(lf, model_id, outdir, ac, dataset)
+function ranked_prediction(lf, model_id, outdir, ac, dataset, force=false)
 	outf = joinpath(outdir, lf)
+	if !force && isfile(outf)
+		@info "skipping $outf, already present"
+		return
+	end
 	ldata = load(joinpath(ldir, lf))
 	mf_scores = ldata[:mf_scores]
 	mf_labels = ldata[:mf_labels]
@@ -140,7 +144,7 @@ function get_prediction_masked(model, ac, af, mf_X, mf_Y)
 	y_true, y_pred, bscores, fscores, acc	
 end
 
-function masked_prediction(model, model_id, outdir, ac, dataset, iexperiment=nothing)
+function masked_prediction(model, model_id, outdir, ac, dataset, force=false, iexperiment=nothing)
 	# load the data
 	mf_X, mf_Y = GenerativeAD.Datasets.load_wildlife_mnist_raw("test")[2];
 
@@ -150,7 +154,11 @@ function masked_prediction(model, model_id, outdir, ac, dataset, iexperiment=not
 	else
 		joinpath(outdir, "model_id=$(model_id)_$(iexperiment).bson")
 	end
-
+	if !force && isfile(outf)
+		@info "skipping $outf, already present"
+		return
+	end
+	
 	# do the ranked experiment
 	results = map(af->get_prediction_masked(model, ac, af, mf_X, mf_Y), 2:3)
 

@@ -39,5 +39,5 @@ final_model_ids = model_ids[modelinds]
 final_lfs = lfs[modelinds]
 
 for (lf, model_id) in zip(final_lfs,  final_model_ids)
-	ranked_prediction(lf, model_id, outdir, ac, dataset)
+	ranked_prediction(lf, model_id, outdir, ac, dataset, force)
 end
