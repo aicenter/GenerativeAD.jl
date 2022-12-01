@@ -41,3 +41,7 @@ final_lfs = lfs[modelinds]
 for (lf, model_id) in zip(final_lfs,  final_model_ids)
 	ranked_prediction(lf, model_id, outdir, ac, dataset)
 end
+
+lf = "latent_scores/sgvaegan100/wildlife_MNIST/ac=1/seed=1/model_id=32131929_k=31_v=delta_score=knn.bson"
+lf = "latent_scores/sgvaegan100/wildlife_MNIST/ac=1/seed=1/model_id=32131929_k=31_v=gamma_score=knn.bson"
+lf = "latent_scores/sgvaegan100/wildlife_MNIST/ac=1/seed=1/model_id=32131929_k=31_v=kappa_score=knn.bson"

@@ -34,39 +34,22 @@ mfs = readdir(mainpath)
 modelpath = joinpath(mainpath, filter(x->occursin(string(model_id), x), mfs)[1])
 model = GenerativeAD.Models.SGVAEGAN(load_sgvaegan_model(modelpath, "cuda"))
 model.model.eval();
-
 outdir = datadir("factor_identification/prediction_masked/$modelname/$dataset/ac=$ac/seed=1")
 
-function masked_prediction(model, model_id, outdir, ac, dataset)
-	# load the data
-	mf_X, mf_Y = GenerativeAD.Datasets.load_wildlife_mnist_raw("test")[2];
-
-	outf = joinpath(outdir, "model_id=$(model_id).bson")
-
-	# do the ranked experiment
-	results = map(af->get_prediction_masked(model, ac, af, mf_X, mf_Y), 2:3)
-
-	outdf = Dict(
-		:model_id => model_id,
-		:y_true_background => results[1][1],
-		:y_true_foreground => results[2][1],
-		:y_pred_background => results[1][2],
-		:y_pred_foreground => results[2][2],
-		:bscores_background => results[1][3],
-		:fscores_backround => results[2][3],
-		:bscores_foreground => results[1][4],
-		:fscores_foreground => results[2][4],
-		:acc_background => results[1][5],
-		:acc_foreground => results[2][5],
-		:mean_acc => mean([x[5] for x in results]),
-		:method => "masked",
-		:dataset => dataset,
-		:anomaly_class => ac
-		)
-
-	save(outf, :df => outdf)
-	@info "saved $outf"
-	outdf
-end
-
+# compute the predictions
 res = masked_prediction(model, model_id, outdir, ac, dataset)
+
+for iexp in 1:10
+	res = masked_prediction(model, model_id, outdir, ac, dataset, iexp)
+end	
+
+"""
+# other models to consider
+32131929
+ 35963739
+ 85249629
+  7696832
+ 62977160
+ 99981007
+
+"""
