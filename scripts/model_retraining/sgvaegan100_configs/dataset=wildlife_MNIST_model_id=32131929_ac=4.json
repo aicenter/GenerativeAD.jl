@@ -1,10 +1,10 @@
 {
     "init_seed": 32131929,
-    "anomaly_class": 1,
+    "anomaly_class": 4,
     "dataset": "wildlife_MNIST",
-	"z_dim":  16,
+    "z_dim":  16,
     "h_channels": 16, 
-	"weights_texture": [0.5, 2.5, 0.0, 0.5],
+    "weights_texture": [0.5, 2.5, 0.0, 0.5],
     "weight_binary": 5.0,
     "weight_mask": 1000.0,
     "tau_mask": 0.1,

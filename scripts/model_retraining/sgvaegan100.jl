@@ -141,7 +141,9 @@ if GenerativeAD.check_params(savepath, edited_parameters)
         :fixed_mask_epochs,
         :batch_norm,
         :init_type,
-        :tau_mask
+        :tau_mask,
+        :dataset,
+        :anomaly_class
         ))
     training_info, results = fit(data, edited_parameters, save_parameters, ac, seed)
 
