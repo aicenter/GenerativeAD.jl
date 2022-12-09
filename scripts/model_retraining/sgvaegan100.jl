@@ -63,9 +63,9 @@ function fit(data, parameters, save_parameters, ac, seed)
     mkpath(res_save_path)
 
     # fit train data
-    n_epochs = 100
+    n_epochs = config["nepochs"]
     epoch_iters = ceil(Int, length(data[1][2])/parameters.batch_size)
-    save_iter = 200
+    save_iter = 2000
     try
          global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
             max_train_time=20*3600/max_seed, workers=4, 

@@ -1,5 +1,5 @@
 {
-    "init_seed": 35044565,
+    "init_seed": 123456,
     "anomaly_class": 3,
     "dataset": "wildlife_MNIST",
 	"z_dim":  32,
