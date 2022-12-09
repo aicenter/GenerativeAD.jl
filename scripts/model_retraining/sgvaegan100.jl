@@ -20,11 +20,11 @@ method = "leave-one-in"
 contamination = 0.0
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
 max_seed = 1
-config_file = "sgvaegan100_configs/dataset=wildlife_MNIST_model_id=32131929_ac=1.json"
 # load the config from json
 config = JSON.parsefile(config_file)
 ac = config["anomaly_class"]
 dataset = config["dataset"]
+seed = 1
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -65,10 +65,10 @@ function fit(data, parameters, save_parameters, ac, seed)
     # fit train data
     n_epochs = 100
     epoch_iters = ceil(Int, length(data[1][2])/parameters.batch_size)
-    save_iter = epoch_iters*10
+    save_iter = 200
     try
          global info, fit_t, _, _, _ = @timed fit!(model, data[1][1]; 
-            max_train_time=20*3600/max_seed/anomaly_classes, workers=4, 
+            max_train_time=20*3600/max_seed, workers=4, 
             n_epochs = n_epochs, save_iter = save_iter, save_weights = false, save_path = res_save_path)
     catch e
         # return an empty array if fit fails so nothing is computed
@@ -123,6 +123,7 @@ data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=m
 data = GenerativeAD.Datasets.normalize_data(data)
 
 # edit parameters
+parameters = sample_params()
 edited_parameters = GenerativeAD.edit_params(data, parameters)
 
 @info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
@@ -170,7 +171,6 @@ if GenerativeAD.check_params(savepath, edited_parameters)
     for result in results
         GenerativeAD.experiment(result..., data, savepath; save_entries...)
     end
-    global try_counter = max_tries + 1
 else
     @info "Model already present, try other hyperparameters..."
 end
