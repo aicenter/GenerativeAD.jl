@@ -15,10 +15,15 @@ s = ArgParseSettings()
         help = "config"
 end
 parsed_args = parse_args(ARGS, s)
-@unpack config = parsed_args
+@unpack config_file = parsed_args
 method = "leave-one-in"
 contamination = 0.0
 cont_string = (contamination == 0.0) ? "" : "_contamination-$contamination"
+max_seed = 1
+config_file = "sgvaegan100_configs/dataset=wildlife_MNIST_model_id=32131929_ac=1.json"
+# load the config from json
+config = JSON.parsefile(config_file)
+ac = config["anomaly_class"]
 
 #######################################################################################
 ################ THIS PART IS TO BE PROVIDED FOR EACH MODEL SEPARATELY ################
@@ -32,54 +37,8 @@ version = 0.4
 Should return a named tuple that contains a sample of model parameters.
 """
 function sample_params()
-    weights_texture = (0.01, 0.05, 0.0, 0.01)
-    par_vec = (
-        2 .^(3:8), 
-        2 .^(3:6), 
-        map(x->x .* weights_texture, [1, 5, 10, 50, 100, 500, 1000]),
-        vcat(10 .^(-1.0:3.0), 0.5 .* 10 .^(-1.0:3.0)),
-        vcat(10 .^(-1.0:3.0), 0.5 .* 10 .^(-1.0:3.0)),
-        0.1:0.1:0.3,
-        0:3,
-        2 .^(4:7), 
-        [3, 4],
-        [true, false],
-        ["leakyrelu", "tanh"],
-        ["orthogonal", "normal"],
-        ["adam", "rmsprop"], 
-        ["global", "conv_net"],
-        0.01:0.01:0.1, 
-        1:Int(1e8), 
-        10f0 .^(-4:0.1:-3),
-        10f0 .^(-2:1.0:3.0),
-        )
-    argnames = (
-        :z_dim, 
-        :h_channels,
-        :weights_texture, 
-        :weight_binary,
-        :weight_mask,
-        :tau_mask,
-        :fixed_mask_epochs,
-        :batch_size, 
-        :n_layers,
-        :batch_norm, 
-        :activation,
-        :init_type, 
-        :optimizer,
-        :log_var_x_estimate_top,
-        :init_gain, 
-        :init_seed, 
-        :lr,
-        :fm_alpha,
-        )
-    parameters = (;zip(argnames, map(x->sample(x, 1)[1], par_vec))...)
-    fm_depth = if parameters.batch_norm
-        sample([2,5,8,11][1:parameters.n_layers])
-    else
-        sample([2,4,6,8][1:parameters.n_layers])
-    end
-    merge(parameters, (fm_depth=fm_depth,))     
+    # convert it to a named tuple
+    NamedTuple{Tuple(Symbol.(keys(config)))}(values(config))
 end
 function GenerativeAD.edit_params(data, parameters)
     idim = size(data[1][1])
@@ -157,75 +116,65 @@ end
 # only execute this if run directly - so it can be included in other files
 if abspath(PROGRAM_FILE) == @__FILE__
     # set a maximum for parameter sampling retries
-    try_counter = 0
-    max_tries = 10*max_seed
-    while try_counter < max_tries
-        parameters = sample_params()
+    for seed in 1:max_seed
+        savepath = datadir("experiments/images_$(method)$cont_string/$(modelname)/$(dataset)/ac=$(ac)/seed=$(seed)")
+        mkpath(savepath)
 
-        for seed in 1:max_seed
-            for i in 1:anomaly_classes
-                savepath = datadir("experiments/images_$(method)$cont_string/$(modelname)/$(dataset)/ac=$(i)/seed=$(seed)")
-                mkpath(savepath)
+        # get data
+        data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=ac, method=method, contamination=contamination)
+        data = GenerativeAD.Datasets.normalize_data(data)
 
-                # get data
-                data = GenerativeAD.load_data(dataset, seed=seed, anomaly_class_ind=i, method=method, contamination=contamination)
-                data = GenerativeAD.Datasets.normalize_data(data)
+        # edit parameters
+        edited_parameters = GenerativeAD.edit_params(data, parameters)
 
-                # edit parameters
-                edited_parameters = GenerativeAD.edit_params(data, parameters)
+        @info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
+        @info "Train/validation/test splits: $(size(data[1][1], 4)) | $(size(data[2][1], 4)) | $(size(data[3][1], 4))"
+        @info "Number of features: $(size(data[1][1])[1:3])"
 
-                @info "Trying to fit $modelname on $dataset with parameters $(edited_parameters)..."
-                @info "Train/validation/test splits: $(size(data[1][1], 4)) | $(size(data[2][1], 4)) | $(size(data[3][1], 4))"
-                @info "Number of features: $(size(data[1][1])[1:3])"
+        # check if a combination of parameters and seed alread exists
+        if GenerativeAD.check_params(savepath, edited_parameters)
+            # fit
+            # these parameters will be used in teh savename
+            save_parameters = merge(edited_parameters, (version=version,))
+            save_parameters = dropnames(save_parameters, (
+                :log_var_x_estimate_top, 
+                :latent_structure,
+                :fixed_mask_epochs,
+                :batch_norm,
+                :init_type,
+                :tau_mask
+                ))
+            training_info, results = fit(data, edited_parameters, save_parameters, ac, seed)
 
-                # check if a combination of parameters and seed alread exists
-                if GenerativeAD.check_params(savepath, edited_parameters)
-                    # fit
-                    # these parameters will be used in teh savename
-                    save_parameters = merge(edited_parameters, (version=version,))
-                    save_parameters = dropnames(save_parameters, (
-                        :log_var_x_estimate_top, 
-                        :latent_structure,
-                        :fixed_mask_epochs,
-                        :batch_norm,
-                        :init_type,
-                        :tau_mask
-                        ))
-                    training_info, results = fit(data, edited_parameters, save_parameters, i, seed)
-
-                    # save the model separately         
-                    if training_info.model !== nothing
-                        tagsave(joinpath(savepath, savename("model", save_parameters, "bson", digits=5)), 
-                            Dict("fit_t"=>training_info.fit_t,
-                                 "history"=>training_info.history,
-                                 "parameters"=>edited_parameters,
-                                 "tr_encodings"=>training_info.tr_encodings,
-                                 "val_encodings"=>training_info.val_encodings,
-                                 "tst_encodings"=>training_info.tst_encodings,
-                                 "version"=>version,
-                                 "best_score_type"=>training_info.best_score_type
-                                 ), 
-                            safe = true)
-                        training_info = merge(training_info, 
-                            (model=nothing,tr_encodings=nothing,val_encodings=nothing,tst_encodings=nothing))
-                    end
-
-                    # here define what additional info should be saved together with parameters, scores, labels and predict times
-                    save_entries = merge(training_info, (modelname = modelname, seed = seed, 
-                        dataset = dataset, anomaly_class = i,
-                        contamination=contamination))
-
-                    # now loop over all anomaly score funs
-                    for result in results
-                        GenerativeAD.experiment(result..., data, savepath; save_entries...)
-                    end
-                    global try_counter = max_tries + 1
-                else
-                    @info "Model already present, trying new hyperparameters..."
-                    global try_counter += 1
-                end
+            # save the model separately         
+            if training_info.model !== nothing
+                tagsave(joinpath(savepath, savename("model", save_parameters, "bson", digits=5)), 
+                    Dict("fit_t"=>training_info.fit_t,
+                         "history"=>training_info.history,
+                         "parameters"=>edited_parameters,
+                         "tr_encodings"=>training_info.tr_encodings,
+                         "val_encodings"=>training_info.val_encodings,
+                         "tst_encodings"=>training_info.tst_encodings,
+                         "version"=>version,
+                         "best_score_type"=>training_info.best_score_type
+                         ), 
+                    safe = true)
+                training_info = merge(training_info, 
+                    (model=nothing,tr_encodings=nothing,val_encodings=nothing,tst_encodings=nothing))
             end
+
+            # here define what additional info should be saved together with parameters, scores, labels and predict times
+            save_entries = merge(training_info, (modelname = modelname, seed = seed, 
+                dataset = dataset, anomaly_class = ac,
+                contamination=contamination))
+
+            # now loop over all anomaly score funs
+            for result in results
+                GenerativeAD.experiment(result..., data, savepath; save_entries...)
+            end
+            global try_counter = max_tries + 1
+        else
+            @info "Model already present, try other hyperparameters..."
         end
     end
-    (try_counter == max_tries) ? (@info "Reached $(max_tries) tries, giving up.") : nothing
 end
