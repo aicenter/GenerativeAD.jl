@@ -9,7 +9,7 @@
 #SBATCH --output logs/jupyter-notebook-%J.log
 
 # wmnist_models.txt
-MFILE = $1
+MFILE=$1
 
 module load Python/3.9.6-GCCcore-11.2.0
 module load Julia/1.5.3-linux-x86_64
