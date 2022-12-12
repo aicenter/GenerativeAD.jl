@@ -18,5 +18,5 @@ source ${HOME}/sgad-env/bin/activate
 export PYTHON="${HOME}/sgad-env/bin/python"
 
 while read d; do
-	julia --project factor_detection_masked.jl sgvaegan100 wildlife_MNIST $d 
+	julia --project factor_detection_masked2.jl sgvaegan100 wildlife_MNIST $d 
 done < $MFILE
